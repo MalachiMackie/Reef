@@ -138,4 +138,44 @@ public class ClosureTests : IntegrationTestBase
         result.ExitCode.Should().Be(0);
         result.StandardOutput.Should().Be(check ? "6" : "7");
     }
+
+    [Theory]
+    [InlineData(true), InlineData(false)]
+    public async Task ClosureOnInstanceFunction(bool check)
+    {
+        await SetupTest(
+            $$"""
+            class MyClass {
+                pub field base_value: u32,
+
+                pub fn plus_1(param: u32): u32 {
+                    return param + base_value + 1;
+                }
+
+                pub fn plus_2(param: u32): u32 {
+                    return param + base_value + 2;
+                }
+            }
+
+            var instance = new MyClass { base_value = 3};
+
+            var get_value: Fn(u32): u32;
+
+            if ({{(check ? "true" : "false")}}) {
+                get_value = instance.plus_1;
+            }
+            else {
+                get_value = instance.plus_2;
+            }
+
+            var value = get_value(2);
+            print_u32(value);
+
+            """, testCaseName: check.ToString());
+
+        var result = await Run(testCaseName: check.ToString());
+
+        result.ExitCode.Should().Be(0);
+        result.StandardOutput.Should().Be(check ? "6" : "7");
+    }
 }

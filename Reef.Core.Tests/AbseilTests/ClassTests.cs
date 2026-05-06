@@ -1,4 +1,3 @@
-using Reef.Core.Abseil;
 using Reef.Core.LoweredExpressions;
 using static Reef.Core.Tests.LoweredProgramHelpers;
 
@@ -457,7 +456,15 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                                 new DefId(ModuleId, $"{ModuleId}:::MyClass__OtherFn"),
                                                 [])))),
                                     new Assign(
-                                        new Field(new Field(new Deref(new Local("_local0")), "Value", "_classVariant"), "FunctionParameter", "_classVariant"),
+                                        new Field(new Field(new Deref(Local0), "Value", "_classVariant"), "FunctionParameter", "_classVariant"),
+                                        new CreateObject(Option(LoweredProgramHelpers.RawPointer))
+                                    ),
+                                    new Assign(
+                                        new Field(new Field(new Field(new Deref(Local0), "Value", "_classVariant"), "FunctionParameter", "_classVariant"), "_variantIdentifier", "Some"),
+                                        new Use(new UIntConstant(1, 2))
+                                    ),
+                                    new Assign(
+                                        new Field(new Field(new Field(new Deref(new Local("_local0")), "Value", "_classVariant"), "FunctionParameter", "_classVariant"), "Item0", "Some"),
                                         new Use(new Copy(new Local("_param0"))))
                                 ], new GoTo(new BasicBlockId("bb2"))),
                                 new BasicBlock(new BasicBlockId("bb2"), [], new Return())
@@ -516,7 +523,15 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                             new LoweredFunctionReference(
                                                 new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn"), [])))),
                                     new Assign(
-                                        new Field(new Field(new Deref(new Local("_local0")), "Value", "_classVariant"), "FunctionParameter", "_classVariant"),
+                                        new Field(new Field(new Deref(Local0), "Value", "_classVariant"), "FunctionParameter", "_classVariant"),
+                                        new CreateObject(Option(LoweredProgramHelpers.RawPointer))
+                                    ),
+                                    new Assign(
+                                        new Field(new Field(new Field(new Deref(Local0), "Value", "_classVariant"), "FunctionParameter", "_classVariant"), "_variantIdentifier", "Some"),
+                                        new Use(new UIntConstant(1, 2))
+                                    ),
+                                    new Assign(
+                                        new Field(new Field(new Field(new Deref(new Local("_local0")), "Value", "_classVariant"), "FunctionParameter", "_classVariant"), "Item0", "Some"),
                                         new Use(new Copy(new Local("_param0"))))
                                 ], new GoTo(new BasicBlockId("bb2"))),
                                 new BasicBlock(new BasicBlockId("bb2"), [], new Return())

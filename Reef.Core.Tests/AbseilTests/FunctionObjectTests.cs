@@ -1,4 +1,3 @@
-using Reef.Core.Abseil;
 using Reef.Core.LoweredExpressions;
 using static Reef.Core.Tests.LoweredProgramHelpers;
 
@@ -124,7 +123,15 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                          new Assign(
                                              new Field(new Field(new Deref(Local0), "Value", "_classVariant"), "FunctionReference", "_classVariant"),
                                              new Use(new FunctionPointerConstant(new LoweredFunctionReference(
-                                                 new DefId(ModuleId, $"{ModuleId}:::MyUnion__Create__A"), []))))
+                                                 new DefId(ModuleId, $"{ModuleId}:::MyUnion__Create__A"), [])))),
+                                         new Assign(
+                                             new Field(new Field(new Deref(Local0), "Value", "_classVariant"), "FunctionParameter", "_classVariant"),
+                                             new CreateObject(Option(LoweredProgramHelpers.RawPointer))
+                                         ),
+                                         new Assign(
+                                             new Field(new Field(new Field(new Deref(Local0), "Value", "_classVariant"), "FunctionParameter", "_classVariant"), "_variantIdentifier", "None"),
+                                             new Use(new UIntConstant(0, 2))
+                                         )
                                      ],
                                      new MethodCall(
                                          FunctionObjectCall([StringT], new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference( new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))),
@@ -265,7 +272,15 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                                           new Assign(
                                                               new Field(new Field(new Deref(Local0), "Value", "_classVariant"), "FunctionReference", "_classVariant"),
                                                               new Use(new FunctionPointerConstant(new LoweredFunctionReference(
-                                                                  new DefId(ModuleId, $"{ModuleId}:::MyUnion__Create__A"), []))))
+                                                                  new DefId(ModuleId, $"{ModuleId}:::MyUnion__Create__A"), [])))),
+                                                          new Assign(
+                                                              new Field(new Field(new Deref(Local0), "Value", "_classVariant"), "FunctionParameter", "_classVariant"),
+                                                              new CreateObject(Option(LoweredProgramHelpers.RawPointer))
+                                                          ),
+                                                          new Assign(
+                                                              new Field(new Field(new Field(new Deref(Local0), "Value", "_classVariant"), "FunctionParameter", "_classVariant"), "_variantIdentifier", "None"),
+                                                              new Use(new UIntConstant(0, 2))
+                                                          )
                                                       ],
                                                       new MethodCall(
                                                           FunctionObjectCall([StringT], new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference( new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))),
@@ -323,7 +338,15 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                                  "FunctionReference",
                                                  "_classVariant"),
                                              new Use(new FunctionPointerConstant(
-                                                 new LoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}:::SomeFn"), []))))
+                                                 new LoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}:::SomeFn"), [])))),
+                                         new Assign(
+                                             new Field(new Field(new Deref(Local0), "Value", "_classVariant"), "FunctionParameter", "_classVariant"),
+                                             new CreateObject(Option(LoweredProgramHelpers.RawPointer))
+                                         ),
+                                         new Assign(
+                                             new Field(new Field(new Field(new Deref(Local0), "Value", "_classVariant"), "FunctionParameter", "_classVariant"), "_variantIdentifier", "None"),
+                                             new Use(new UIntConstant(0, 2))
+                                         )
                                      ],
                                      new GoTo(BB2)),
                                  new BasicBlock(BB2, [], new Return())
@@ -374,7 +397,15 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                                  "FunctionReference",
                                                  "_classVariant"),
                                              new Use(new FunctionPointerConstant(
-                                                 new LoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}:::MyClass__OtherFn"), []))))
+                                                 new LoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}:::MyClass__OtherFn"), [])))),
+                                         new Assign(
+                                             new Field(new Field(new Deref(Local0), "Value", "_classVariant"), "FunctionParameter", "_classVariant"),
+                                             new CreateObject(Option(LoweredProgramHelpers.RawPointer))
+                                         ),
+                                         new Assign(
+                                             new Field(new Field(new Field(new Deref(Local0), "Value", "_classVariant"), "FunctionParameter", "_classVariant"), "_variantIdentifier", "None"),
+                                             new Use(new UIntConstant(0, 2))
+                                         )
                                      ],
                                      new GoTo(BB2)),
                                  new BasicBlock(BB2, [], new Return())
@@ -423,7 +454,15 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                                  "FunctionReference",
                                                  "_classVariant"),
                                              new Use(new FunctionPointerConstant(
-                                                 new LoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}:::MyClass__OtherFn"), []))))
+                                                 new LoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}:::MyClass__OtherFn"), [])))),
+                                         new Assign(
+                                             new Field(new Field(new Deref(Local0), "Value", "_classVariant"), "FunctionParameter", "_classVariant"),
+                                             new CreateObject(Option(LoweredProgramHelpers.RawPointer))
+                                         ),
+                                         new Assign(
+                                             new Field(new Field(new Field(new Deref(Local0), "Value", "_classVariant"), "FunctionParameter", "_classVariant"), "_variantIdentifier", "None"),
+                                             new Use(new UIntConstant(0, 2))
+                                         )
                                      ],
                                      new GoTo(BB2)),
                                  new BasicBlock(BB2, [], new Return())
@@ -485,6 +524,14 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                                  new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn"), [])))),
                                          new Assign(
                                              new Field(new Field(new Deref(Local1), "Value", "_classVariant"), "FunctionParameter", "_classVariant"),
+                                             new CreateObject(Option(LoweredProgramHelpers.RawPointer))
+                                         ),
+                                         new Assign(
+                                             new Field(new Field(new Field(new Deref(Local1), "Value", "_classVariant"), "FunctionParameter", "_classVariant"), "_variantIdentifier", "Some"),
+                                             new Use(new UIntConstant(1, 2))
+                                         ),
+                                         new Assign(
+                                             new Field(new Field(new Field(new Deref(Local1), "Value", "_classVariant"), "FunctionParameter", "_classVariant"), "Item0", "Some"),
                                              new Use(new Copy(Local0)))
                                      ],
                                      new GoTo(BB3)),
@@ -663,6 +710,14 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                                  new LoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__InnerFn"), [])))),
                                          new Assign(
                                              new Field(new Field(new Deref(Local1), "Value", "_classVariant"), "FunctionParameter", "_classVariant"),
+                                             new CreateObject(Option(LoweredProgramHelpers.RawPointer))
+                                         ),
+                                         new Assign(
+                                             new Field(new Field(new Field(new Deref(Local1), "Value", "_classVariant"), "FunctionParameter", "_classVariant"), "_variantIdentifier", "Some"),
+                                             new Use(new UIntConstant(1, 2))
+                                         ),
+                                         new Assign(
+                                             new Field(new Field(new Field(new Deref(Local1), "Value", "_classVariant"), "FunctionParameter", "_classVariant"), "Item0", "Some"),
                                              new Use(new Copy(Local2)))
                                      ],
                                      new GoTo(BB4)),
@@ -724,6 +779,14 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                              new Field(new Field(new Deref(Local0), "Value", "_classVariant"), "FunctionReference", "_classVariant"),
                                              new Use(new FunctionPointerConstant(new LoweredFunctionReference(
                                                  new DefId(ModuleId, $"{ModuleId}:::SomeFn"), [])))),
+                                         new Assign(
+                                             new Field(new Field(new Deref(Local0), "Value", "_classVariant"), "FunctionParameter", "_classVariant"),
+                                             new CreateObject(Option(LoweredProgramHelpers.RawPointer))
+                                         ),
+                                         new Assign(
+                                             new Field(new Field(new Field(new Deref(Local0), "Value", "_classVariant"), "FunctionParameter", "_classVariant"), "_variantIdentifier", "None"),
+                                             new Use(new UIntConstant(0, 2))
+                                         )
                                      ],
                                      new MethodCall(
                                          FunctionObjectCall([], Unit),
@@ -782,6 +845,14 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                              new Field(new Field(new Deref(Local0), "Value", "_classVariant"), "FunctionReference", "_classVariant"),
                                              new Use(new FunctionPointerConstant(new LoweredFunctionReference(
                                                  new DefId(ModuleId, $"{ModuleId}:::SomeFn"), [])))),
+                                         new Assign(
+                                             new Field(new Field(new Deref(Local0), "Value", "_classVariant"), "FunctionParameter", "_classVariant"),
+                                             new CreateObject(Option(LoweredProgramHelpers.RawPointer))
+                                         ),
+                                         new Assign(
+                                             new Field(new Field(new Field(new Deref(Local0), "Value", "_classVariant"), "FunctionParameter", "_classVariant"), "_variantIdentifier", "None"),
+                                             new Use(new UIntConstant(0, 2))
+                                         )
                                      ],
                                      new MethodCall(
                                          FunctionObjectCall([StringT], Int64T),
@@ -837,6 +908,14 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                              new Field(new Field(new Deref(Local0), "Value", "_classVariant"), "FunctionReference", "_classVariant"),
                                              new Use(new FunctionPointerConstant(new LoweredFunctionReference(
                                                  new DefId(ModuleId, $"{ModuleId}:::MyClass__SomeFn"), [StringT, Int64T])))),
+                                         new Assign(
+                                             new Field(new Field(new Deref(Local0), "Value", "_classVariant"), "FunctionParameter", "_classVariant"),
+                                             new CreateObject(Option(LoweredProgramHelpers.RawPointer))
+                                         ),
+                                         new Assign(
+                                             new Field(new Field(new Field(new Deref(Local0), "Value", "_classVariant"), "FunctionParameter", "_classVariant"), "_variantIdentifier", "None"),
+                                             new Use(new UIntConstant(0, 2))
+                                         )
                                      ],
                                      new GoTo(BB2)),
                                  new BasicBlock(BB2, [], new Return())

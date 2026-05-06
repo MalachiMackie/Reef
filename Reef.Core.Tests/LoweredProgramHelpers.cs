@@ -213,6 +213,13 @@ public static class LoweredProgramHelpers
             types);
     }
 
+    public static LoweredConcreteTypeReference RawPointer { get; } = new(DefId.RawPointer, []);
+
+    public static LoweredConcreteTypeReference Option(ILoweredTypeReference optionOf)
+    {
+        return new LoweredConcreteTypeReference(DefId.Option, [optionOf]);
+    }
+
     public static LoweredConcreteTypeReference FunctionObject(
         IReadOnlyList<ILoweredTypeReference> parameterTypes,
         ILoweredTypeReference returnType)

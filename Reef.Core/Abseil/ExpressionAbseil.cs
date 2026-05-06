@@ -1522,6 +1522,8 @@ public partial class ProgramAbseil
                     var functionObjectType =
                         GetTypeReference(e.ResolvedType.NotNull());
 
+                    var noneVariantIdentifier = GetDataType(DefId.Option).Variants.Index().First(x => x.Item.Name == "None").Index;
+
                     var functionObjectPlace = CreateObject(
                         functionObjectType,
                         ClassVariantName,
@@ -1531,19 +1533,22 @@ public partial class ProgramAbseil
                                 new FunctionPointerConstant(
                                     GetFunctionReference(fn)
                                 )),
+                            new CreateObjectField(
+                                "FunctionParameter",
+                                field => {
+                                    CreateObject(
+                                        new LoweredConcreteTypeReference(DefId.Option, [
+                                            new LoweredConcreteTypeReference(DefId.RawPointer, [])
+                                        ]),
+                                        "None",
+                                        [new CreateObjectField(VariantIdentifierFieldName, new UIntConstant((ulong)noneVariantIdentifier, 2))],
+                                        field
+                                    );
+                                }
+                            ),
                         ],
                         destination);
 
-                    var noneVariantIdentifier = GetDataType(DefId.Option).Variants.Index().First(x => x.Item.Name == "None").Index;
-
-                    var functionParameterValue = CreateObject(
-                        new LoweredConcreteTypeReference(DefId.Option, [
-                            new LoweredConcreteTypeReference(DefId.RawPointer, [])
-                        ]),
-                        "None",
-                        [new CreateObjectField(VariantIdentifierFieldName, new UIntConstant((ulong)noneVariantIdentifier, 2))],
-                        new Field(functionObjectPlace.Value, "FunctionParameter", ClassVariantName)
-                    );
 
                     return functionObjectPlace;
                 }
@@ -1552,6 +1557,8 @@ public partial class ProgramAbseil
                     var fn = e.StaticMemberAccess.InstantiatedFunction.NotNull();
 
                     var typeReference = GetTypeReference(e.ResolvedType.NotNull());
+
+                    var noneVariantIdentifier = GetDataType(DefId.Option).Variants.Index().First(x => x.Item.Name == "None").Index;
 
                     var functionObjectPlace = CreateObject(
                         typeReference,
@@ -1562,20 +1569,23 @@ public partial class ProgramAbseil
                                 new FunctionPointerConstant(
                                     GetFunctionReference(fn)
                                 )
+                            ),
+                            new CreateObjectField(
+                                "FunctionParameter",
+                                field => {
+                                    CreateObject(
+                                        new LoweredConcreteTypeReference(DefId.Option, [
+                                            new LoweredConcreteTypeReference(DefId.RawPointer, [])
+                                        ]),
+                                        "None",
+                                        [new CreateObjectField(VariantIdentifierFieldName, new UIntConstant((ulong)noneVariantIdentifier, 2))],
+                                        field
+                                    );
+                                }
                             )
                         ],
                         destination);
 
-                    var noneVariantIdentifier = GetDataType(DefId.Option).Variants.Index().First(x => x.Item.Name == "None").Index;
-
-                    var functionParameterValue = CreateObject(
-                        new LoweredConcreteTypeReference(DefId.Option, [
-                            new LoweredConcreteTypeReference(DefId.RawPointer, [])
-                        ]),
-                        "None",
-                        [new CreateObjectField(VariantIdentifierFieldName, new UIntConstant((ulong)noneVariantIdentifier, 2))],
-                        new Field(functionObjectPlace.Value, "FunctionParameter", ClassVariantName)
-                    );
 
                     return functionObjectPlace;
                 }
@@ -1657,28 +1667,32 @@ public partial class ProgramAbseil
                     var functionObjectType =
                         GetTypeReference(e.ResolvedType.NotNull());
 
+                    var someVariantIdentifier = GetDataType(DefId.Option).Variants.Index().First(x => x.Item.Name == "Some").Index;
+
                     var functionObjectPlace = CreateObject(
                         functionObjectType,
                         ClassVariantName,
                         [
                             new CreateObjectField("FunctionReference", new FunctionPointerConstant(
                                 GetFunctionReference(fn))),
+                            new CreateObjectField(
+                                "FunctionParameter",
+                                field => {
+                                    CreateObject(
+                                        new LoweredConcreteTypeReference(DefId.Option, [
+                                            new LoweredConcreteTypeReference(DefId.RawPointer, [])
+                                        ]),
+                                        "Some",
+                                        [
+                                            new CreateObjectField(VariantIdentifierFieldName, new UIntConstant((ulong)someVariantIdentifier, 2)),
+                                            new CreateObjectField("Item0", ownerResult.ToOperand())
+                                        ],
+                                        field
+                                    );
+                                })
                         ],
                         destination);
 
-                    var someVariantIdentifier = GetDataType(DefId.Option).Variants.Index().First(x => x.Item.Name == "Some").Index;
-
-                    var functionParameterValue = CreateObject(
-                        new LoweredConcreteTypeReference(DefId.Option, [
-                            new LoweredConcreteTypeReference(DefId.RawPointer, [])
-                        ]),
-                        "Some",
-                        [
-                            new CreateObjectField(VariantIdentifierFieldName, new UIntConstant((ulong)someVariantIdentifier, 2)),
-                            new CreateObjectField("Item0", ownerResult.ToOperand())
-                        ],
-                        new Field(functionObjectPlace.Value, "FunctionParameter", ClassVariantName)
-                    );
 
                     return functionObjectPlace;
 
@@ -1707,19 +1721,30 @@ public partial class ProgramAbseil
         public string FieldName { get; }
         public IExpression? Expression { get; }
         public IOperand? Operand { get; }
+        public Action<IPlace>? FieldAssignment { get; }
 
         public CreateObjectField(string fieldName, IExpression? expression)
         {
             FieldName = fieldName;
             Expression = expression;
             Operand = null;
+            FieldAssignment = null;
         }
 
-        public CreateObjectField(string fieldName, IOperand? operand)
+        public CreateObjectField(string fieldName, IOperand operand)
         {
             FieldName = fieldName;
             Operand = operand;
             Expression = null;
+            FieldAssignment = null;
+        }
+
+        public CreateObjectField(string fieldName, Action<IPlace> fieldAssignment)
+        {
+            FieldName = fieldName;
+            Operand = null;
+            Expression = null;
+            FieldAssignment = fieldAssignment;
         }
     }
 
@@ -1811,6 +1836,10 @@ public partial class ProgramAbseil
                 _basicBlockStatements.Add(new Assign(
                     field,
                     new Use(operand)));
+            }
+            else if (createObjectField.FieldAssignment is { } fieldAssignment)
+            {
+                fieldAssignment(field);
             }
         }
 
@@ -2327,19 +2356,23 @@ public partial class ProgramAbseil
 
                 var someVariantIdentifier = GetDataType(DefId.Option).Variants.Index().First(x => x.Item.Name == "Some").Index;
 
-                var functionParameterValue = CreateObject(
-                    new LoweredConcreteTypeReference(DefId.Option, [
-                        new LoweredConcreteTypeReference(DefId.RawPointer, [])
-                    ]),
-                    "Some",
-                    [
-                        new CreateObjectField(VariantIdentifierFieldName, new UIntConstant((ulong)someVariantIdentifier, 2)),
-                        new CreateObjectField("Item0", new Copy(new Local(localName)))
-                    ],
-                    null
-                );
-
-                functionObjectParameters.Add(new CreateObjectField("FunctionParameter", new Copy(functionParameterValue.Value)));
+                functionObjectParameters.Add(
+                    new CreateObjectField(
+                        "FunctionParameter",
+                        field =>
+                        {
+                            CreateObject(
+                                new LoweredConcreteTypeReference(DefId.Option, [
+                                    new LoweredConcreteTypeReference(DefId.RawPointer, [])
+                                ]),
+                                "Some",
+                                [
+                                    new CreateObjectField(VariantIdentifierFieldName, new UIntConstant((ulong)someVariantIdentifier, 2)),
+                                    new CreateObjectField("Item0", new Copy(new Local(localName)))
+                                ],
+                                field
+                            );
+                        }));
             }
             else if (innerFn is { IsStatic: false, OwnerType: not null }
                      && _currentType is not null
@@ -2350,33 +2383,40 @@ public partial class ProgramAbseil
 
                 var someVariantIdentifier = GetDataType(DefId.Option).Variants.Index().First(x => x.Item.Name == "Some").Index;
 
-                var functionParameterValue = CreateObject(
-                    new LoweredConcreteTypeReference(DefId.Option, [
-                        new LoweredConcreteTypeReference(DefId.RawPointer, [])
-                    ]),
-                    "Some",
-                    [
-                        new CreateObjectField(VariantIdentifierFieldName, new UIntConstant((ulong)someVariantIdentifier, 2)),
-                        new CreateObjectField("Item0", new Copy(new Local(ParameterLocalName(0))))
-                    ],
-                    null
-                );
-
-                functionObjectParameters.Add(new CreateObjectField("FunctionParameter", new Copy(functionParameterValue.Value)));
+                functionObjectParameters.Add(new CreateObjectField(
+                    "FunctionParameter",
+                    field =>
+                    {
+                        CreateObject(
+                            new LoweredConcreteTypeReference(DefId.Option, [
+                                new LoweredConcreteTypeReference(DefId.RawPointer, [])
+                            ]),
+                            "Some",
+                            [
+                                new CreateObjectField(VariantIdentifierFieldName, new UIntConstant((ulong)someVariantIdentifier, 2)),
+                                new CreateObjectField("Item0", new Copy(new Local(ParameterLocalName(0))))
+                            ],
+                            field
+                        );
+                    }));
             }
             else
             {
                 var noneVariantIdentifier = GetDataType(DefId.Option).Variants.Index().First(x => x.Item.Name == "None").Index;
 
-                var functionParameterValue = CreateObject(
-                    new LoweredConcreteTypeReference(DefId.Option, [
-                        new LoweredConcreteTypeReference(DefId.RawPointer, [])
-                    ]),
-                    "None",
-                    [new CreateObjectField(VariantIdentifierFieldName, new UIntConstant((ulong)noneVariantIdentifier, 2))],
-                    null
-                );
-                functionObjectParameters.Add(new CreateObjectField("FunctionParameter", new Copy(functionParameterValue.Value)));
+                functionObjectParameters.Add(new CreateObjectField(
+                    "FunctionParameter",
+                    field =>
+                    {
+                        CreateObject(
+                            new LoweredConcreteTypeReference(DefId.Option, [
+                                new LoweredConcreteTypeReference(DefId.RawPointer, [])
+                            ]),
+                            "None",
+                            [new CreateObjectField(VariantIdentifierFieldName, new UIntConstant((ulong)noneVariantIdentifier, 2))],
+                            field
+                        );
+                    }));
             }
 
             return CreateObject(
