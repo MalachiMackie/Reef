@@ -19,20 +19,14 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
 
                                      """;
 
-    private readonly StringBuilder _dataSegment = new("segment .data\n");
     private readonly StringBuilder _stringDataSubSegment = new();
     private readonly StringBuilder _typeInfoDataSubSegment = new();
     private readonly StringBuilder _methodInfoDataSubSegment = new();
+    private readonly StringBuilder _procData = new();
+    private readonly StringBuilder _unwindInfo = new();
     private readonly Dictionary<string, StringBuilder> _dynamicArrayDataSubSegments = [];
 
-    private readonly StringBuilder _codeSegment = new("""
-                                                      segment .text
-                                                      global main
-                                                      extern ExitProcess
-                                                      extern _CRT_INIT
-                                                      extern init_runtime
-
-                                                      """);
+    private readonly StringBuilder _codeSegment = new();
 
     private const uint PointerSize = 8;
     private const uint MaxParameterSize = 8;
@@ -244,14 +238,29 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
             PadAlignment(ref localsBytesWritten, localsSubSegment, 4);
         }
 
+        var startLabel = GetMethodLabel(method, typeArguments);
+        var endLabel = GetMethodLabelEnd(method, typeArguments);
+
         _methodInfoDataSubSegment.AppendLine("        ; MethodInfo.AddressFrom");
-        _methodInfoDataSubSegment.AppendLine($"        dq {GetMethodLabel(method, typeArguments)}");
+        _methodInfoDataSubSegment.AppendLine($"        dq {startLabel}");
         bytesWritten += 8;
         _methodInfoDataSubSegment.AppendLine("        ; MethodInfo.AddressTo");
-        _methodInfoDataSubSegment.AppendLine($"        dq {GetMethodLabelEnd(method, typeArguments)}");
+        _methodInfoDataSubSegment.AppendLine($"        dq {endLabel}");
         bytesWritten += 8;
 
         Debug.Assert(bytesWritten == methodInfoSize.Size, $"BytesWritten: {bytesWritten}, methodInfoSize: {methodInfoSize.Size}");
+
+        // https://github.com/MicrosoftDocs/cpp-docs/blob/main/docs/build/exception-handling-x64.md#struct-unwind_info
+        var unwindInfoLabel = $"unwind_info_{methodId}";
+        _unwindInfo.AppendLine($"        {unwindInfoLabel}:");
+        _unwindInfo.AppendLine($"        db 0"); // top 3 bits: version, bottom 5 bits: flags
+        _unwindInfo.AppendLine($"        db 0"); // size of prolog
+        _unwindInfo.AppendLine($"        db 0"); // count of unwind codes
+        _unwindInfo.AppendLine($"        db 0"); // top 4 bits: frame register, bottom 4 bits: frame register offset
+
+        _procData.AppendLine($"        dd {startLabel}");
+        _procData.AppendLine($"        dd {endLabel}");
+        _procData.AppendLine($"        dd {unwindInfoLabel}");
     }
 
     void PadAlignment(ref uint bytesWritten, StringBuilder stringBuilder, uint alignment)
@@ -966,9 +975,16 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                 global methodInfoSize
                 global boxedValueStringTypeId
                 global get_rbp
-                {_codeSegment}
-                {_dataSegment}
-                {_stringDataSubSegment}
+                global main
+
+                segment .text
+                    extern ExitProcess
+                    extern _CRT_INIT
+                    extern init_runtime
+                    {_codeSegment}
+
+                segment .rdata align=16
+                    {_stringDataSubSegment}
                     ALIGN 8, db 0
                     typeInfoSize dq 0x{typeInfoSize.Size:X}
                     fieldInfoSize dq 0x{fieldInfoSize.Size:X}
@@ -979,11 +995,17 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                     boxedValueStringTypeId dq 0x{boxedValueStringTypeId:X}
                     ALIGN 16, db 0
                     typeInfoArray:
-                {_typeInfoDataSubSegment}
+                    {_typeInfoDataSubSegment}
                     ALIGN 16, db 0
                     methodInfoArray:
-                {_methodInfoDataSubSegment}
-                {dynamicArrays}
+                    {_methodInfoDataSubSegment}
+                    {dynamicArrays}
+
+                segment .xdata align=16
+                    {_unwindInfo}
+
+                segment .pdata rdata align=4
+                    {_procData}
                 """;
     }
 
