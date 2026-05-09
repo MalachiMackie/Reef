@@ -2,7 +2,6 @@
 
 namespace Reef.Core.Tests.IntegrationTests;
 
-[TestMe]
 public class ClosureTests : IntegrationTestBase
 {
     [Theory]

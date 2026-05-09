@@ -1,4 +1,5 @@
-﻿using Reef.Core.Tests.IntegrationTests.Helpers;
+﻿using FluentAssertions.Execution;
+using Reef.Core.Tests.IntegrationTests.Helpers;
 
 namespace Reef.Core.Tests.IntegrationTests;
 
@@ -11,6 +12,7 @@ public class StringTests : IntegrationTestBase
 
         var result = await Run();
 
+        using var _ = new AssertionScope();
         result.ExitCode.Should().Be(0);
         result.StandardOutput.Should().Be("Hello World!");
     }
@@ -150,6 +152,7 @@ public class StringTests : IntegrationTestBase
             }
 
             if (run() matches result::Error(var err)) {
+                print_string("ERROR: ");
                 print_string(err);
             }
             """
