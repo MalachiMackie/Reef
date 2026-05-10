@@ -1718,7 +1718,6 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
             prologLabel = $"m_{methodId}_prolog_{prologIndex++}";
         }
 
-        prolog.AppendLine($"    {prologLabel}:");
         prolog.AppendLine($"    push    rbp");
         NextPrologLabel();
         prologOperations.Add(new IPrologOperation.PushRegister(Register.BasePointer, prologLabel));
