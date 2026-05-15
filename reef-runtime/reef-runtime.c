@@ -8,6 +8,7 @@
 #include <stdbool.h>
 #include <intrin.h>
 #include <string.h>
+#include <windows.h>
 
 #define STB_DS_IMPLEMENTATION
 #include "stb_ds.h"
@@ -926,6 +927,26 @@ void trigger_gc()
     // don't free, just reset so we can reuse again
     ht_reset(&alive_pointers);
     arrsetlen(dead_allocations, 0);
+}
+
+void panic() {
+    assert(false);
+}
+
+extern uint64_t unhandled_exception_continue;
+
+EXCEPTION_DISPOSITION global_handle_exception(
+    PEXCEPTION_RECORD exception_record,
+    uint64_t establisher_frame,
+    PCONTEXT context_record,
+    PDISPATCHER_CONTEXT dispatcher_context) {
+    fputs("Unhandled panic!", stdout);
+
+    // if we got to main without a catch:
+    dispatcher_context->TargetIp = unhandled_exception_continue;
+
+    // we modified the dispatcher_context, so theoretically windows knows to return to the targetIp we set
+    return ExceptionContinueSearch;
 }
 
 size_t get_memory_usage_bytes() {

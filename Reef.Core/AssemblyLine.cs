@@ -101,7 +101,9 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         IReadOnlyList<ILoweredTypeReference> typeArguments,
         ulong methodId,
         IReadOnlyList<IPrologOperation> prologOperations,
-        string prologEndLabel)
+        string prologEndLabel,
+        UnwindInfoMethodFlags methodFlags,
+        string? exceptionHandlerLabel)
     {
         var methodInfoReference = new LoweredConcreteTypeReference(
             DefId.MethodInfo,
@@ -257,10 +259,31 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
 
         Debug.Assert(bytesWritten == methodInfoSize.Size, $"BytesWritten: {bytesWritten}, methodInfoSize: {methodInfoSize.Size}");
 
+        WriteMethodUnwindData(methodId, prologEndLabel, startLabel, endLabel, prologOperations, methodFlags, exceptionHandlerLabel);
+    }
+
+    [Flags]
+    private enum UnwindInfoMethodFlags
+    {
+        None = 0b000,
+        UNW_FLAG_EHANDLER = 0b001,
+        UNW_FLAG_UHANDLER = 0b010,
+        UNW_FLAG_CHAININFO = 0b100,
+    }
+
+    private void WriteMethodUnwindData(
+        ulong methodId,
+        string prologEndLabel,
+        string startLabel,
+        string endLabel,
+        IReadOnlyList<IPrologOperation> prologOperations,
+        UnwindInfoMethodFlags methodFlags,
+        string? exceptionHandlerLabel)
+    {
         // https://github.com/MicrosoftDocs/cpp-docs/blob/main/docs/build/exception-handling-x64.md#struct-unwind_info
         var unwindInfoLabel = $"unwind_info_{methodId}";
         _unwindInfo.AppendLine($"        {unwindInfoLabel}:");
-        _unwindInfo.AppendLine($"        db 0b001_00000"); // top 3 bits: version, bottom 5 bits: flags
+        _unwindInfo.AppendLine($"        db 0b001_00{(byte)methodFlags:B3}"); // top 3 bits: version, bottom 5 bits: flags (2 unused)
         _unwindInfo.AppendLine($"        db ({prologEndLabel} - {startLabel})"); // size of prolog
 
         byte RegisterToOpCode(Register register)
@@ -413,10 +436,18 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
 
         Debug.Assert(extraData.Count == 0);
 
+        if (methodFlags.HasFlag(UnwindInfoMethodFlags.UNW_FLAG_EHANDLER)
+            || methodFlags.HasFlag(UnwindInfoMethodFlags.UNW_FLAG_UHANDLER))
+        {
+            Debug.Assert(!string.IsNullOrEmpty(exceptionHandlerLabel));
+            _unwindInfo.AppendLine($"        dd {exceptionHandlerLabel} wrt ..imagebase");
+        }
+
         _procData.AppendLine($"        dd {startLabel}");
         _procData.AppendLine($"        dd {endLabel}");
         _procData.AppendLine($"        dd {unwindInfoLabel}");
     }
+
 
     private enum UnwindOpCode
     {
@@ -1085,7 +1116,6 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
             _codeSegment.AppendLine($"extern {externMethod.Name}");
         }
 
-        CreateMain(mainMethod);
 
         // enqueue all non-generic methods. Generic methods get enqueued lazily based on what they're type arguments they're invoked with
         foreach (var method in program.Methods.OfType<LoweredMethod>().Where(x =>
@@ -1141,6 +1171,8 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
             ])
         );
 
+        CreateMain(mainMethod);
+
         return $"""
                 {AsmHeader}
                 global typeInfoSize
@@ -1154,10 +1186,12 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                 global boxedValueStringTypeId
                 global get_rbp
                 global main
+                global unhandled_exception_continue
 
                 segment .text
                     extern ExitProcess
                     extern _CRT_INIT
+                    extern global_handle_exception
                     extern init_runtime
                 {_codeSegment}
 
@@ -1194,10 +1228,28 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
 
     private void CreateMain(LoweredMethod mainMethod)
     {
+        var prologOperations = new List<IPrologOperation>()
+        {
+            new IPrologOperation.PushRegister(Register.BasePointer, "main_prolog_1"),
+        };
+
+        var methodId = _methodCount;
+
+        WriteMethodUnwindData(
+            methodId,
+            "main_prolog_end",
+            "main",
+            "main_end",
+            prologOperations,
+            UnwindInfoMethodFlags.UNW_FLAG_UHANDLER,
+            "global_handle_exception");
+
         _codeSegment.AppendLine("main:");
 
         _codeSegment.AppendLine("    push    rbp");
+        _codeSegment.AppendLine("main_prolog_1:");
         _codeSegment.AppendLine("    mov     rbp, rsp");
+        _codeSegment.AppendLine("main_prolog_end:");
         // give CRT_INIT it's shadow space
         _codeSegment.AppendLine($"    sub     rsp, {ShadowSpaceBytes}");
 
@@ -1215,11 +1267,14 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
 
         _codeSegment.AppendLine($"    add     rsp, {ShadowSpaceBytes}");
 
+        _codeSegment.AppendLine($"unhandled_exception_continue:");
+
         // zero out rax as return value
         _codeSegment.AppendLine($"    xor     {Register.A.ToAsm(PointerSize)}, {Register.A.ToAsm(PointerSize)}");
         // move rax into rcx for exit process parameter
         _codeSegment.AppendLine($"    mov     {Register.C.ToAsm(PointerSize)}, {Register.A.ToAsm(PointerSize)}");
         _codeSegment.AppendLine("    call    ExitProcess");
+        _codeSegment.AppendLine("main_end:");
         _codeSegment.AppendLine();
     }
 
@@ -1780,7 +1835,14 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         _codeSegment.AppendLine($"{GetMethodLabelEnd(method, typeArguments)}:");
 
         var prologEndLabel = GetBasicBlockLabel(method.BasicBlocks[0].Id);
-        WriteMethodInfoBlob(method, typeArguments, methodId, prologOperations, prologEndLabel);
+        WriteMethodInfoBlob(
+            method,
+            typeArguments,
+            methodId,
+            prologOperations,
+            prologEndLabel,
+            UnwindInfoMethodFlags.None,
+            null);
     }
 
     private static string FormatOffset(int offset) => offset switch

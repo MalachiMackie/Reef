@@ -275,3 +275,5 @@ pub extern fn print_i32(num: i32)
 pub extern fn print_u32(num: u32)
 pub extern fn print_i64(num: i64)
 pub extern fn print_u64(num: u64)
+
+pub extern fn panic();
