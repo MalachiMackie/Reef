@@ -66,11 +66,11 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         return assemblyLine.ProcessInner();
     }
 
-    private ulong GetTypeId(ILoweredTypeReference type)
+    private ulong GetTypeId(ILoweredTypeReference type, Dictionary<string, ILoweredTypeReference> currentTypeArguments)
     {
         if (type is LoweredGenericPlaceholder generic)
         {
-            if (!_currentTypeArguments.TryGetValue(generic.PlaceholderName, out var typeArgument))
+            if (!currentTypeArguments.TryGetValue(generic.PlaceholderName, out var typeArgument))
             {
                 throw new InvalidOperationException();
             }
@@ -83,7 +83,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         {
             var typeId = (ulong)_typeIds.Count;
             _typeIds.Add((type, typeId));
-            _typesToWriteBlobInfo.Enqueue((type, typeId));
+            _typesToWriteBlobInfo.Enqueue((type, typeId, new(_currentTypeArguments)));
             return typeId;
         }
 
@@ -94,7 +94,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
     private readonly List<(LoweredFunctionReference FunctionReference, ulong MethodId)> _methodIds = [];
 
     private readonly List<(ILoweredTypeReference TypeReference, ulong TypeId)> _typeIds = [];
-    private readonly Queue<(ILoweredTypeReference TypeReference, ulong TypeId)> _typesToWriteBlobInfo = [];
+    private readonly Queue<(ILoweredTypeReference TypeReference, ulong TypeId, Dictionary<string, ILoweredTypeReference> CurrentTypeArguments)> _typesToWriteBlobInfo = [];
 
     private void WriteMethodInfoBlob(
         LoweredMethod method,
@@ -172,7 +172,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                 localType = _currentTypeArguments[placeholder.PlaceholderName];
             }
 
-            var localTypeId = GetTypeId(localType);
+            var localTypeId = GetTypeId(localType, _currentTypeArguments);
             parametersSubSegment.AppendLine($"        dd 0x{localTypeId:x}");
             parametersBytesWritten += 4;
 
@@ -230,7 +230,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         localsSubSegment.AppendLine($"        ; MethodInfo[{methodId}].Locals.ObjectHeader.Value.Items:");
         foreach (var local in method.Locals)
         {
-            var localTypeId = GetTypeId(local.Type);
+            var localTypeId = GetTypeId(local.Type, _currentTypeArguments);
             localsSubSegment.AppendLine($"        dd 0x{localTypeId:x}");
             localsBytesWritten += 4;
             var localInfo = _locals[methodId][local.CompilerGivenName];
@@ -531,11 +531,11 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         }
     }
 
-    private void WriteTypeInfoBlob(ILoweredTypeReference type, ulong typeId)
+    private void WriteTypeInfoBlob(ILoweredTypeReference type, ulong typeId, Dictionary<string, ILoweredTypeReference> currentTypeArguments)
     {
         if (type is LoweredGenericPlaceholder outerGenericPlaceholder)
         {
-            WriteTypeInfoBlob(_currentTypeArguments[outerGenericPlaceholder.PlaceholderName], typeId);
+            WriteTypeInfoBlob(currentTypeArguments[outerGenericPlaceholder.PlaceholderName], typeId, currentTypeArguments);
             return;
         }
 
@@ -543,7 +543,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         var typeInfoTypeReference = new LoweredConcreteTypeReference(
                         DefId.TypeInfo,
                         []);
-        var typeInfoSize = GetTypeSize(typeInfoTypeReference, []);
+        var typeInfoSize = GetTypeSize(typeInfoTypeReference, currentTypeArguments);
 
         var bytesWritten = 0u;
 
@@ -554,7 +554,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
             case LoweredConcreteTypeReference concrete:
                 {
                     var dataType = _dataTypes[concrete.DefinitionId];
-                    var typeSizeInfo = GetTypeSize(type, []);
+                    var typeSizeInfo = GetTypeSize(type, currentTypeArguments);
 
                     var fieldInfoDataType = _dataTypes[DefId.FieldInfo];
                     var staticFieldInfoDataType = _dataTypes[DefId.StaticFieldInfo];
@@ -682,7 +682,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                             }
 
                             staticFieldsSubSegment.AppendLine($"        ; [{staticFieldIndex}].TypeId");
-                            staticFieldsSubSegment.AppendLine($"        dd 0x{GetTypeId(staticFieldType):X}");
+                            staticFieldsSubSegment.AppendLine($"        dd 0x{GetTypeId(staticFieldType, currentTypeArguments):X}");
                             staticFieldsBytesWritten += 4;
                             PadAlignment(ref staticFieldsBytesWritten, staticFieldsSubSegment, 8);
                         }
@@ -737,7 +737,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                             }
 
                             fieldsSubSegment.AppendLine($"        ; [{fieldIndex}].TypeId");
-                            fieldsSubSegment.AppendLine($"        dd 0x{GetTypeId(fieldType):X}");
+                            fieldsSubSegment.AppendLine($"        dd 0x{GetTypeId(fieldType, currentTypeArguments):X}");
                             fieldsBytesWritten += 4;
 
                             fieldsSubSegment.AppendLine($"        ; [{fieldIndex}].Offset");
@@ -807,7 +807,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                         // size
                         PadAlignment(ref bytesWritten, _typeInfoDataSubSegment, unionVariantFieldOffsets["Size"].Alignment);
                         _typeInfoDataSubSegment.AppendLine("        ; TypeInfo.Size");
-                        _typeInfoDataSubSegment.AppendLine($"        dq 0x{GetTypeSize(type, _currentTypeArguments).Size:X}");
+                        _typeInfoDataSubSegment.AppendLine($"        dq 0x{GetTypeSize(type, currentTypeArguments).Size:X}");
                         bytesWritten += 8;
 
                         // typeId
@@ -858,7 +858,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                             }
 
                             staticFieldsSubSegment.AppendLine($"        ; [{staticFieldIndex}].TypeId");
-                            staticFieldsSubSegment.AppendLine($"        dd 0x{GetTypeId(staticFieldType):X}");
+                            staticFieldsSubSegment.AppendLine($"        dd 0x{GetTypeId(staticFieldType, currentTypeArguments):X}");
                             staticFieldsBytesWritten += 4;
                             PadAlignment(ref staticFieldsBytesWritten, staticFieldsSubSegment, 8);
                         }
@@ -945,7 +945,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                                 }
 
                                 fieldsSubSegment.AppendLine($"        ; TypeId");
-                                fieldsSubSegment.AppendLine($"        dd 0x{GetTypeId(fieldType):X}");
+                                fieldsSubSegment.AppendLine($"        dd 0x{GetTypeId(fieldType, currentTypeArguments):X}");
                                 fieldsBytesWritten += 4;
 
                                 fieldsSubSegment.AppendLine($"        ; Offset");
@@ -1007,7 +1007,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                     // pointerTo
                     PadAlignment(ref bytesWritten, _typeInfoDataSubSegment, pointerToVariantFieldOffsets["PointerTo"].Alignment);
                     _typeInfoDataSubSegment.AppendLine("        ; TypeInfo.PointerTo.Value");
-                    _typeInfoDataSubSegment.AppendLine($"        dd 0x{GetTypeId(pointer.PointerTo):X}");
+                    _typeInfoDataSubSegment.AppendLine($"        dd 0x{GetTypeId(pointer.PointerTo, currentTypeArguments):X}");
                     bytesWritten += 4;
 
                     Debug.Assert(bytesWritten == variantSizeInfo.Size, $"bytesWritten: {bytesWritten}, variantSize: {variantSizeInfo.Size}");
@@ -1034,7 +1034,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                     var elementType = array.ElementType;
                     PadAlignment(ref bytesWritten, _typeInfoDataSubSegment, arrayVariantFieldOffsets["ElementType"].Alignment);
                     _typeInfoDataSubSegment.AppendLine("        ; TypeInfo.ElementType.Value");
-                    _typeInfoDataSubSegment.AppendLine($"        dd 0x{GetTypeId(elementType):X}");
+                    _typeInfoDataSubSegment.AppendLine($"        dd 0x{GetTypeId(elementType, currentTypeArguments):X}");
                     bytesWritten += 4;
 
                     PadAlignment(ref bytesWritten, _typeInfoDataSubSegment, arrayVariantFieldOffsets["Length"].Alignment);
@@ -1140,7 +1140,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
 
         while (_typesToWriteBlobInfo.TryDequeue(out var typeInfoToWrite))
         {
-            WriteTypeInfoBlob(typeInfoToWrite.TypeReference, typeInfoToWrite.TypeId);
+            WriteTypeInfoBlob(typeInfoToWrite.TypeReference, typeInfoToWrite.TypeId, typeInfoToWrite.CurrentTypeArguments);
         }
 
         var typeInfoSize = GetTypeSize(
@@ -1172,7 +1172,8 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         var boxedValueStringTypeId = GetTypeId(
             new LoweredConcreteTypeReference(DefId.BoxedValue, [
                 new LoweredConcreteTypeReference(DefId.String, [])
-            ])
+            ]),
+            []
         );
 
         CreateMain(mainMethod);
@@ -1628,7 +1629,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         {
             returnType = _currentTypeArguments[placeholderName];
         }
-        _ = GetTypeId(returnType);
+        _ = GetTypeId(returnType, _currentTypeArguments);
 
         var returnSize = GetTypeSize(returnType, _currentTypeArguments);
 
@@ -1666,7 +1667,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
             {
                 parameterType = _currentTypeArguments[parameterPlaceholderName];
             }
-            _ = GetTypeId(parameterType);
+            _ = GetTypeId(parameterType, _currentTypeArguments);
             var parameterSize = GetTypeSize(parameterType, _currentTypeArguments);
             Debug.Assert(parameterSize.Size.HasValue);
             var size = Math.Min(parameterSize.Size.Value, PointerSize);
@@ -1727,7 +1728,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
             {
                 localType = _currentTypeArguments[localPlaceholderName];
             }
-            _ = GetTypeId(localType);
+            _ = GetTypeId(localType, _currentTypeArguments);
             var typeSize = GetTypeSize(localType, _currentTypeArguments);
 
             // make sure stack offset is aligned to the size of the type
@@ -2741,7 +2742,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
 
     private uint WriteObjectHeaderBlob(StringBuilder sb, ILoweredTypeReference typeReference)
     {
-        sb.AppendLine($"        dd 0x{GetTypeId(typeReference):X}");
+        sb.AppendLine($"        dd 0x{GetTypeId(typeReference, _currentTypeArguments):X}");
         return 4;
     }
 
@@ -2887,7 +2888,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                 }
             case TypeIdOf(var type):
                 {
-                    var typeId = GetTypeId(type);
+                    var typeId = GetTypeId(type, _currentTypeArguments);
                     MoveIntoPlace(destination, $"0x{typeId:X}", PointerSize);
                     break;
                 }
