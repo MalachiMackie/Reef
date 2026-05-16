@@ -203,13 +203,21 @@ public partial class TypeChecker
                 Boxed);
 
             instantiatedTypeArguments.AddRange(Signature.TypeParameters.Zip(typeArguments)
-                .Select(x => x.First.Instantiate(
-                    instantiatedClass,
-                    x.Second switch
-                    {
-                        GenericTypeReference { ResolvedType: var resolvedType } => resolvedType,
-                        _ => x.Second
-                    })));
+                .Select(x =>
+                {
+                    if (x.Second is GenericTypeReference{GenericName: var genericName, OwnerType: var ownerType } generic
+                        && genericName == x.First.GenericName && ownerType.Id == x.First.OwnerType.Id) {
+                        return generic;
+                    }
+                    
+                    return x.First.Instantiate(
+                                        instantiatedClass,
+                                        x.Second switch
+                                        {
+                                            GenericTypeReference { ResolvedType: var resolvedType } => resolvedType,
+                                            _ => x.Second
+                                        });
+                }));
 
             return instantiatedClass;
 
@@ -248,7 +256,7 @@ public partial class TypeChecker
                     {
                         GenericTypeReference { ResolvedType: null } genericTypeReference => typeArgumentReferences.FirstOrDefault(y =>
                             y.GenericName == genericTypeReference.GenericName) ?? genericTypeReference,
-                        GenericTypeReference { ResolvedType: { } resolvedType } => resolvedType,
+                        GenericTypeReference { ResolvedType: { } resolvedType } => HandleType(resolvedType),
                         GenericPlaceholder placeholder =>
                             (ITypeReference?)typeArgumentReferences.FirstOrDefault(y => y.GenericName == placeholder.GenericName) ?? placeholder,
                         InstantiatedUnion union => union.CloneWithTypeArguments([
@@ -257,6 +265,12 @@ public partial class TypeChecker
                         InstantiatedClass klass => klass.CloneWithTypeArguments([.. klass.TypeArguments.Select(HandleType)]),
                         ArrayType { Length: not null } arrayType => new ArrayType(HandleType(arrayType.ElementType), arrayType.Boxed, arrayType.Length.Value),
                         ArrayType { Length: null } arrayType => new ArrayType(HandleType(arrayType.ElementType)),
+                        FunctionObject functionObject => new FunctionObject(
+                            [.. functionObject.Parameters.Select(x => new FunctionParameter(HandleType(x.Type), x.Mutable))],
+                            HandleType(functionObject.ReturnType),
+                            functionObject.MutableReturn,
+                            functionObject.IsBoxed
+                        ),
                         _ => throw new InvalidOperationException(type.GetType().ToString())
                     };
                 }

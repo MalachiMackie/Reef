@@ -119,13 +119,21 @@ public partial class TypeChecker
                 Boxed);
 
             instantiatedTypeArguments.AddRange(Signature.TypeParameters.Zip(typeArguments)
-                .Select(x => x.First.Instantiate(
-                    instantiatedUnion,
-                    x.Second switch
-                    {
-                        GenericTypeReference { ResolvedType: var resolvedType } => resolvedType,
-                        _ => x.Second
-                    })));
+                .Select(x =>
+                {
+                    if (x.Second is GenericTypeReference{GenericName: var genericName, OwnerType: var ownerType } generic
+                        && genericName == x.First.GenericName && ownerType.Id == x.First.OwnerType.Id) {
+                        return generic;
+                    }
+
+                    return x.First.Instantiate(
+                                        instantiatedUnion,
+                                        x.Second switch
+                                        {
+                                            GenericTypeReference { ResolvedType: var resolvedType } => resolvedType,
+                                            _ => x.Second
+                                        });
+                }));
 
             return instantiatedUnion;
         }
@@ -221,12 +229,18 @@ public partial class TypeChecker
 
                     GenericTypeReference { ResolvedType: null } genericTypeReference => typeArgumentReferences.First(y =>
                         y.GenericName == genericTypeReference.GenericName),
-                    GenericTypeReference { ResolvedType: { } resolvedType } => resolvedType,
+                    GenericTypeReference { ResolvedType: { } resolvedType } => HandleType(resolvedType),
                     GenericPlaceholder placeholder => typeArgumentReferences.First(z => z.GenericName == placeholder.GenericName),
                     InstantiatedUnion union => union.CloneWithTypeArguments([.. union.TypeArguments.Select(HandleType)]),
                     InstantiatedClass klass => klass.CloneWithTypeArguments([.. klass.TypeArguments.Select(HandleType)]),
                     ArrayType { Length: not null } arrayType => new ArrayType(HandleType(arrayType.ElementType), arrayType.Boxed, arrayType.Length.Value),
                     ArrayType { IsDynamic: true } arrayType => new ArrayType(HandleType(arrayType.ElementType)),
+                    FunctionObject functionObject => new FunctionObject(
+                        [.. functionObject.Parameters.Select(x => new FunctionParameter(HandleType(x.Type), x.Mutable))],
+                        HandleType(functionObject.ReturnType),
+                        functionObject.MutableReturn,
+                        functionObject.IsBoxed
+                    ),
                     _ => throw new InvalidOperationException(type.GetType().ToString())
                 };
             }

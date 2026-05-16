@@ -257,6 +257,11 @@ public partial class TypeChecker
             sb.AppendJoin(", ", Parameters.Select(x => x.Mutable ? $"mut {x.Type}" : x.Type.ToString()));
             sb.Append(')');
 
+            if (ReturnType is not null)
+            {
+                sb.Append($": {ReturnType}");
+            }
+
             return sb.ToString();
         }
     }
@@ -276,7 +281,7 @@ public partial class TypeChecker
             OwnerType = ownerType;
             Signature = signature;
 
-            TypeArguments = signature.TypeParameters.Select(x => x.Instantiate(instantiatedFrom: this)).ToArray();
+            TypeArguments = [.. signature.TypeParameters.Select(x => x.Instantiate(instantiatedFrom: this))];
             var parametersList = new List<FunctionParameter>();
             Parameters = parametersList;
 
@@ -291,22 +296,39 @@ public partial class TypeChecker
             for (var i = 0; i < signature.Parameters.Count; i++)
             {
                 var parameter = signature.Parameters.GetAt(i);
-                var functionParameter = new FunctionParameter(parameter.Value.Type switch
-                {
-                    GenericPlaceholder placeholder => TypeArguments.FirstOrDefault(x => x.GenericName == placeholder.GenericName)
-                        ?? inScopeTypeParameters.FirstOrDefault(x => x.GenericName == placeholder.GenericName)
-                        ?? (ITypeReference)ownerTypeArguments.First(x => x.GenericName == placeholder.GenericName),
-                    _ => parameter.Value.Type
-                }, parameter.Value.Mutable);
+                var functionParameter = new FunctionParameter(HandleType(parameter.Value.Type), parameter.Value.Mutable);
                 parametersList.Add(functionParameter);
             }
-            ReturnType = signature.ReturnType switch
+            ReturnType = HandleType(signature.ReturnType);
+
+            ITypeReference HandleType(ITypeReference type)
             {
-                GenericPlaceholder placeholder => TypeArguments.FirstOrDefault(x => x.GenericName == placeholder.GenericName)
-                        ?? inScopeTypeParameters.FirstOrDefault(x => x.GenericName == placeholder.GenericName)
+                return type switch
+                {
+                    GenericTypeReference { ResolvedType: null } genericTypeReference => TypeArguments.FirstOrDefault(y =>
+                        y.GenericName == genericTypeReference.GenericName)
+                        ?? (ITypeReference?)inScopeTypeParameters.FirstOrDefault(x => x.GenericName == genericTypeReference.GenericName)
+                        ?? (ITypeReference)ownerTypeArguments.First(x => x.GenericName == genericTypeReference.GenericName),
+                    GenericTypeReference { ResolvedType: { } resolvedType } => HandleType(resolvedType),
+                    GenericPlaceholder placeholder =>
+                        (ITypeReference?)TypeArguments.FirstOrDefault(y => y.GenericName == placeholder.GenericName)
+                        ?? (ITypeReference?)inScopeTypeParameters.FirstOrDefault(x => x.GenericName == placeholder.GenericName)
                         ?? (ITypeReference)ownerTypeArguments.First(x => x.GenericName == placeholder.GenericName),
-                _ => signature.ReturnType
-            };
+                    InstantiatedUnion union => union.CloneWithTypeArguments([
+                        ..union.TypeArguments.Select(HandleType)
+                    ]),
+                    InstantiatedClass klass => klass.CloneWithTypeArguments([.. klass.TypeArguments.Select(HandleType)]),
+                    ArrayType { Length: not null } arrayType => new ArrayType(HandleType(arrayType.ElementType), arrayType.Boxed, arrayType.Length.Value),
+                    ArrayType { Length: null } arrayType => new ArrayType(HandleType(arrayType.ElementType)),
+                    FunctionObject functionObject => new FunctionObject(
+                        [.. functionObject.Parameters.Select(x => new FunctionParameter(HandleType(x.Type), x.Mutable))],
+                        HandleType(functionObject.ReturnType),
+                        functionObject.MutableReturn,
+                        functionObject.IsBoxed
+                    ),
+                    _ => throw new InvalidOperationException(type.GetType().ToString())
+                };
+            }
         }
 
         private FunctionSignature Signature { get; }

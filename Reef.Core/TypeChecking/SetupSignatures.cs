@@ -186,12 +186,12 @@ public partial class TypeChecker
 
                         var createFunctionReturnType = InstantiatedUnion.Create(
                             unionSignature,
-                            [],
+                            unionSignature.TypeParameters,
                             boxed: true);
 
                         var unboxedCreateFunctionReturnType = InstantiatedUnion.Create(
                             unionSignature,
-                            [],
+                            unionSignature.TypeParameters,
                             boxed: false);
 
                         var createFunction = new FunctionSignature(

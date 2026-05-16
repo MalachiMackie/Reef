@@ -68,23 +68,13 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
     public async Task SingleTest()
     {
         var sourceFiles = new Dictionary<string, (string, IReadOnlyList<TypeCheckerError> expectedErrors)>()
-        {
-            {
-                                    "main.rf",
-                                    (
-                                        """
-                                        fn some_result(): result::<string, string> {
-                                            return ok("hi");
-                                        }
-                                        fn some_fn(): string {
-                                            var value = some_result()?;
-                                            print_string(value);
-                                            return "hi";
-                                        }
-                                        """,
-                                        [TypeCheckerError.UnsupportedFalloutReturnType(String, SourceRange.Default)])
+                            {
+                                {
+                                    "main.rf", ("""
+                                               var a: result::<i64, string> = error(1);
+                                               """, [MismatchedTypes(Result(Int64, String), Result(Int64, UnspecifiedSizedIntType))])
                                 }
-        };
+                            };
 
         foreach (var (path, (contents, _)) in sourceFiles)
         {
@@ -105,6 +95,76 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
     {
         IEnumerable<Dictionary<string, string>> sources =
         [
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    class MyClass<T> {
+                        pub field some_fn: Fn(T): T
+                    }
+
+                    fn get_string(val: string): string {
+                        return "hi";
+                    }
+                    fn get_number(val: i32): i32 {
+                        return 1;
+                    }
+                    var a = new MyClass {some_fn = get_string};
+                    var b = new MyClass {some_fn = get_number};
+
+                    var a_value: string = a.some_fn("");
+                    var b_value: i32 = b.some_fn(1);
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    union MyUnion<T> {
+                        A(Fn(T): T)
+                    }
+
+                    fn get_string(val: string): string {
+                        return "hi";
+                    }
+                    fn get_number(val: i32): i32 {
+                        return 1;
+                    }
+                    var a = MyUnion::A(get_string);
+                    var b = MyUnion::A(get_number);
+
+                    if (a matches MyUnion::A(var a_fn)) {
+                        var a_value: string = a_fn("");
+                    }
+
+                    if (b matches MyUnion::A(var b_fn)) {
+                        var b_value: i32 = b_fn(1);
+                    }
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    fn outer_fn<T>(val: T, inner: Fn(T): T): T {
+                        return inner(val);
+                    }
+                    fn get_string(val: string): string {
+                        return "hi";
+                    }
+                    fn get_number(val: i32): i32 {
+                        return 1;
+                    }
+                    var a: string = outer_fn("", get_string);
+                    var b: i32 = outer_fn(1, get_number);
+                    """
+                }
+            },
             new()
             {
                 {
