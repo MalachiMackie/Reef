@@ -108,31 +108,107 @@ public partial class TypeChecker
 
     public class InstantiatedUnion : ITypeReference, IInstantiatedGeneric
     {
-        public InstantiatedUnion CloneWithTypeArguments(IReadOnlyList<ITypeReference> typeArguments)
+        public InstantiatedUnion CloneWithTypeFilter(Func<ITypeReference, ITypeReference> typeFilter)
         {
-            Debug.Assert(typeArguments.Count == Signature.TypeParameters.Count);
-            var instantiatedTypeArguments = new List<GenericTypeReference>(typeArguments.Count);
+            var instantiatedTypeArguments = new List<GenericTypeReference>(Signature.TypeParameters.Count);
+            var variants = new List<IUnionVariant>(Variants.Count);
             var instantiatedUnion = new InstantiatedUnion(
                 Signature,
                 instantiatedTypeArguments,
-                Variants,
+                variants,
                 Boxed);
 
-            instantiatedTypeArguments.AddRange(Signature.TypeParameters.Zip(typeArguments)
+            var unboxedInstantiatedUnion = new InstantiatedUnion(
+                Signature,
+                instantiatedTypeArguments,
+                variants,
+                false);
+
+            var boxedInstantiatedUnion = new InstantiatedUnion(
+                Signature,
+                instantiatedTypeArguments,
+                variants,
+                true);
+
+            variants.AddRange(Variants.Select<IUnionVariant, IUnionVariant>(x => x switch
+                            {
+                                UnitUnionVariant v => v,
+                                ClassUnionVariant v => new ClassUnionVariant
+                                {
+                                    Name = v.Name,
+                                    Fields = [.. v.Fields.Select(y => new TypeField {
+                                        IsMutable = y.IsMutable,
+                                        IsPublic = y.IsPublic,
+                                        IsStatic = y.IsStatic,
+                                        Name = y.Name,
+                                        StaticInitializer = y.StaticInitializer,
+                                        Type = typeFilter(y.Type)
+                                    })]
+                                },
+                                TupleUnionVariant v => new TupleUnionVariant
+                                {
+                                    Name = v.Name,
+                                    TupleMembers = [.. v.TupleMembers.Select(typeFilter)],
+                                    BoxedCreateFunction = new FunctionSignature(
+                                        v.BoxedCreateFunction.Id,
+                                        v.BoxedCreateFunction.NameToken,
+                                        v.BoxedCreateFunction.TypeParameters,
+                                        new OrderedDictionary<string, FunctionSignatureParameter>(
+                                            v.BoxedCreateFunction.Parameters.Select(y => KeyValuePair.Create(
+                                                y.Key,
+                                                new FunctionSignatureParameter(y.Value.ContainingFunction,
+                                                    y.Value.Name,
+                                                    typeFilter(y.Value.Type),
+                                                    y.Value.Mutable,
+                                                    y.Value.ParameterIndex)
+                                            ))
+                                        ),
+                                        v.BoxedCreateFunction.IsStatic,
+                                        v.BoxedCreateFunction.IsMutable,
+                                        v.BoxedCreateFunction.Expressions,
+                                        v.BoxedCreateFunction.ExternName,
+                                        v.BoxedCreateFunction.IsMutableReturn,
+                                        v.BoxedCreateFunction.IsPublic
+                                    )
+                                    {
+                                        OwnerType = v.BoxedCreateFunction.OwnerType,
+                                        ReturnType = boxedInstantiatedUnion
+                                    },
+                                    UnboxedCreateFunction = new FunctionSignature(
+                                        v.UnboxedCreateFunction.Id,
+                                        v.UnboxedCreateFunction.NameToken,
+                                        v.UnboxedCreateFunction.TypeParameters,
+                                        new OrderedDictionary<string, FunctionSignatureParameter>(
+                                            v.UnboxedCreateFunction.Parameters.Select(y => KeyValuePair.Create(
+                                                y.Key,
+                                                new FunctionSignatureParameter(y.Value.ContainingFunction,
+                                                    y.Value.Name,
+                                                    typeFilter(y.Value.Type),
+                                                    y.Value.Mutable,
+                                                    y.Value.ParameterIndex)
+                                            ))
+                                        ),
+                                        v.UnboxedCreateFunction.IsStatic,
+                                        v.UnboxedCreateFunction.IsMutable,
+                                        v.UnboxedCreateFunction.Expressions,
+                                        v.UnboxedCreateFunction.ExternName,
+                                        v.UnboxedCreateFunction.IsMutableReturn,
+                                        v.UnboxedCreateFunction.IsPublic
+                                    )
+                                    {
+                                        OwnerType = v.UnboxedCreateFunction.OwnerType,
+                                        ReturnType = unboxedInstantiatedUnion
+                                    },
+                                },
+                                _ => throw new InvalidOperationException(x.GetType().ToString())
+                            }));
+
+            instantiatedTypeArguments.AddRange(Signature.TypeParameters.Zip(TypeArguments)
                 .Select(x =>
                 {
-                    if (x.Second is GenericTypeReference{GenericName: var genericName, OwnerType: var ownerType } generic
-                        && genericName == x.First.GenericName && ownerType.Id == x.First.OwnerType.Id) {
-                        return generic;
-                    }
-
                     return x.First.Instantiate(
-                                        instantiatedUnion,
-                                        x.Second switch
-                                        {
-                                            GenericTypeReference { ResolvedType: var resolvedType } => resolvedType,
-                                            _ => x.Second
-                                        });
+                        instantiatedUnion,
+                        typeFilter(x.Second));
                 }));
 
             return instantiatedUnion;
@@ -230,9 +306,9 @@ public partial class TypeChecker
                     GenericTypeReference { ResolvedType: null } genericTypeReference => typeArgumentReferences.First(y =>
                         y.GenericName == genericTypeReference.GenericName),
                     GenericTypeReference { ResolvedType: { } resolvedType } => HandleType(resolvedType),
-                    GenericPlaceholder placeholder => typeArgumentReferences.First(z => z.GenericName == placeholder.GenericName),
-                    InstantiatedUnion union => union.CloneWithTypeArguments([.. union.TypeArguments.Select(HandleType)]),
-                    InstantiatedClass klass => klass.CloneWithTypeArguments([.. klass.TypeArguments.Select(HandleType)]),
+                    GenericPlaceholder placeholder => (ITypeReference?)typeArgumentReferences.FirstOrDefault(z => z.GenericName == placeholder.GenericName) ?? placeholder,
+                    InstantiatedUnion union => union.CloneWithTypeFilter(HandleType),
+                    InstantiatedClass klass => klass.CloneWithTypeFilter(HandleType),
                     ArrayType { Length: not null } arrayType => new ArrayType(HandleType(arrayType.ElementType), arrayType.Boxed, arrayType.Length.Value),
                     ArrayType { IsDynamic: true } arrayType => new ArrayType(HandleType(arrayType.ElementType)),
                     FunctionObject functionObject => new FunctionObject(

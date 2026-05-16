@@ -68,20 +68,27 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
     public async Task SingleTest()
     {
         var sourceFiles = new Dictionary<string, (string, IReadOnlyList<TypeCheckerError> expectedErrors)>()
+                        {
                             {
-                                {
-                                    "main.rf", ("""
-                                               var a: result::<i64, string> = error(1);
-                                               """, [MismatchedTypes(Result(Int64, String), Result(Int64, UnspecifiedSizedIntType))])
+                                "main.rf",
+                                ("""
+                                fn some_fn<T>(val: T): result::<T, T> {
+                                    return ok(val);
                                 }
-                            };
+                                match (some_fn("")) {
+                                    result::Ok(var successful) => print_string(successful),
+                                    result::Error(var failure) => print_string(failure),
+                                }
+                                """, [])
+                            }
+                        };
 
         foreach (var (path, (contents, _)) in sourceFiles)
         {
             _fileSystem.AddFile(path, new MockFileData(contents));
         }
 
-        var (typeCheckResults, moduleIdToFileName, _, _) = await new ReefCompiler(_fileSystem, new ModuleId("main"), new TestLogger(testOutputHelper)).TypeCheck();
+        var (typeCheckResults, moduleIdToFileName, _, _) = await new ReefCompiler(_fileSystem, new ModuleId("main"), new TestLogger(testOutputHelper)).TypeCheck(true);
         foreach (var (moduleId, typeCheckResult) in typeCheckResults)
         {
             typeCheckResult.ParserErrors.Should().BeEmpty();
@@ -95,6 +102,39 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
     {
         IEnumerable<Dictionary<string, string>> sources =
         [
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    fn some_fn<T>(val: T): result::<T, T> {
+                        return ok(val);
+                    }
+                    match (some_fn("")) {
+                        result::Ok(var successful) => print_string(successful),
+                        result::Error(var failure) => print_string(failure),
+                    }
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    class MyClass<T1> {
+                        pub field value: T1
+                    }
+
+                    fn some_fn<T>(val: T): MyClass::<T> {
+                        return new MyClass { value = val};
+                    }
+                    match (some_fn("")) {
+                        MyClass { value: var successful } => print_string(successful),
+                    }
+                    """
+                }
+            },
             new()
             {
                 {

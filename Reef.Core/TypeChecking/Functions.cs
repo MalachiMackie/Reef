@@ -308,16 +308,16 @@ public partial class TypeChecker
                     GenericTypeReference { ResolvedType: null } genericTypeReference => TypeArguments.FirstOrDefault(y =>
                         y.GenericName == genericTypeReference.GenericName)
                         ?? (ITypeReference?)inScopeTypeParameters.FirstOrDefault(x => x.GenericName == genericTypeReference.GenericName)
-                        ?? (ITypeReference)ownerTypeArguments.First(x => x.GenericName == genericTypeReference.GenericName),
+                        ?? (ITypeReference?)ownerTypeArguments.FirstOrDefault(x => x.GenericName == genericTypeReference.GenericName)
+                        ?? genericTypeReference,
                     GenericTypeReference { ResolvedType: { } resolvedType } => HandleType(resolvedType),
                     GenericPlaceholder placeholder =>
                         (ITypeReference?)TypeArguments.FirstOrDefault(y => y.GenericName == placeholder.GenericName)
                         ?? (ITypeReference?)inScopeTypeParameters.FirstOrDefault(x => x.GenericName == placeholder.GenericName)
-                        ?? (ITypeReference)ownerTypeArguments.First(x => x.GenericName == placeholder.GenericName),
-                    InstantiatedUnion union => union.CloneWithTypeArguments([
-                        ..union.TypeArguments.Select(HandleType)
-                    ]),
-                    InstantiatedClass klass => klass.CloneWithTypeArguments([.. klass.TypeArguments.Select(HandleType)]),
+                        ?? (ITypeReference?)ownerTypeArguments.FirstOrDefault(x => x.GenericName == placeholder.GenericName)
+                        ?? placeholder,
+                    InstantiatedUnion union => union.CloneWithTypeFilter(HandleType),
+                    InstantiatedClass klass => klass.CloneWithTypeFilter(HandleType),
                     ArrayType { Length: not null } arrayType => new ArrayType(HandleType(arrayType.ElementType), arrayType.Boxed, arrayType.Length.Value),
                     ArrayType { Length: null } arrayType => new ArrayType(HandleType(arrayType.ElementType)),
                     FunctionObject functionObject => new FunctionObject(

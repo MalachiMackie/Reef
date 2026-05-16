@@ -192,31 +192,28 @@ public partial class TypeChecker
 
     public class InstantiatedClass : ITypeReference, IInstantiatedGeneric
     {
-        public InstantiatedClass CloneWithTypeArguments(IReadOnlyList<ITypeReference> typeArguments)
+        public InstantiatedClass CloneWithTypeFilter(Func<ITypeReference, ITypeReference> typeFilter)
         {
-            Debug.Assert(typeArguments.Count == Signature.TypeParameters.Count);
-            var instantiatedTypeArguments = new List<GenericTypeReference>(typeArguments.Count);
+            var instantiatedTypeArguments = new List<GenericTypeReference>(Signature.TypeParameters.Count);
             var instantiatedClass = new InstantiatedClass(
                 Signature,
                 instantiatedTypeArguments,
-                Fields,
+                [.. Fields.Select(x => new TypeField {
+                    IsMutable = x.IsMutable,
+                    IsPublic = x.IsPublic,
+                    IsStatic = x.IsStatic,
+                    Name = x.Name,
+                    StaticInitializer = x.StaticInitializer,
+                    Type = typeFilter(x.Type)
+                })],
                 Boxed);
 
-            instantiatedTypeArguments.AddRange(Signature.TypeParameters.Zip(typeArguments)
+            instantiatedTypeArguments.AddRange(Signature.TypeParameters.Zip(TypeArguments)
                 .Select(x =>
                 {
-                    if (x.Second is GenericTypeReference{GenericName: var genericName, OwnerType: var ownerType } generic
-                        && genericName == x.First.GenericName && ownerType.Id == x.First.OwnerType.Id) {
-                        return generic;
-                    }
-                    
                     return x.First.Instantiate(
                                         instantiatedClass,
-                                        x.Second switch
-                                        {
-                                            GenericTypeReference { ResolvedType: var resolvedType } => resolvedType,
-                                            _ => x.Second
-                                        });
+                                        typeFilter(x.Second));
                 }));
 
             return instantiatedClass;
@@ -259,10 +256,8 @@ public partial class TypeChecker
                         GenericTypeReference { ResolvedType: { } resolvedType } => HandleType(resolvedType),
                         GenericPlaceholder placeholder =>
                             (ITypeReference?)typeArgumentReferences.FirstOrDefault(y => y.GenericName == placeholder.GenericName) ?? placeholder,
-                        InstantiatedUnion union => union.CloneWithTypeArguments([
-                            ..union.TypeArguments.Select(HandleType)
-                        ]),
-                        InstantiatedClass klass => klass.CloneWithTypeArguments([.. klass.TypeArguments.Select(HandleType)]),
+                        InstantiatedUnion union => union.CloneWithTypeFilter(HandleType),
+                        InstantiatedClass klass => klass.CloneWithTypeFilter(HandleType),
                         ArrayType { Length: not null } arrayType => new ArrayType(HandleType(arrayType.ElementType), arrayType.Boxed, arrayType.Length.Value),
                         ArrayType { Length: null } arrayType => new ArrayType(HandleType(arrayType.ElementType)),
                         FunctionObject functionObject => new FunctionObject(
