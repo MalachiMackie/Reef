@@ -6,7 +6,7 @@ namespace Reef.Core.Tests.IntegrationTests;
 public class ExceptionTests : IntegrationTestBase
 {
     [Fact, TestMe]
-    public async Task CreateEmptyArray()
+    public async Task Panic()
     {
         await SetupTest(
             """
@@ -19,6 +19,7 @@ public class ExceptionTests : IntegrationTestBase
         using var _ = new AssertionScope();
 
         result.ExitCode.Should().Be(1);
+        result.StandardError.Should().Be("");
         result.StandardOutput.Should().Be("Unhandled panic!");
     }
 }

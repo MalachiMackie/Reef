@@ -66,18 +66,20 @@ public class IntegrationTestBase
         {
             StartInfo = new ProcessStartInfo(exeFileName)
             {
-                RedirectStandardOutput = true
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
             },
         };
 
         process.Start();
 
         var output = await process.StandardOutput.ReadToEndAsync();
+        var stdError = await process.StandardError.ReadToEndAsync();
         await process.WaitForExitAsync();
 
         testLogger.LogInformation(output);
 
-        return new TestRunOutput(process.ExitCode, output);
+        return new TestRunOutput(process.ExitCode, output, stdError);
     }
 
     private static string TestRunFolder(string testName, string? testCaseName, string callerFilePath)
@@ -101,4 +103,4 @@ public class IntegrationTestBase
     }
 }
 
-public record TestRunOutput(int ExitCode, string StandardOutput);
+public record TestRunOutput(int ExitCode, string StandardOutput, string StandardError);

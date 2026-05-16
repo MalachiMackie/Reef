@@ -1,5 +1,6 @@
 ﻿#include <assert.h>
 #include <corecrt_search.h>
+#include <excpt.h>
 #include <stdalign.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -930,11 +931,12 @@ void trigger_gc()
 }
 
 void panic() {
-    assert(false);
+    struct {uint64_t num;} *p = NULL;
+
+    uint64_t x = p->num;
 }
 
 extern uint64_t unhandled_exception_continue;
-
 EXCEPTION_DISPOSITION global_handle_exception(
     PEXCEPTION_RECORD exception_record,
     uint64_t establisher_frame,
@@ -942,10 +944,30 @@ EXCEPTION_DISPOSITION global_handle_exception(
     PDISPATCHER_CONTEXT dispatcher_context) {
     fputs("Unhandled panic!", stdout);
 
-    // if we got to main without a catch:
-    dispatcher_context->TargetIp = unhandled_exception_continue;
+    fflush(stdout); // Guarantee console gets the text immediately
 
-    // we modified the dispatcher_context, so theoretically windows knows to return to the targetIp we set
+    // 2. Build a safe recovery target context
+    // Copy the processor state at the moment of the panic crash
+    CONTEXT target_context = *context_record;
+
+    // Set the recovery Instruction Pointer (RIP) to your safe exit block
+    target_context.Rip = (DWORD64)&unhandled_exception_continue;
+
+    // Unwind the CPU stack pointer back to main's stack allocation frame
+    target_context.Rsp = establisher_frame;
+
+    // 3. Command Windows to safely collapse the active call stack frames
+    RtlUnwindEx(
+        (PVOID)establisher_frame,                   // Target frame boundary
+        (PVOID)&unhandled_exception_continue,       // Target landing IP
+        exception_record,                           // Current crash record
+        (PVOID)(uintptr_t)exception_record->ExceptionCode, // Return value pass
+        &target_context,                            // Restored machine context
+        dispatcher_context->HistoryTable            // Unwind history logging
+    );
+
+    // This code line is mathematically unreachable because RtlUnwindEx switches control,
+    // but the function declaration requires a valid return token.
     return ExceptionContinueSearch;
 }
 

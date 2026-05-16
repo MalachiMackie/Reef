@@ -283,7 +283,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         // https://github.com/MicrosoftDocs/cpp-docs/blob/main/docs/build/exception-handling-x64.md#struct-unwind_info
         var unwindInfoLabel = $"unwind_info_{methodId}";
         _unwindInfo.AppendLine($"        {unwindInfoLabel}:");
-        _unwindInfo.AppendLine($"        db 0b001_00{(byte)methodFlags:B3}"); // top 3 bits: version, bottom 5 bits: flags (2 unused)
+        _unwindInfo.AppendLine($"        db 0b00{(byte)methodFlags:B3}_001"); // bottom 3 bits: version, top 5 bits: flags (2 unused)
         _unwindInfo.AppendLine($"        db ({prologEndLabel} - {startLabel})"); // size of prolog
 
         byte RegisterToOpCode(Register register)
@@ -415,7 +415,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         foreach (var (nextInstructionLabel, opCode, opInfo) in opInfos)
         {
             _unwindInfo.AppendLine($"        db ({nextInstructionLabel} - {startLabel})");
-            _unwindInfo.AppendLine($"        db 0b{(int)opCode:B4}{(int)opInfo:B4}");
+            _unwindInfo.AppendLine($"        db 0b{(uint)opInfo:B4}{(uint)opCode:B4}");
             if (opCode == UnwindOpCode.UWOP_ALLOC_LARGE)
             {
                 if (opInfo == 0)
@@ -440,12 +440,16 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
             || methodFlags.HasFlag(UnwindInfoMethodFlags.UNW_FLAG_UHANDLER))
         {
             Debug.Assert(!string.IsNullOrEmpty(exceptionHandlerLabel));
+            if (opInfos.Count % 2 != 0)
+            {
+                _unwindInfo.AppendLine($"        dw 0 ; padding");
+            }
             _unwindInfo.AppendLine($"        dd {exceptionHandlerLabel} wrt ..imagebase");
         }
 
-        _procData.AppendLine($"        dd {startLabel}");
-        _procData.AppendLine($"        dd {endLabel}");
-        _procData.AppendLine($"        dd {unwindInfoLabel}");
+        _procData.AppendLine($"        dd {startLabel} wrt ..imagebase");
+        _procData.AppendLine($"        dd {endLabel} wrt ..imagebase");
+        _procData.AppendLine($"        dd {unwindInfoLabel} wrt ..imagebase");
     }
 
 
@@ -1241,7 +1245,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
             "main",
             "main_end",
             prologOperations,
-            UnwindInfoMethodFlags.UNW_FLAG_UHANDLER,
+            UnwindInfoMethodFlags.UNW_FLAG_EHANDLER,
             "global_handle_exception");
 
         _codeSegment.AppendLine("main:");
@@ -1267,11 +1271,15 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
 
         _codeSegment.AppendLine($"    add     rsp, {ShadowSpaceBytes}");
 
-        _codeSegment.AppendLine($"unhandled_exception_continue:");
 
         // zero out rax as return value
         _codeSegment.AppendLine($"    xor     {Register.A.ToAsm(PointerSize)}, {Register.A.ToAsm(PointerSize)}");
         // move rax into rcx for exit process parameter
+        _codeSegment.AppendLine($"    mov     {Register.C.ToAsm(PointerSize)}, {Register.A.ToAsm(PointerSize)}");
+        _codeSegment.AppendLine("    call    ExitProcess");
+        _codeSegment.AppendLine("    jmp     main_end");
+        _codeSegment.AppendLine($"unhandled_exception_continue:");
+        _codeSegment.AppendLine($"    mov     {Register.A.ToAsm(PointerSize)}, 1");
         _codeSegment.AppendLine($"    mov     {Register.C.ToAsm(PointerSize)}, {Register.A.ToAsm(PointerSize)}");
         _codeSegment.AppendLine("    call    ExitProcess");
         _codeSegment.AppendLine("main_end:");
