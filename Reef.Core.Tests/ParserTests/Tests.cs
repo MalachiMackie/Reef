@@ -63,9 +63,9 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             "fn some_fn() where T: boxed{}";
 
         var expectedProgram = Program("ParseTestCases",
-            functions: [Function("some_fn", parameters: [], block: Block().Block)]);
+            functions: [Function("some_fn", parameters: [], block: Block().Block, constraints: [new BoxedConstraint(NamedTypeIdentifier("T"))])]);
 
-        IEnumerable<ParserError> expectedErrors = [ParserError.ExpectedType(Token.LeftBrace(SourceSpan.Default))];
+        IEnumerable<ParserError> expectedErrors = [];
 
         var result = Parser.Parse(new ModuleId("ParseTestCases"), Tokenizer.Tokenize(source)).NotNull();
 

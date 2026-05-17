@@ -518,7 +518,11 @@ public sealed class Parser : IDisposable
             else
             {
                 tailCallExpression =
-                    expression.ExpressionType is not (ExpressionType.IfExpression or ExpressionType.Block or ExpressionType.While)
+                    expression.ExpressionType is not (
+                        ExpressionType.IfExpression
+                        or ExpressionType.Block
+                        or ExpressionType.While
+                        or ExpressionType.Match)
                         ? expression
                         : null;
             }
@@ -1097,12 +1101,17 @@ public sealed class Parser : IDisposable
 
         if (Current.Type == TokenType.Boxed)
         {
-            if (!ExpectNextTypeIdentifier(out var boxedOfType))
+            if (!MoveNext())
             {
-                return null;
+                return new BoxedConstraint(constrainedType);
             }
 
-            return new BoxedConstraint(constrainedType, boxedOfType);
+            if (TryGetTypeIdentifier() is { } boxedOfType)
+            {
+                return new BoxedOfConstraint(constrainedType, boxedOfType);
+            }
+
+            return new BoxedConstraint(constrainedType);
         }
         if (Current.Type == TokenType.Unboxed)
         {
@@ -1111,7 +1120,7 @@ public sealed class Parser : IDisposable
                 return null;
             }
 
-            return new UnboxedConstraint(constrainedType, unboxedOfType);
+            return new UnboxedOfConstraint(constrainedType, unboxedOfType);
         }
 
         _errors.Add(ParserError.ExpectedConstraint(Current));
@@ -1275,6 +1284,36 @@ public sealed class Parser : IDisposable
 
         return new LangFunction(accessModifier, staticModifier, mutabilityModifier, nameToken, typeParameters, parameterList, returnType,
             returnMutModifier, new Block(scope.Expressions, scope.Functions, scope.ModuleImports), externModifier, constraints);
+    }
+
+    private ITypeIdentifier? TryGetTypeIdentifier(Token? boxingSpecifier = null)
+    {
+        return Current switch
+        {
+            StringToken { Type: TokenType.Identifier, StringValue: "Fn" } stringToken => GetFunctionTypeIdentifier(boxingSpecifier is null ? null : new BoxingModifier(boxingSpecifier), stringToken),
+            { Type: TokenType.Boxed or TokenType.Unboxed } => BoxingSpecifier(),
+            StringToken { Type: TokenType.Identifier } or { Type: TokenType.TripleColon } => GetNamedTypeIdentifier(boxingSpecifier),
+            { Type: TokenType.LeftParenthesis } => GetTupleTypeIdentifier(boxingSpecifier),
+            { Type: TokenType.LeftSquareBracket } => GetArrayTypeIdentifier(boxingSpecifier),
+            _ => null
+        };
+
+        ITypeIdentifier? BoxingSpecifier()
+        {
+            if (boxingSpecifier is not null)
+            {
+                _errors.Add(ParserError.ExpectedTypeName(Current));
+            }
+            var innerBoxingSpecifier = Current;
+
+            if (!MoveNext())
+            {
+                _errors.Add(ParserError.ExpectedTypeName(null));
+                return null;
+            }
+
+            return GetTypeIdentifier(innerBoxingSpecifier);
+        }
     }
 
     private ITypeIdentifier? GetTypeIdentifier(Token? boxingSpecifier = null)

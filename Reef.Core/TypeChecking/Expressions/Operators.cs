@@ -10,11 +10,8 @@ public partial class TypeChecker
             BinaryOperatorExpression binaryOperatorExpression)
     {
         var @operator = binaryOperatorExpression.BinaryOperator;
-        if (@operator.Left is not null)
-            @operator.Left.ValueUseful = true;
-        if (@operator.Right is not null)
-            @operator.Right.ValueUseful = true;
-
+        @operator.Left?.ValueUseful = true;
+        @operator.Right?.ValueUseful = true;
 
         switch (@operator.OperatorType)
         {
@@ -69,6 +66,35 @@ public partial class TypeChecker
                     return Boolean();
                 }
             case BinaryOperatorType.BooleanAnd:
+                {
+                    IReadOnlyList<LocalVariable> leftVariableDeclarations = [];
+
+                    if (@operator.Left is not null)
+                    {
+                        ExpectType(TypeCheckExpression(@operator.Left), Boolean(),
+                            @operator.Left.SourceRange);
+
+                        leftVariableDeclarations = GetExpressionUninitializedDeclaredVariables(@operator.Left);
+                    }
+
+                    foreach (var variable in leftVariableDeclarations)
+                    {
+                        variable.Instantiated = true;
+                    }
+
+                    if (@operator.Right is not null)
+                    {
+                        ExpectType(TypeCheckExpression(@operator.Right), Boolean(),
+                            @operator.Right.SourceRange);
+                    }
+
+                    foreach (var variable in leftVariableDeclarations)
+                    {
+                        variable.Instantiated = false;
+                    }
+
+                    return Boolean();
+                }
             case BinaryOperatorType.BooleanOr:
                 {
                     if (@operator.Left is not null)

@@ -11,6 +11,24 @@ public static class ParseTestCases
         {
             (
                 """
+                pub fn some_fn<T>() where T: boxed {}
+                """,
+                Program(
+                    "ParseTestCases",
+                    functions: [
+                        Function(
+                            "some_fn",
+                            isPublic: true,
+                            typeParameters: ["T"],
+                            block: Block().Block,
+                            constraints: [
+                                new BoxedConstraint(NamedTypeIdentifier("T"))
+                            ])
+                    ]
+                )
+            ),
+            (
+                """
                 pub fn some_fn<T, T2>() where T: boxed T2{}
                 """,
                 Program(
@@ -22,7 +40,7 @@ public static class ParseTestCases
                             typeParameters: ["T", "T2"],
                             block: Block().Block,
                             constraints: [
-                                new BoxedConstraint(NamedTypeIdentifier("T"), NamedTypeIdentifier("T2"))
+                                new BoxedOfConstraint(NamedTypeIdentifier("T"), NamedTypeIdentifier("T2"))
                             ])
                     ]
                 )
@@ -40,8 +58,8 @@ public static class ParseTestCases
                             typeParameters: ["T", "T2"],
                             block: Block().Block,
                             constraints: [
-                                new BoxedConstraint(NamedTypeIdentifier("T"), NamedTypeIdentifier("T2")),
-                                new UnboxedConstraint(NamedTypeIdentifier("T2"), NamedTypeIdentifier("T")),
+                                new BoxedOfConstraint(NamedTypeIdentifier("T"), NamedTypeIdentifier("T2")),
+                                new UnboxedOfConstraint(NamedTypeIdentifier("T2"), NamedTypeIdentifier("T")),
                             ])
                     ]
                 )
@@ -58,7 +76,7 @@ public static class ParseTestCases
                             typeParameters: ["T", "T2"],
                             isExtern: true,
                             returnType: StringType(),
-                            constraints: [new BoxedConstraint(NamedTypeIdentifier("T"), NamedTypeIdentifier("T2"))]
+                            constraints: [new BoxedOfConstraint(NamedTypeIdentifier("T"), NamedTypeIdentifier("T2"))]
                         )
                     ])
             ),
@@ -73,7 +91,7 @@ public static class ParseTestCases
                             isPublic: true,
                             typeParameters: ["T", "T2"],
                             isExtern: true,
-                            constraints: [new BoxedConstraint(NamedTypeIdentifier("T"), NamedTypeIdentifier("T2"))]
+                            constraints: [new BoxedOfConstraint(NamedTypeIdentifier("T"), NamedTypeIdentifier("T2"))]
                         )
                     ])
             ),
@@ -88,7 +106,7 @@ public static class ParseTestCases
                             isPublic: true,
                             typeParameters: ["T", "T2"],
                             isExtern: true,
-                            constraints: [new UnboxedConstraint(NamedTypeIdentifier("T"), NamedTypeIdentifier("T2"))]
+                            constraints: [new UnboxedOfConstraint(NamedTypeIdentifier("T"), NamedTypeIdentifier("T2"))]
                         )
                     ])
             ),

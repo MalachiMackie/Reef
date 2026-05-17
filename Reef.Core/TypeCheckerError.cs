@@ -454,6 +454,14 @@ public record TypeCheckerError
         );
     }
 
+    public static TypeCheckerError TypeArgumentMustBeBoxed(string typeParamName, SourceRange sourceRange)
+    {
+        return new(
+            TypeCheckerErrorType.TypeArgumentMustBeBoxed,
+            sourceRange,
+            $"Type Argument {typeParamName} must be boxed"
+        );
+    }
 }
 
 public enum TypeCheckerErrorType
@@ -519,6 +527,6 @@ public enum TypeCheckerErrorType
     ExternFunctionDefinesBody,
     NonExternFunctionDoesNotDefineBody,
     NonTypeParameterConstrained,
-    UnsupportedFalloutReturnType
-
+    UnsupportedFalloutReturnType,
+    TypeArgumentMustBeBoxed
 }

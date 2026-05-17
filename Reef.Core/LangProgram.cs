@@ -183,9 +183,9 @@ public interface IConstraint
     NamedTypeIdentifier ConstrainedType { get; }
 }
 
-public record BoxedConstraint(NamedTypeIdentifier ConstrainedType, ITypeIdentifier BoxedOfType) : IConstraint;
-public record UnboxedConstraint(NamedTypeIdentifier ConstrainedType, ITypeIdentifier UnboxedOfType) : IConstraint;
-
+public record BoxedConstraint(NamedTypeIdentifier ConstrainedType) : IConstraint;
+public record BoxedOfConstraint(NamedTypeIdentifier ConstrainedType, ITypeIdentifier BoxedOfType) : IConstraint;
+public record UnboxedOfConstraint(NamedTypeIdentifier ConstrainedType, ITypeIdentifier UnboxedOfType) : IConstraint;
 
 public record LangFunction(
     AccessModifier? AccessModifier,
@@ -246,14 +246,19 @@ public record LangFunction(
             sb.Append($" where {constraint.ConstrainedType}: ");
             switch (constraint)
             {
-                case BoxedConstraint boxed:
+                case BoxedOfConstraint boxedOf:
                     {
-                        sb.Append($"boxed {boxed.BoxedOfType}");
+                        sb.Append($"boxed {boxedOf.BoxedOfType}");
                         break;
                     }
-                case UnboxedConstraint unboxed:
+                case UnboxedOfConstraint unboxed:
                     {
                         sb.Append($"unboxed {unboxed.UnboxedOfType}");
+                        break;
+                    }
+                case BoxedConstraint:
+                    {
+                        sb.Append("boxed");
                         break;
                     }
                 default:

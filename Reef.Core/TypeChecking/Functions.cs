@@ -113,15 +113,23 @@ public partial class TypeChecker
             {
                 case BoxedConstraint boxed:
                     {
-                        var boxedOf = GetTypeReference(boxed.BoxedOfType);
                         if (typeParameter is not null)
                         {
-                            typeParameterConstraints[typeParameter].Add(new BoxedTypeConstraint(boxedOf));
+                            typeParameterConstraints[typeParameter].Add(new BoxedTypeConstraint());
+                        }
+                        break;
+                    }
+                case BoxedOfConstraint boxedOfConstraint:
+                    {
+                        var boxedOf = GetTypeReference(boxedOfConstraint.BoxedOfType);
+                        if (typeParameter is not null)
+                        {
+                            typeParameterConstraints[typeParameter].Add(new BoxedOfTypeConstraint(boxedOf));
                         }
 
                         break;
                     }
-                case UnboxedConstraint unboxed:
+                case UnboxedOfConstraint unboxed:
                     {
                         var unboxedOf = GetTypeReference(unboxed.UnboxedOfType);
 
@@ -132,7 +140,7 @@ public partial class TypeChecker
 
                         if (typeParameter is not null)
                         {
-                            typeParameterConstraints[typeParameter].Add(new UnboxedTypeConstraint(unboxedOf));
+                            typeParameterConstraints[typeParameter].Add(new UnboxedOfTypeConstraint(unboxedOf));
                         }
 
                         break;
@@ -405,8 +413,9 @@ public partial class TypeChecker
 
     public interface ITypeConstraint;
 
-    public record BoxedTypeConstraint(ITypeReference BoxedOfType) : ITypeConstraint;
-    public record UnboxedTypeConstraint(ITypeReference BoxedOfType) : ITypeConstraint;
+    public record BoxedTypeConstraint : ITypeConstraint;
+    public record BoxedOfTypeConstraint(ITypeReference BoxedOfType) : ITypeConstraint;
+    public record UnboxedOfTypeConstraint(ITypeReference BoxedOfType) : ITypeConstraint;
 
     public record FunctionParameter(ITypeReference Type, bool Mutable);
 

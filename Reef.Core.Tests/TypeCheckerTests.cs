@@ -68,27 +68,27 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
     public async Task SingleTest()
     {
         var sourceFiles = new Dictionary<string, (string, IReadOnlyList<TypeCheckerError> expectedErrors)>()
-                        {
-                            {
-                                "main.rf",
-                                ("""
-                                fn some_fn<T>(val: T): result::<T, T> {
-                                    return ok(val);
-                                }
-                                match (some_fn("")) {
-                                    result::Ok(var successful) => print_string(successful),
-                                    result::Error(var failure) => print_string(failure),
-                                }
-                                """, [])
-                            }
-                        };
+        {
+            {
+                "main.rf",
+                ("""
+                fn some_fn(): option::<string> {
+                    return option::Some("hi");
+                }
+
+                if (true && some_fn() matches option::Some(var value)) {
+                    print_string(value);
+                }
+                """, [])
+            }
+        };
 
         foreach (var (path, (contents, _)) in sourceFiles)
         {
             _fileSystem.AddFile(path, new MockFileData(contents));
         }
 
-        var (typeCheckResults, moduleIdToFileName, _, _) = await new ReefCompiler(_fileSystem, new ModuleId("main"), new TestLogger(testOutputHelper)).TypeCheck(true);
+        var (typeCheckResults, moduleIdToFileName, _, _) = await new ReefCompiler(_fileSystem, new ModuleId("main"), new TestLogger(testOutputHelper)).TypeCheck(throwOnError: !sourceFiles.Values.SelectMany(x => x.expectedErrors).Any());
         foreach (var (moduleId, typeCheckResult) in typeCheckResults)
         {
             typeCheckResult.ParserErrors.Should().BeEmpty();
@@ -102,6 +102,122 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
     {
         IEnumerable<Dictionary<string, string>> sources =
         [
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    fn some_string_check(val: string): bool {
+                        return true;
+                    }
+
+                    fn some_fn(): option::<string> {
+                        return option::Some("hi");
+                    }
+
+                    if (some_fn() matches option::Some(var value) && some_string_check(value)) {
+                        print_string(value);
+                    }
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    fn some_string_check(val: string): bool {
+                        return true;
+                    }
+
+                    fn some_fn(): option::<string> {
+                        return option::Some("hi");
+                    }
+
+                    if (some_fn() matches option::Some(var value) && true && some_string_check(value)) {
+                        print_string(value);
+                    }
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    fn some_string_check(val: string): bool {
+                        return true;
+                    }
+
+                    fn some_fn(): option::<string> {
+                        return option::Some("hi");
+                    }
+                    var a = some_fn() matches option::Some(var value) && true && some_string_check(value)
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    fn some_string_check(val: string): bool {
+                        return true;
+                    }
+
+                    fn some_fn(): option::<string> {
+                        return option::Some("hi");
+                    }
+
+                    var a = some_fn() matches option::Some(var value) && some_string_check(value);
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    fn some_fn(): option::<string> {
+                        return option::Some("hi");
+                    }
+
+                    if (true && (some_fn() matches option::Some(var value))) {
+                        print_string(value);
+                    }
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    fn some_fn(): option::<string> {
+                        return option::Some("hi");
+                    }
+
+                    if (true && some_fn() matches option::Some(var value)) {
+                        print_string(value);
+                    }
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    fn some_fn<T>() where T : boxed {
+                    }
+
+                    class MyClass{};
+
+                    some_fn::<string>();
+                    some_fn::<MyClass>();
+                    """
+                }
+            },
             new()
             {
                 {
@@ -3231,6 +3347,64 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
     {
         return new TheoryData<string, Dictionary<string, (string contents, IReadOnlyList<TypeCheckerError> expectedErrors)>>
         {
+            {
+                "uninitialized variable from matches in and condition before it is initialized",
+                new()
+                {
+                    {
+                        "main.rf",
+                        ("""
+
+                        fn some_string_check(val: string): bool {
+                            return true;
+                        }
+
+                        fn some_fn(): option::<string> {
+                            return option::Some("hi");
+                        }
+
+                        if (some_string_check(value) && some_fn() matches option::Some(var value)) {
+                            print_string(value);
+                        }
+                        """, [TypeCheckerError.SymbolNotFound(Identifier("value"))])
+                    }
+                }
+            },
+            {
+                "uninitialized variable from matches in or condition",
+                new()
+                {
+                    {
+                        "main.rf",
+                        ("""
+                        fn some_fn(): option::<string> {
+                            return option::Some("hi");
+                        }
+
+                        if (true || some_fn() matches option::Some(var value)) {
+                            print_string(value);
+                        }
+                        """, [TypeCheckerError.AccessUninitializedVariable(Identifier("value"))])
+                    }
+                }
+            },
+            {
+                "unboxed type used for boxed constrained type",
+                new()
+                {
+                    {
+                        "main.rf",
+                        ("""
+                        fn some_fn<T>() where T : boxed {
+                        }
+
+                        unboxed class MyClass{};
+
+                        some_fn::<MyClass>();
+                        """, [TypeCheckerError.TypeArgumentMustBeBoxed("T", SourceRange.Default)])
+                    }
+                }
+            },
             {
                 "invalid fallout return type",
                 new()

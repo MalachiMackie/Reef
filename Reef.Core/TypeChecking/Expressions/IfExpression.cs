@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Reef.Core.Expressions;
 
 namespace Reef.Core.TypeChecking;
@@ -11,7 +12,51 @@ public partial class TypeChecker
         public bool InstantiatedInEachElseIf { get; set; } = true;
     }
 
-    private TypeChecking.TypeChecker.ITypeReference TypeCheckIfExpression(
+    private static bool IsExpressionType<TExpression>(
+        IExpression expression,
+        [NotNullWhen(true)] out TExpression? resolvedType)
+        where TExpression : class, IExpression
+    {
+        while (expression is TupleExpression tuple
+            && tuple.Values.Count == 1)
+        {
+            expression = tuple.Values[0];
+        }
+        if (expression is TExpression tExpression)
+        {
+            resolvedType = tExpression;
+            return true;
+        }
+
+        resolvedType = null;
+        return false;
+    }
+
+    private static IReadOnlyList<LocalVariable> GetExpressionUninitializedDeclaredVariables(IExpression expression)
+    {
+        var variableDeclarations = new List<LocalVariable>();
+        var checkExpressionQueue = new Queue<IExpression>([expression]);
+
+        while (checkExpressionQueue.TryDequeue(out var nextExpression))
+        {
+            if (IsExpressionType<MatchesExpression>(nextExpression, out var matchesExpression))
+            {
+                variableDeclarations.AddRange(matchesExpression.DeclaredVariables.Where(x => !x.Instantiated));
+            }
+            else if (IsExpressionType<BinaryOperatorExpression>(nextExpression, out var binaryExpression)
+                && binaryExpression.BinaryOperator.OperatorType == BinaryOperatorType.BooleanAnd)
+            {
+                if (binaryExpression.BinaryOperator.Left is not null)
+                    checkExpressionQueue.Enqueue(binaryExpression.BinaryOperator.Left);
+                if (binaryExpression.BinaryOperator.Right is not null)
+                    checkExpressionQueue.Enqueue(binaryExpression.BinaryOperator.Right);
+            }
+        }
+
+        return variableDeclarations;
+    }
+
+    private ITypeReference TypeCheckIfExpression(
         IfExpression ifExpression)
     {
         // scope around the entire if expression. Variables declared in the check expression (e.g. with matches) will be
@@ -23,19 +68,14 @@ public partial class TypeChecker
 
         ExpectExpressionType(Boolean(), ifExpression.CheckExpression);
 
-        IReadOnlyList<TypeChecking.TypeChecker.LocalVariable> matchVariableDeclarations = [];
+        var variableDeclarations = GetExpressionUninitializedDeclaredVariables(ifExpression.CheckExpression);
 
-        if (ifExpression.CheckExpression is MatchesExpression { DeclaredVariables: var declaredVariables })
-        {
-            matchVariableDeclarations = declaredVariables;
-        }
-
-        var uninstantiatedVariables = Enumerable
-            .OfType<TypeChecking.TypeChecker.LocalVariable>(GetScopedVariables())
+        var uninstantiatedVariables =
+            GetScopedVariables().OfType<LocalVariable>()
             .Where(x => !x.Instantiated)
             .ToDictionary(x => x, _ => new VariableIfInstantiation());
 
-        foreach (var variable in matchVariableDeclarations)
+        foreach (var variable in variableDeclarations)
         {
             variable.Instantiated = true;
         }
@@ -51,7 +91,7 @@ public partial class TypeChecker
             variable.Instantiated = false;
         }
 
-        foreach (var variable in matchVariableDeclarations)
+        foreach (var variable in variableDeclarations)
         {
             variable.Instantiated = false;
         }
@@ -64,14 +104,9 @@ public partial class TypeChecker
 
             ExpectExpressionType(Boolean(), elseIf.CheckExpression);
 
-            matchVariableDeclarations = elseIf.CheckExpression is MatchesExpression
-            {
-                DeclaredVariables: var elseIfDeclaredVariables
-            }
-                ? elseIfDeclaredVariables
-                : [];
+            variableDeclarations = GetExpressionUninitializedDeclaredVariables(elseIf.CheckExpression);
 
-            foreach (var variable in matchVariableDeclarations)
+            foreach (var variable in variableDeclarations)
             {
                 variable.Instantiated = true;
             }
@@ -87,7 +122,7 @@ public partial class TypeChecker
                 variable.Instantiated = false;
             }
 
-            foreach (var variable in matchVariableDeclarations)
+            foreach (var variable in variableDeclarations)
             {
                 variable.Instantiated = false;
             }

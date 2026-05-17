@@ -27,12 +27,6 @@ public static class ParseErrorTestCases
                 [ParserError.ExpectedConstraint(Token.LeftBrace(SourceSpan.Default))]
             ),
             (
-                "fn some_fn() where T: boxed{}",
-                Program("ParseErrorTestCases",
-                    functions: [Function("some_fn", parameters: [], block: Block().Block)]),
-                [ParserError.ExpectedType(Token.LeftBrace(SourceSpan.Default))]
-            ),
-            (
                 "fn some_fn(a) {}",
                 Program("ParseErrorTestCases",
                     functions: [Function("some_fn", parameters: [FunctionParameter("a")], block: Block().Block)]),

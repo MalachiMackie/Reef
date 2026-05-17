@@ -1000,7 +1000,7 @@ public partial class TypeChecker
         return false;
     }
 
-    private bool IsTypeReferenceBoxed(ITypeReference typeReference)
+    private static bool IsTypeReferenceBoxed(ITypeReference typeReference)
     {
         return typeReference switch
         {
@@ -1018,6 +1018,7 @@ public partial class TypeChecker
     }
 
     private bool ExpectTypeConstraint(
+        GenericPlaceholder placeholder,
         ITypeConstraint constraint,
         IInstantiatedGeneric instantiatedGeneric,
         ITypeReference typeReference,
@@ -1026,7 +1027,7 @@ public partial class TypeChecker
     {
         switch (constraint)
         {
-            case BoxedTypeConstraint boxedTypeConstraint:
+            case BoxedOfTypeConstraint boxedTypeConstraint:
                 {
                     switch (boxedTypeConstraint.BoxedOfType)
                     {
@@ -1102,7 +1103,16 @@ public partial class TypeChecker
                             throw new ArgumentOutOfRangeException(nameof(typeReference));
                     }
                 }
-            case UnboxedTypeConstraint unboxedTypeConstraint:
+            case BoxedTypeConstraint:
+                {
+                    if (!IsTypeReferenceBoxed(typeReference) && reportError)
+                    {
+                        AddError(TypeCheckerError.TypeArgumentMustBeBoxed(placeholder.GenericName, actualSourceRange));
+                        return false;
+                    }
+                    return true;
+                }
+            case UnboxedOfTypeConstraint unboxedTypeConstraint:
                 {
                     switch (unboxedTypeConstraint.BoxedOfType)
                     {
@@ -1471,7 +1481,7 @@ public partial class TypeChecker
                         {
                             foreach (var constraint in genericPlaceholder.Constraints)
                             {
-                                result &= ExpectTypeConstraint(constraint, expectedGeneric.InstantiatedFrom, actualIntType, actualSourceRange, reportError);
+                                result &= ExpectTypeConstraint(genericPlaceholder, constraint, expectedGeneric.InstantiatedFrom, actualIntType, actualSourceRange, reportError);
                             }
                         }
 
@@ -1497,7 +1507,7 @@ public partial class TypeChecker
                         {
                             foreach (var constraint in genericPlaceholder.Constraints)
                             {
-                                result &= ExpectTypeConstraint(constraint, actualGeneric.InstantiatedFrom, expectedIntType, actualSourceRange, reportError);
+                                result &= ExpectTypeConstraint(genericPlaceholder, constraint, actualGeneric.InstantiatedFrom, expectedIntType, actualSourceRange, reportError);
                             }
                         }
 
@@ -1645,7 +1655,7 @@ public partial class TypeChecker
                             generic.OwnerType.TypeParameters.First(z => z.GenericName == generic.GenericName);
                         foreach (var constraint in genericPlaceholder.Constraints)
                         {
-                            result &= ExpectTypeConstraint(constraint, generic.InstantiatedFrom, array, actualSourceRange,
+                            result &= ExpectTypeConstraint(genericPlaceholder, constraint, generic.InstantiatedFrom, array, actualSourceRange,
                                 reportError);
                         }
                     }
@@ -1671,7 +1681,7 @@ public partial class TypeChecker
                             generic.OwnerType.TypeParameters.First(z => z.GenericName == generic.GenericName);
                         foreach (var constraint in genericPlaceholder.Constraints)
                         {
-                            result &= ExpectTypeConstraint(constraint, generic.InstantiatedFrom, array, actualSourceRange,
+                            result &= ExpectTypeConstraint(genericPlaceholder, constraint, generic.InstantiatedFrom, array, actualSourceRange,
                                 reportError);
                         }
                     }
@@ -1698,7 +1708,7 @@ public partial class TypeChecker
                         {
                             foreach (var constraint in genericPlaceholder.Constraints)
                             {
-                                result &= ExpectTypeConstraint(constraint, generic.InstantiatedFrom, union, actualSourceRange, reportError);
+                                result &= ExpectTypeConstraint(genericPlaceholder, constraint, generic.InstantiatedFrom, union, actualSourceRange, reportError);
                             }
                         }
 
@@ -1725,7 +1735,7 @@ public partial class TypeChecker
                         {
                             foreach (var constraint in genericPlaceholder.Constraints)
                             {
-                                result &= ExpectTypeConstraint(constraint, generic.InstantiatedFrom, union, actualSourceRange, reportError);
+                                result &= ExpectTypeConstraint(genericPlaceholder, constraint, generic.InstantiatedFrom, union, actualSourceRange, reportError);
                             }
                         }
 
@@ -1752,7 +1762,7 @@ public partial class TypeChecker
                         {
                             foreach (var constraint in genericPlaceholder.Constraints)
                             {
-                                result &= ExpectTypeConstraint(constraint, generic.InstantiatedFrom, @class, actualSourceRange, reportError);
+                                result &= ExpectTypeConstraint(genericPlaceholder, constraint, generic.InstantiatedFrom, @class, actualSourceRange, reportError);
                             }
                         }
 
@@ -1779,7 +1789,7 @@ public partial class TypeChecker
                         {
                             foreach (var constraint in genericPlaceholder.Constraints)
                             {
-                                result &= ExpectTypeConstraint(constraint, generic.InstantiatedFrom, @class, actualSourceRange, reportError);
+                                result &= ExpectTypeConstraint(genericPlaceholder, constraint, generic.InstantiatedFrom, @class, actualSourceRange, reportError);
                             }
                         }
 
