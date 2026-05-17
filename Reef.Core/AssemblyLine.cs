@@ -485,10 +485,10 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                         Debug.Assert(offset / 16 < byte.MaxValue);
 
                         opCode = UnwindOpCode.UWOP_SET_FPREG;
-                        opInfo = (byte)(offset / 16);
+                        opInfo = 0; // opinfo is reserved and should not be used for SET_FPREG
 
                         frameRegister = register;
-                        frameRegisterScaledOffset = opInfo;
+                        frameRegisterScaledOffset = (byte)(offset / 16);
                         frameRegisterNextInstructionLabel = prologOperation.NextInstructionLabel;
                         break;
                     }
@@ -504,7 +504,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         _unwindInfo.AppendLine($"        db {opInfos.Count}"); // count of unwind codes
 
         // bottom 4 bits: frame register, high 4 bits: frame register offset
-        _unwindInfo.AppendLine($"        db 0b{frameRegisterOpCode:B4}{frameRegisterScaledOffset:B4}");
+        _unwindInfo.AppendLine($"        db 0b{frameRegisterScaledOffset:B4}{frameRegisterOpCode:B4}");
 
         foreach (var (nextInstructionLabel, opCode, opInfo) in opInfos)
         {
@@ -1885,6 +1885,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         prolog.AppendLine($"    {prologLabel}:");
         prolog.AppendLine($"    mov     rbp, rsp");
         NextPrologLabel();
+        prologOperations.Add(new IPrologOperation.SetFramePointerRegister(Register.BasePointer, 0, prologLabel));
 
         // save non volatile registers
         foreach (var register in registersUsedInMethod)
