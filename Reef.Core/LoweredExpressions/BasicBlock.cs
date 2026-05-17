@@ -117,7 +117,8 @@ public record LoweredMethod(
     IReadOnlyList<BasicBlock> BasicBlocks,
     MethodLocal ReturnValue,
     List<MethodLocal> ParameterLocals,
-    List<MethodLocal> Locals) : IMethod;
+    List<MethodLocal> Locals,
+    BasicBlockId? UnwindContinueToBlock = null) : IMethod;
 
 public record LoweredExternMethod(
     DefId Id,

@@ -26,6 +26,9 @@ public record DefId(ModuleId ModuleId, string FullName)
     public static DefId BoxedValue { get; } = new(CoreLibModuleId, $"{CoreLibModuleId}:::BoxedValue");
     public static DefId ObjectHeader { get; } = new(CoreLibModuleId, $"{CoreLibModuleId}:::ObjectHeader");
 
+    public static DefId AsBytes { get; } = new(CoreLibModuleId, $"{CoreLibModuleId}:::as_bytes");
+    public static DefId FromBytes { get; } = new(CoreLibModuleId, $"{CoreLibModuleId}:::from_bytes");
+    public static DefId CatchUnwindIntrinsic { get; } = new(CoreLibModuleId, $"{CoreLibModuleId}:::catch_unwind_intrinsic");
     public static DefId Unbox { get; } = new(CoreLibModuleId, $"{CoreLibModuleId}:::unbox");
     public static DefId Box { get; } = new(CoreLibModuleId, $"{CoreLibModuleId}:::box");
     public static DefId PrintString { get; } = new(CoreLibModuleId, $"{CoreLibModuleId}:::print_string");

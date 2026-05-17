@@ -60,6 +60,153 @@ public partial class ProgramAbseil
                 ParameterLocalName((uint)i), x.Key, GetTypeReference(x.Value.Type)))]);
     }
 
+    private static LoweredMethod CreateFromBytesMethod(TypeChecker.FunctionSignature signature)
+    {
+        var basicBlocks = new List<BasicBlock>();
+
+        var loweredMethod = new LoweredMethod(
+            signature.Id,
+            signature.Name,
+            [.. signature.TypeParameters.Select(GetGenericPlaceholder)],
+            basicBlocks,
+            new MethodLocal(ReturnValueLocalName, null, GetTypeReference(signature.ReturnType)),
+            [..signature.Parameters.Select((x, i) => new MethodLocal(
+                ParameterLocalName((uint)i), x.Key, GetTypeReference(x.Value.Type)))],
+            []
+        );
+
+        /*
+
+            fn from_bytes<TValue>(bytes: [u8]): TValue
+                where TValue: boxed {
+                return value as TValue;
+            }
+
+        */
+
+        basicBlocks.Add(new BasicBlock(
+            new BasicBlockId("bb0"),
+            [
+                new Assign(
+                    new Local(ReturnValueLocalName),
+                    new Use(new Copy(new Local(ParameterLocalName(0))))
+                )
+            ],
+            new Return()
+        ));
+
+        return loweredMethod;
+    }
+
+    private static LoweredMethod CreateAsBytesMethod(TypeChecker.FunctionSignature signature)
+    {
+        var basicBlocks = new List<BasicBlock>();
+
+        var loweredMethod = new LoweredMethod(
+            signature.Id,
+            signature.Name,
+            [.. signature.TypeParameters.Select(GetGenericPlaceholder)],
+            basicBlocks,
+            new MethodLocal(ReturnValueLocalName, null, GetTypeReference(signature.ReturnType)),
+            [..signature.Parameters.Select((x, i) => new MethodLocal(
+                ParameterLocalName((uint)i), x.Key, GetTypeReference(x.Value.Type)))],
+            []
+        );
+
+        /*
+
+            fn as_bytes<TValue>(value: TValue): [u8]
+                where TValue: boxed {
+                return value as [u8];
+            }
+
+         */
+
+        basicBlocks.Add(new BasicBlock(
+            new BasicBlockId("bb0"),
+            [
+                new Assign(
+                     new Local(ReturnValueLocalName),
+                     new Use(new Copy(new Local(ParameterLocalName(0))))
+                 )
+            ],
+            new Return()
+        ));
+
+        return loweredMethod;
+    }
+
+    private static LoweredMethod CreateCatchUnwindIntrinsicMethod(TypeChecker.FunctionSignature signature)
+    {
+        var basicBlocks = new List<BasicBlock>();
+
+        var loweredMethod = new LoweredMethod(
+            signature.Id,
+            signature.Name,
+            [.. signature.TypeParameters.Select(GetGenericPlaceholder)],
+            basicBlocks,
+            new MethodLocal(ReturnValueLocalName, null, GetTypeReference(signature.ReturnType)),
+            [..signature.Parameters.Select((x, i) => new MethodLocal(
+                ParameterLocalName((uint)i), x.Key, GetTypeReference(x.Value.Type)))],
+            [new MethodLocal(LocalName(0), null, new LoweredConcreteTypeReference(DefId.Unit, []))],
+            new BasicBlockId("bb2")
+        );
+
+        /*
+            fn catch_unwind_intrinsic(callee: Fn([u8]), data_bytes: [u8]): bool {
+                try {
+                    callee(data_bytes);
+                    return true;
+                }
+                catch {
+                    return false;
+                }
+            }
+         */
+
+        var dataBytesTypeReference = loweredMethod.ParameterLocals[1].Type;
+
+        var functionObjectCallMethod = new LoweredFunctionReference(
+            DefId.FunctionObject_Call(parameterCount: 1),
+            [dataBytesTypeReference, new LoweredConcreteTypeReference(DefId.Unit, [])]);
+
+        basicBlocks.Add(new BasicBlock(
+            new BasicBlockId("bb0"),
+            [],
+            new MethodCall(
+                functionObjectCallMethod,
+                [
+                    new Copy(new Local(ParameterLocalName(0))),
+                    new Copy(new Local(ParameterLocalName(1)))
+                ],
+                new Local(LocalName(0)),
+                new BasicBlockId("bb1")
+            )
+        ));
+        basicBlocks.Add(new BasicBlock(
+            new BasicBlockId("bb1"),
+            [
+                new Assign(
+                    new Local(ReturnValueLocalName),
+                    new Use(new BoolConstant(true))
+                )
+            ],
+            new Return()
+        ));
+        basicBlocks.Add(new BasicBlock(
+            new BasicBlockId("bb2"),
+            [
+                new Assign(
+                    new Local(ReturnValueLocalName),
+                    new Use(new BoolConstant(false))
+                )
+            ],
+            new Return()
+        ));
+
+        return loweredMethod;
+    }
+
     private static LoweredMethod CreateBoxMethod(TypeChecker.FunctionSignature signature)
     {
         var basicBlocks = new List<BasicBlock>();
@@ -71,7 +218,7 @@ public partial class ProgramAbseil
             basicBlocks,
             new MethodLocal(ReturnValueLocalName, null, GetTypeReference(signature.ReturnType)),
             [..signature.Parameters.Select((x, i) => new MethodLocal(
-                LocalName((uint)i), x.Key, GetTypeReference(x.Value.Type)))],
+                ParameterLocalName((uint)i), x.Key, GetTypeReference(x.Value.Type)))],
             []);
 
         /*
@@ -165,34 +312,28 @@ public partial class ProgramAbseil
 
     private LoweredProgram LowerInner()
     {
+        HashSet<DefId> intrinsicFunctionIds = [];
         foreach (var (moduleId, module) in _modules)
         {
             if (moduleId == DefId.CoreLibModuleId)
             {
                 var boxSignature = module.Functions.Select(x => x.Signature).First(x => x is not null && x.Id == DefId.Box).NotNull();
                 var unboxSignature = module.Functions.Select(x => x.Signature).First(x => x is not null && x.Id == DefId.Unbox).NotNull();
-                _methods.Add(
-                    CreateBoxMethod(boxSignature),
-                    (
-                        boxSignature,
-                        [],
-                        [],
-                        [],
-                        null,
-                        false
-                    )
-                );
-                _methods.Add(
-                    CreateUnboxMethod(unboxSignature),
-                    (
-                        unboxSignature,
-                        [],
-                        [],
-                        [],
-                        null,
-                        false
-                    )
-                );
+                var asBytesSignature = module.Functions.Select(x => x.Signature).First(x => x is not null && x.Id == DefId.AsBytes).NotNull();
+                var fromBytesSignature = module.Functions.Select(x => x.Signature).First(x => x is not null && x.Id == DefId.FromBytes).NotNull();
+                var catchUnwindSignature = module.Functions.Select(x => x.Signature).First(x => x is not null && x.Id == DefId.CatchUnwindIntrinsic).NotNull();
+                IEnumerable<(TypeChecker.FunctionSignature, LoweredMethod)> signatures = [
+                    (boxSignature, CreateBoxMethod(boxSignature)),
+                    (unboxSignature, CreateUnboxMethod(unboxSignature)),
+                    (asBytesSignature, CreateAsBytesMethod(asBytesSignature)),
+                    (fromBytesSignature, CreateFromBytesMethod(fromBytesSignature)),
+                    (catchUnwindSignature, CreateCatchUnwindIntrinsicMethod(catchUnwindSignature)),
+                ];
+                foreach (var (signature, method) in signatures)
+                {
+                    intrinsicFunctionIds.Add(signature.Id);
+                    _methods.Add(method, (signature, [], [], [], null, false));
+                }
             }
 
             foreach (var union in module.Unions)
@@ -237,7 +378,7 @@ public partial class ProgramAbseil
         }
 
         var fnSignaturesToGenerate = _modules.Values.SelectMany(x => x.Functions.Select(x => x.Signature.NotNull()))
-            .Where(x => x.Id != DefId.Box && x.Id != DefId.Unbox);
+            .Where(x => !intrinsicFunctionIds.Contains(x.Id));
         if (mainSignature.Expressions.Count > 0)
         {
             fnSignaturesToGenerate = fnSignaturesToGenerate.Prepend(mainSignature);

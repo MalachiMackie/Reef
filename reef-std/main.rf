@@ -276,4 +276,38 @@ pub extern fn print_u32(num: u32)
 pub extern fn print_i64(num: i64)
 pub extern fn print_u64(num: u64)
 
-pub extern fn panic();
+pub extern fn panic()
+
+extern fn catch_unwind_intrinsic(callee: Fn([u8]), data_bytes: [u8]): bool
+extern fn as_bytes<TValue>(value: TValue): [u8]
+    where TValue: boxed;
+extern fn from_bytes<TValue>(bytes: [u8]): mut TValue
+    where TValue: boxed;
+
+class CatchUnwindData<TReturn> {
+    pub field callee_fn: Fn(): TReturn,
+    pub mut field return_value: option::<TReturn>,
+}
+
+fn do_call<TReturn>(data_bytes: [u8]) {
+    var mut data = from_bytes::<CatchUnwindData::<TReturn>>(data_bytes);
+
+    var result = data.callee_fn();
+    data.return_value = option::Some(result);
+}
+
+pub fn catch_unwind<TResult>(callee: Fn(): TResult): result::<TResult, ()> {
+    var data = new CatchUnwindData::<TResult> {
+        callee_fn = callee,
+        return_value = option::None
+    };
+
+    var data_bytes = as_bytes(data);
+
+    if (catch_unwind_intrinsic(do_call::<TResult>, data_bytes)
+        && data.return_value matches option::Some(var return_value)) {
+        return ok(return_value);
+    }
+
+    return error(());
+}

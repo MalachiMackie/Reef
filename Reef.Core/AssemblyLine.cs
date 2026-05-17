@@ -45,15 +45,122 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
     private readonly HashSet<Register> _registersUsedInMethod = [];
 
     private LoweredMethod? _currentMethod;
-    private Dictionary<string, ILoweredTypeReference> _currentTypeArguments = [];
     private readonly Dictionary<DefId, DataType> _dataTypes = program.DataTypes.ToDictionary(
         x => x.Id);
 
+    private static ILoweredTypeReference InstantiateTypeReference(
+        ILoweredTypeReference typeReference,
+        IReadOnlyDictionary<LoweredGenericPlaceholder, ILoweredTypeReference> typeArguments)
+    {
+        ILoweredTypeReference Inner(ILoweredTypeReference innerTypeReference)
+            => InstantiateTypeReference(innerTypeReference, typeArguments);
+
+        switch (typeReference)
+        {
+            case LoweredConcreteTypeReference concrete:
+                {
+                    if (concrete.TypeArguments.Count == 0)
+                    {
+                        return concrete;
+                    }
+
+                    return new LoweredConcreteTypeReference(
+                        concrete.DefinitionId,
+                        [.. concrete.TypeArguments.Select(Inner)]);
+                }
+            case LoweredFunctionReference fn:
+                {
+                    if (fn.TypeArguments.Count == 0)
+                    {
+                        return fn;
+                    }
+
+                    return new LoweredFunctionReference(
+                        fn.DefinitionId,
+                        [.. fn.TypeArguments.Select(Inner)]
+                    );
+                }
+            case LoweredGenericPlaceholder placeholder:
+                {
+                    if (typeArguments.TryGetValue(placeholder, out var foundTypeArgument))
+                    {
+                        return Inner(foundTypeArgument);
+                    }
+
+                    throw new InvalidOperationException($"No type argument found, {placeholder}");
+                }
+            case LoweredArray array:
+                {
+                    return new LoweredArray(Inner(array.ElementType), array.Length);
+                }
+            case LoweredPointer pointer:
+                {
+                    return new LoweredPointer(Inner(pointer.PointerTo));
+                }
+            case RawPointer:
+                {
+                    return typeReference;
+                }
+            default:
+                {
+                    throw new InvalidOperationException(typeReference.GetType().ToString());
+                }
+        }
+    }
+
+    private DataType GetDataType(DefId id, IReadOnlyList<ILoweredTypeReference> typeArguments, IReadOnlyDictionary<LoweredGenericPlaceholder, ILoweredTypeReference> currentTypeArguments)
+    {
+        var dataType = _dataTypes[id];
+        Debug.Assert(dataType.TypeParameters.Count == typeArguments.Count);
+
+        var typeArgumentsDictionary = dataType.TypeParameters.Zip(typeArguments)
+            .Select(x => KeyValuePair.Create(x.First, x.Second))
+            .Concat(currentTypeArguments)
+            .DistinctBy(x => x.Key)
+            .ToDictionary(x => x.Key, x => x.Value);
+
+        return new DataType(
+            dataType.Id,
+            dataType.Name,
+            dataType.TypeParameters,
+            [.. dataType.Variants.Select(
+                x => new DataTypeVariant(
+                    x.Name,
+                    [.. x.Fields.Select(
+                        y => new DataTypeField(y.Name, InstantiateTypeReference(y.Type, typeArgumentsDictionary))
+                    )]
+                )
+            )],
+            [.. dataType.StaticFields.Select(
+                x => new StaticDataTypeField(
+                    x.Name,
+                    InstantiateTypeReference(x.Type, typeArgumentsDictionary),
+                    [.. x.InitializerBasicBlocks.Select(BasicBlock (x) => {
+                        throw new NotImplementedException();
+                    })],
+                    [.. x.InitializerLocals.Select(
+                        y => new MethodLocal(
+                            y.CompilerGivenName,
+                            y.UserGivenName,
+                            InstantiateTypeReference(y.Type, typeArgumentsDictionary)
+                        )
+                    )],
+                    new MethodLocal(
+                        x.ReturnValueLocal.CompilerGivenName,
+                        x.ReturnValueLocal.UserGivenName,
+                        InstantiateTypeReference(x.ReturnValueLocal.Type, typeArgumentsDictionary)
+                    )
+                )
+            )]
+        );
+    }
+
     private readonly HashSet<string> _queuedMethodLabels = [];
 
-    private void TryEnqueueMethodForProcessing(LoweredMethod method, IReadOnlyList<ILoweredTypeReference> typeArguments)
+    private void TryEnqueueMethodForProcessing(LoweredMethod method, IReadOnlyList<ILoweredTypeReference> typeArguments, IReadOnlyDictionary<LoweredGenericPlaceholder, ILoweredTypeReference> currentTypeArguments)
     {
-        var label = GetMethodLabel(method, typeArguments);
+        typeArguments = [.. typeArguments.Select(x => InstantiateTypeReference(x, currentTypeArguments))];
+        var label = GetMethodLabel(method, typeArguments, currentTypeArguments);
         if (_queuedMethodLabels.Add(label))
         {
             _methodProcessingQueue.Enqueue((method, typeArguments));
@@ -66,24 +173,14 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         return assemblyLine.ProcessInner();
     }
 
-    private ulong GetTypeId(ILoweredTypeReference type, Dictionary<string, ILoweredTypeReference> currentTypeArguments)
+    private ulong GetTypeId(ILoweredTypeReference type, IReadOnlyDictionary<LoweredGenericPlaceholder, ILoweredTypeReference> currentTypeArguments)
     {
-        if (type is LoweredGenericPlaceholder generic)
-        {
-            if (!currentTypeArguments.TryGetValue(generic.PlaceholderName, out var typeArgument))
-            {
-                throw new InvalidOperationException();
-            }
-            type = typeArgument;
-        }
-
-        // todo: _currentTypeArguments I suspect is incorrect here
         var found = _typeIds.FirstOrDefault(x => AreTypeReferencesEqual(x.TypeReference, type));
         if (found == default)
         {
             var typeId = (ulong)_typeIds.Count;
             _typeIds.Add((type, typeId));
-            _typesToWriteBlobInfo.Enqueue((type, typeId, new(_currentTypeArguments)));
+            _typesToWriteBlobInfo.Enqueue((type, typeId, currentTypeArguments));
             return typeId;
         }
 
@@ -94,7 +191,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
     private readonly List<(LoweredFunctionReference FunctionReference, ulong MethodId)> _methodIds = [];
 
     private readonly List<(ILoweredTypeReference TypeReference, ulong TypeId)> _typeIds = [];
-    private readonly Queue<(ILoweredTypeReference TypeReference, ulong TypeId, Dictionary<string, ILoweredTypeReference> CurrentTypeArguments)> _typesToWriteBlobInfo = [];
+    private readonly Queue<(ILoweredTypeReference TypeReference, ulong TypeId, IReadOnlyDictionary<LoweredGenericPlaceholder, ILoweredTypeReference> CurrentTypeArguments)> _typesToWriteBlobInfo = [];
 
     private void WriteMethodInfoBlob(
         LoweredMethod method,
@@ -103,15 +200,16 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         IReadOnlyList<IPrologOperation> prologOperations,
         string prologEndLabel,
         UnwindInfoMethodFlags methodFlags,
-        string? exceptionHandlerLabel)
+        string? exceptionHandlerLabel,
+        IReadOnlyDictionary<LoweredGenericPlaceholder, ILoweredTypeReference> currentTypeArguments)
     {
         var methodInfoReference = new LoweredConcreteTypeReference(
             DefId.MethodInfo,
             []
         );
 
-        var methodInfoDataType = _dataTypes[DefId.MethodInfo];
-        var variablePlaceDataType = _dataTypes[DefId.VariablePlace];
+        var methodInfoDataType = GetDataType(DefId.MethodInfo, [], currentTypeArguments);
+        var variablePlaceDataType = GetDataType(DefId.VariablePlace, [], currentTypeArguments);
         var parametersField = methodInfoDataType.Variants[0].Fields.First(x => x.Name == "Parameters");
         var localsField = methodInfoDataType.Variants[0].Fields.First(x => x.Name == "Locals");
 
@@ -124,7 +222,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
             throw new UnreachableException();
         }
 
-        var methodInfoSize = GetTypeSize(methodInfoReference, []);
+        var methodInfoSize = GetTypeSize(methodInfoReference, currentTypeArguments);
         var methodInfoOffsets = methodInfoSize.VariantSizeInfo["_classVariant"].FieldOffsets;
         var bytesWritten = 0u;
 
@@ -137,13 +235,13 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         PadAlignment(ref bytesWritten, _methodInfoDataSubSegment, methodInfoOffsets["FullyQualifiedName"].Alignment);
         var methodFullyQualifiedName = $"{method.Id.FullName}{(typeArguments.Count == 0 ? "" : $"::<{string.Join(", ", typeArguments.Select(x => x.FullyQualifiedName))}>")}";
 
-        _methodInfoDataSubSegment.AppendLine($"        dq {GetStringConstantLabel(methodFullyQualifiedName)}");
+        _methodInfoDataSubSegment.AppendLine($"        dq {GetStringConstantLabel(methodFullyQualifiedName, currentTypeArguments)}");
         bytesWritten += 8;
 
         _methodInfoDataSubSegment.AppendLine($"        ; MethodInfo.Name");
         PadAlignment(ref bytesWritten, _methodInfoDataSubSegment, methodInfoOffsets["Name"].Alignment);
 
-        _methodInfoDataSubSegment.AppendLine($"        dq {GetStringConstantLabel(method.Name)}");
+        _methodInfoDataSubSegment.AppendLine($"        dq {GetStringConstantLabel(method.Name, currentTypeArguments)}");
         bytesWritten += 8;
 
         _methodInfoDataSubSegment.AppendLine($"        ; MethodInfo.Parameters");
@@ -156,7 +254,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         var parametersBytesWritten = 0u;
         _dynamicArrayDataSubSegments.Add(parametersArrayLabel, parametersSubSegment);
         parametersSubSegment.AppendLine($"        ; MethodInfo[{methodId}].Parameters.ObjectHeader.TypeId:");
-        parametersBytesWritten += WriteObjectHeaderBlob(parametersSubSegment, parametersArrayType);
+        parametersBytesWritten += WriteObjectHeaderBlob(parametersSubSegment, parametersArrayType, currentTypeArguments);
 
         PadAlignment(ref parametersBytesWritten, parametersSubSegment, 8);
         parametersSubSegment.AppendLine($"        ; MethodInfo[{methodId}].Parameters.ObjectHeader.Value.Length:");
@@ -166,13 +264,9 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         parametersSubSegment.AppendLine($"        ; MethodInfo[{methodId}].Parameters.ObjectHeader.Value.Items:");
         foreach (var local in method.ParameterLocals)
         {
-            var localType = local.Type;
-            if (localType is LoweredGenericPlaceholder placeholder)
-            {
-                localType = _currentTypeArguments[placeholder.PlaceholderName];
-            }
+            var localType = InstantiateTypeReference(local.Type, currentTypeArguments);
 
-            var localTypeId = GetTypeId(localType, _currentTypeArguments);
+            var localTypeId = GetTypeId(localType, currentTypeArguments);
             parametersSubSegment.AppendLine($"        dd 0x{localTypeId:x}");
             parametersBytesWritten += 4;
 
@@ -205,7 +299,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                 throw new NotImplementedException();
             }
 
-            parametersSubSegment.AppendLine($"        dq {GetStringConstantLabel(local.CompilerGivenName)}");
+            parametersSubSegment.AppendLine($"        dq {GetStringConstantLabel(local.CompilerGivenName, currentTypeArguments)}");
             parametersBytesWritten += 8;
         }
 
@@ -220,7 +314,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         var localsBytesWritten = 0u;
         _dynamicArrayDataSubSegments.Add(localsArrayLabel, localsSubSegment);
         localsSubSegment.AppendLine($"        ; MethodInfo[{methodId}].Locals.ObjectHeader.TypeId:");
-        localsBytesWritten += WriteObjectHeaderBlob(localsSubSegment, localsArrayType);
+        localsBytesWritten += WriteObjectHeaderBlob(localsSubSegment, localsArrayType, currentTypeArguments);
 
         PadAlignment(ref localsBytesWritten, localsSubSegment, 8);
         localsSubSegment.AppendLine($"        ; MethodInfo[{methodId}].Locals.ObjectHeader.Value.Length:");
@@ -230,7 +324,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         localsSubSegment.AppendLine($"        ; MethodInfo[{methodId}].Locals.ObjectHeader.Value.Items:");
         foreach (var local in method.Locals)
         {
-            var localTypeId = GetTypeId(local.Type, _currentTypeArguments);
+            var localTypeId = GetTypeId(local.Type, currentTypeArguments);
             localsSubSegment.AppendLine($"        dd 0x{localTypeId:x}");
             localsBytesWritten += 4;
             var localInfo = _locals[methodId][local.CompilerGivenName];
@@ -247,8 +341,8 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
             PadAlignment(ref localsBytesWritten, localsSubSegment, 4);
         }
 
-        var startLabel = GetMethodLabel(method, typeArguments);
-        var endLabel = GetMethodLabelEnd(method, typeArguments);
+        var startLabel = GetMethodLabel(method, typeArguments, currentTypeArguments);
+        var endLabel = GetMethodLabelEnd(method, typeArguments, currentTypeArguments);
 
         _methodInfoDataSubSegment.AppendLine("        ; MethodInfo.AddressFrom");
         _methodInfoDataSubSegment.AppendLine($"        dq {startLabel}");
@@ -489,7 +583,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         return;
     }
 
-    private bool TypeContainsPointer(ILoweredTypeReference type)
+    private bool TypeContainsPointer(ILoweredTypeReference type, IReadOnlyDictionary<LoweredGenericPlaceholder, ILoweredTypeReference> currentTypeArguments)
     {
         switch (type)
         {
@@ -497,19 +591,13 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                 return true;
             case LoweredConcreteTypeReference concrete:
                 {
-                    var dataType = _dataTypes[concrete.DefinitionId];
+                    var dataType = GetDataType(concrete.DefinitionId, concrete.TypeArguments, currentTypeArguments);
                     foreach (var variant in dataType.Variants)
                     {
                         foreach (var field in variant.Fields)
                         {
                             var fieldType = field.Type;
-                            if (fieldType is LoweredGenericPlaceholder placeholder)
-                            {
-                                Debug.Assert(placeholder.OwnerDefinitionId == concrete.DefinitionId);
-                                var index = dataType.TypeParameters.Index().First(x => x.Item.PlaceholderName == placeholder.PlaceholderName).Index;
-                                fieldType = concrete.TypeArguments[index];
-                            }
-                            if (TypeContainsPointer(fieldType))
+                            if (TypeContainsPointer(fieldType, currentTypeArguments))
                             {
                                 return true;
                             }
@@ -519,27 +607,27 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                 }
             case LoweredArray loweredArray:
                 {
-                    return TypeContainsPointer(loweredArray.ElementType);
+                    return TypeContainsPointer(loweredArray.ElementType, currentTypeArguments);
                 }
             case LoweredGenericPlaceholder genericPlaceholder:
                 {
-                    return _currentTypeArguments.TryGetValue(genericPlaceholder.PlaceholderName, out var typeArgument)
-                        && TypeContainsPointer(typeArgument);
+                    return currentTypeArguments.TryGetValue(genericPlaceholder, out var typeArgument)
+                        && TypeContainsPointer(typeArgument, currentTypeArguments);
                 }
             default:
                 throw new UnreachableException(type.GetType().ToString());
         }
     }
 
-    private void WriteTypeInfoBlob(ILoweredTypeReference type, ulong typeId, Dictionary<string, ILoweredTypeReference> currentTypeArguments)
+    private void WriteTypeInfoBlob(ILoweredTypeReference type, ulong typeId, IReadOnlyDictionary<LoweredGenericPlaceholder, ILoweredTypeReference> currentTypeArguments)
     {
         if (type is LoweredGenericPlaceholder outerGenericPlaceholder)
         {
-            WriteTypeInfoBlob(currentTypeArguments[outerGenericPlaceholder.PlaceholderName], typeId, currentTypeArguments);
+            WriteTypeInfoBlob(currentTypeArguments[outerGenericPlaceholder], typeId, currentTypeArguments);
             return;
         }
 
-        var typeInfoDataType = _dataTypes[DefId.TypeInfo];
+        var typeInfoDataType = GetDataType(DefId.TypeInfo, [], currentTypeArguments);
         var typeInfoTypeReference = new LoweredConcreteTypeReference(
                         DefId.TypeInfo,
                         []);
@@ -553,12 +641,12 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         {
             case LoweredConcreteTypeReference concrete:
                 {
-                    var dataType = _dataTypes[concrete.DefinitionId];
+                    var dataType = GetDataType(concrete.DefinitionId, concrete.TypeArguments, currentTypeArguments);
                     var typeSizeInfo = GetTypeSize(type, currentTypeArguments);
 
-                    var fieldInfoDataType = _dataTypes[DefId.FieldInfo];
-                    var staticFieldInfoDataType = _dataTypes[DefId.StaticFieldInfo];
-                    var variantInfoDataType = _dataTypes[DefId.VariantInfo];
+                    var fieldInfoDataType = GetDataType(DefId.FieldInfo, [], currentTypeArguments);
+                    var staticFieldInfoDataType = GetDataType(DefId.StaticFieldInfo, [], currentTypeArguments);
+                    var variantInfoDataType = GetDataType(DefId.VariantInfo, [], currentTypeArguments);
 
                     var staticFieldInfoTypeReference = new LoweredConcreteTypeReference(
                                     DefId.StaticFieldInfo,
@@ -570,11 +658,11 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                                     DefId.VariantInfo,
                                     []);
 
-                    var fieldInfoSize = GetTypeSize(fieldInfoTypeReference, []);
+                    var fieldInfoSize = GetTypeSize(fieldInfoTypeReference, currentTypeArguments);
                     var fieldFieldOffsets = fieldInfoSize.VariantSizeInfo["_classVariant"].FieldOffsets;
-                    var staticFieldInfoSize = GetTypeSize(staticFieldInfoTypeReference, []);
+                    var staticFieldInfoSize = GetTypeSize(staticFieldInfoTypeReference, currentTypeArguments);
                     var staticFieldFieldOffsets = staticFieldInfoSize.VariantSizeInfo["_classVariant"].FieldOffsets;
-                    var variantInfoSize = GetTypeSize(variantInfoTypeReference, []);
+                    var variantInfoSize = GetTypeSize(variantInfoTypeReference, currentTypeArguments);
                     var variantFieldOffsets = variantInfoSize.VariantSizeInfo["_classVariant"].FieldOffsets;
 
                     Debug.Assert(staticFieldInfoDataType.Variants.Count == 1);
@@ -619,19 +707,19 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                         // fullyQualifiedName
                         PadAlignment(ref bytesWritten, _typeInfoDataSubSegment, classVariantFieldOffsets["FullyQualifiedName"].Alignment);
                         _typeInfoDataSubSegment.AppendLine("        ; TypeInfo.FullyQualifiedName");
-                        _typeInfoDataSubSegment.AppendLine($"        dq {GetStringConstantLabel(type.FullyQualifiedName)}");
+                        _typeInfoDataSubSegment.AppendLine($"        dq {GetStringConstantLabel(type.FullyQualifiedName, currentTypeArguments)}");
                         bytesWritten += 8;
 
                         // name
                         PadAlignment(ref bytesWritten, _typeInfoDataSubSegment, classVariantFieldOffsets["Name"].Alignment);
                         _typeInfoDataSubSegment.AppendLine("        ; TypeInfo.Name");
-                        _typeInfoDataSubSegment.AppendLine($"        dq {GetStringConstantLabel(dataType.Name)}");
+                        _typeInfoDataSubSegment.AppendLine($"        dq {GetStringConstantLabel(dataType.Name, currentTypeArguments)}");
                         bytesWritten += 8;
 
                         // size
                         PadAlignment(ref bytesWritten, _typeInfoDataSubSegment, classVariantFieldOffsets["Size"].Alignment);
                         _typeInfoDataSubSegment.AppendLine("        ; TypeInfo.Size");
-                        _typeInfoDataSubSegment.AppendLine($"        dq 0x{GetTypeSize(type, _currentTypeArguments).Size:X}");
+                        _typeInfoDataSubSegment.AppendLine($"        dq 0x{GetTypeSize(type, currentTypeArguments).Size:X}");
                         bytesWritten += 8;
 
                         // typeId
@@ -656,7 +744,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                             throw new UnreachableException(staticFieldsField.Type.ToString());
                         }
 
-                        staticFieldsBytesWritten += WriteObjectHeaderBlob(staticFieldsSubSegment, staticFieldsType);
+                        staticFieldsBytesWritten += WriteObjectHeaderBlob(staticFieldsSubSegment, staticFieldsType, currentTypeArguments);
                         PadAlignment(ref staticFieldsBytesWritten, staticFieldsSubSegment, 8);
 
                         staticFieldsSubSegment.AppendLine("        ; Length");
@@ -667,7 +755,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                         {
                             // name
                             staticFieldsSubSegment.AppendLine($"        ; [{staticFieldIndex}].Name");
-                            staticFieldsSubSegment.AppendLine($"        dq {GetStringConstantLabel(staticField.Name)}");
+                            staticFieldsSubSegment.AppendLine($"        dq {GetStringConstantLabel(staticField.Name, currentTypeArguments)}");
                             staticFieldsBytesWritten += 8;
 
                             // typeId
@@ -703,7 +791,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                             throw new UnreachableException();
                         }
 
-                        fieldsBytesWritten += WriteObjectHeaderBlob(fieldsSubSegment, fieldsType);
+                        fieldsBytesWritten += WriteObjectHeaderBlob(fieldsSubSegment, fieldsType, currentTypeArguments);
                         PadAlignment(ref fieldsBytesWritten, fieldsSubSegment, 8);
 
                         fieldsSubSegment.AppendLine($"        ; Length");
@@ -716,7 +804,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                         {
                             // name
                             fieldsSubSegment.AppendLine($"        ; [{fieldIndex}].Name");
-                            fieldsSubSegment.AppendLine($"        dq {GetStringConstantLabel(field.Name)}");
+                            fieldsSubSegment.AppendLine($"        dq {GetStringConstantLabel(field.Name, currentTypeArguments)}");
                             fieldsBytesWritten += 8;
 
                             // typeId
@@ -733,7 +821,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                             if (!containsPointer)
                             {
                                 containsPointer = fieldType is LoweredPointer
-                                    || TypeContainsPointer(fieldType);
+                                    || TypeContainsPointer(fieldType, currentTypeArguments);
                             }
 
                             fieldsSubSegment.AppendLine($"        ; [{fieldIndex}].TypeId");
@@ -782,6 +870,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                         Debug.Assert(variantIdentifierGetterIndex == 7);
                         Debug.Assert(containsPointerIndex == 8);
 
+                        // I don't actually need the entire data type here, so don't use GetDataType. I just need the variant index
                         var optionType = _dataTypes[DefId.Option];
                         var optionNoneVariantIdentifier = optionType.Variants.Index().First(x => x.Item.Name == "None").Index;
 
@@ -795,13 +884,13 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                         // fullyQualifiedName
                         PadAlignment(ref bytesWritten, _typeInfoDataSubSegment, unionVariantFieldOffsets["FullyQualifiedName"].Alignment);
                         _typeInfoDataSubSegment.AppendLine("        ; TypeInfo.FullyQualifiedName");
-                        _typeInfoDataSubSegment.AppendLine($"        dq {GetStringConstantLabel(type.FullyQualifiedName)}");
+                        _typeInfoDataSubSegment.AppendLine($"        dq {GetStringConstantLabel(type.FullyQualifiedName, currentTypeArguments)}");
                         bytesWritten += 8;
 
                         // name
                         PadAlignment(ref bytesWritten, _typeInfoDataSubSegment, unionVariantFieldOffsets["Name"].Alignment);
                         _typeInfoDataSubSegment.AppendLine("        ; TypeInfo.Name");
-                        _typeInfoDataSubSegment.AppendLine($"        dq {GetStringConstantLabel(dataType.Name)}");
+                        _typeInfoDataSubSegment.AppendLine($"        dq {GetStringConstantLabel(dataType.Name, currentTypeArguments)}");
                         bytesWritten += 8;
 
                         // size
@@ -832,7 +921,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                             throw new UnreachableException();
                         }
 
-                        staticFieldsBytesWritten += WriteObjectHeaderBlob(staticFieldsSubSegment, staticFieldsType);
+                        staticFieldsBytesWritten += WriteObjectHeaderBlob(staticFieldsSubSegment, staticFieldsType, currentTypeArguments);
                         PadAlignment(ref staticFieldsBytesWritten, staticFieldsSubSegment, 8);
 
                         staticFieldsSubSegment.AppendLine($"        ; Length");
@@ -843,7 +932,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                         {
                             // name
                             staticFieldsSubSegment.AppendLine($"        ; [{staticFieldIndex}].Name");
-                            staticFieldsSubSegment.AppendLine($"        dq {GetStringConstantLabel(staticField.Name)}");
+                            staticFieldsSubSegment.AppendLine($"        dq {GetStringConstantLabel(staticField.Name, currentTypeArguments)}");
                             staticFieldsBytesWritten += 8;
 
                             // typeId
@@ -877,7 +966,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                         {
                             throw new UnreachableException();
                         }
-                        variantsBytesWritten += WriteObjectHeaderBlob(variantsSubSegment, variantsFieldType);
+                        variantsBytesWritten += WriteObjectHeaderBlob(variantsSubSegment, variantsFieldType, currentTypeArguments);
                         PadAlignment(ref variantsBytesWritten, variantsSubSegment, 8);
 
                         variantsSubSegment.AppendLine("        ; Length");
@@ -892,7 +981,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
 
                             // name
                             variantsSubSegment.AppendLine($"        ; Name");
-                            variantsSubSegment.AppendLine($"        dq {GetStringConstantLabel(variant.Name)}");
+                            variantsSubSegment.AppendLine($"        dq {GetStringConstantLabel(variant.Name, currentTypeArguments)}");
                             variantsBytesWritten += 8;
 
                             var fieldsLabel = $"{variantsLabel}_{variantIndex}_fields";
@@ -908,7 +997,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                                 throw new UnreachableException();
                             }
 
-                            fieldsBytesWritten += WriteObjectHeaderBlob(fieldsSubSegment, variantInfoFieldsType);
+                            fieldsBytesWritten += WriteObjectHeaderBlob(fieldsSubSegment, variantInfoFieldsType, currentTypeArguments);
                             PadAlignment(ref fieldsBytesWritten, fieldsSubSegment, 8);
 
                             fieldsSubSegment.AppendLine($"        ; Length");
@@ -922,7 +1011,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                             {
                                 // name
                                 fieldsSubSegment.AppendLine($"        ; Name");
-                                fieldsSubSegment.AppendLine($"        dq {GetStringConstantLabel(field.Name)}");
+                                fieldsSubSegment.AppendLine($"        dq {GetStringConstantLabel(field.Name, currentTypeArguments)}");
                                 fieldsBytesWritten += 8;
 
                                 // typeId
@@ -939,7 +1028,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                                 if (!variantContainsPointer)
                                 {
                                     variantContainsPointer = fieldType is LoweredPointer
-                                        || TypeContainsPointer(fieldType);
+                                        || TypeContainsPointer(fieldType, currentTypeArguments);
 
                                     unionContainsPointer |= variantContainsPointer;
                                 }
@@ -1001,7 +1090,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                     // fullyQualifiedName
                     PadAlignment(ref bytesWritten, _typeInfoDataSubSegment, pointerToVariantFieldOffsets["FullyQualifiedName"].Alignment);
                     _typeInfoDataSubSegment.AppendLine("        ; TypeInfo.FullyQualifiedName");
-                    _typeInfoDataSubSegment.AppendLine($"        dq {GetStringConstantLabel(type.FullyQualifiedName)}");
+                    _typeInfoDataSubSegment.AppendLine($"        dq {GetStringConstantLabel(type.FullyQualifiedName, currentTypeArguments)}");
                     bytesWritten += 8;
 
                     // pointerTo
@@ -1028,7 +1117,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                     // fullyQualifiedName
                     PadAlignment(ref bytesWritten, _typeInfoDataSubSegment, arrayVariantFieldOffsets["FullyQualifiedName"].Alignment);
                     _typeInfoDataSubSegment.AppendLine("        ; TypeInfo.FullyQualifiedName");
-                    _typeInfoDataSubSegment.AppendLine($"        dq {GetStringConstantLabel(type.FullyQualifiedName)}");
+                    _typeInfoDataSubSegment.AppendLine($"        dq {GetStringConstantLabel(type.FullyQualifiedName, currentTypeArguments)}");
                     bytesWritten += 8;
 
                     var elementType = array.ElementType;
@@ -1101,7 +1190,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                     )
                 )
             ],
-            Locals: []), []);
+            Locals: []), [], new Dictionary<LoweredGenericPlaceholder, ILoweredTypeReference>());
 
         _codeSegment.AppendLine(
             """
@@ -1126,7 +1215,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                         usefulMethodIds.Contains(x.Id)
                         && x.TypeParameters.Count == 0))
         {
-            TryEnqueueMethodForProcessing(method, []);
+            TryEnqueueMethodForProcessing(method, [], new Dictionary<LoweredGenericPlaceholder, ILoweredTypeReference>());
         }
 
         while (_methodProcessingQueue.TryDequeue(out var item))
@@ -1145,19 +1234,19 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
 
         var typeInfoSize = GetTypeSize(
             new LoweredConcreteTypeReference(DefId.TypeInfo, []),
-            []);
+            new Dictionary<LoweredGenericPlaceholder, ILoweredTypeReference>());
         var variantInfoSize = GetTypeSize(
             new LoweredConcreteTypeReference(DefId.VariantInfo, []),
-            []);
+            new Dictionary<LoweredGenericPlaceholder, ILoweredTypeReference>());
         var staticFieldInfoSize = GetTypeSize(
             new LoweredConcreteTypeReference(DefId.StaticFieldInfo, []),
-            []);
+            new Dictionary<LoweredGenericPlaceholder, ILoweredTypeReference>());
         var fieldInfoSize = GetTypeSize(
             new LoweredConcreteTypeReference(DefId.FieldInfo, []),
-            []);
+            new Dictionary<LoweredGenericPlaceholder, ILoweredTypeReference>());
         var methodInfoSize = GetTypeSize(
             new LoweredConcreteTypeReference(DefId.MethodInfo, []),
-            []);
+            new Dictionary<LoweredGenericPlaceholder, ILoweredTypeReference>());
 
         var dynamicArrays = new StringBuilder();
         foreach (var (label, subSegment) in _dynamicArrayDataSubSegments)
@@ -1173,7 +1262,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
             new LoweredConcreteTypeReference(DefId.BoxedValue, [
                 new LoweredConcreteTypeReference(DefId.String, [])
             ]),
-            []
+            new Dictionary<LoweredGenericPlaceholder, ILoweredTypeReference>()
         );
 
         CreateMain(mainMethod);
@@ -1268,7 +1357,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
 
         // give main it's shadow space
         _codeSegment.AppendLine($"    sub     rsp, {ShadowSpaceBytes}");
-        _codeSegment.AppendLine($"    call    {GetMethodLabel(mainMethod, [])}");
+        _codeSegment.AppendLine($"    call    {GetMethodLabel(mainMethod, [], new Dictionary<LoweredGenericPlaceholder, ILoweredTypeReference>())}");
 
         _codeSegment.AppendLine($"    add     rsp, {ShadowSpaceBytes}");
 
@@ -1292,22 +1381,33 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
 
     private sealed record LocalInfo(IAsmPlace Place, ILoweredTypeReference Type);
 
-    private static string GetMethodLabelEnd(IMethod method, IReadOnlyList<ILoweredTypeReference> typeArguments)
+    private static string GetMethodLabelEnd(IMethod method, IReadOnlyList<ILoweredTypeReference> typeArguments, IReadOnlyDictionary<LoweredGenericPlaceholder, ILoweredTypeReference> currentTypeArguments)
     {
-        var label = GetMethodLabel(method, typeArguments);
+        var label = GetMethodLabel(method, typeArguments, currentTypeArguments);
         return $"{label}__end";
     }
 
-    private static string GetMethodLabel(IMethod method, IReadOnlyList<ILoweredTypeReference> typeArguments)
+    private static string GetMethodLabel(IMethod method, IReadOnlyList<ILoweredTypeReference> typeArguments, IReadOnlyDictionary<LoweredGenericPlaceholder, ILoweredTypeReference> currentTypeArguments)
     {
         if (method is LoweredExternMethod)
         {
             return method.Name;
         }
 
+        if (method is not LoweredMethod loweredMethod)
+        {
+            throw new NotImplementedException();
+        }
+
+        var typeArgumentsDictionary = loweredMethod.TypeParameters.Zip(typeArguments)
+            .Select(x => KeyValuePair.Create(x.First, x.Second))
+            .Concat(currentTypeArguments)
+            .DistinctBy(x => x.Key)
+            .ToDictionary(x => x.Key, x => x.Value);
+
         var label = typeArguments.Count == 0
             ? method.Id.FullName
-            : $"{method.Id.FullName}_{string.Join("_", typeArguments.Select(x => x switch
+            : $"{method.Id.FullName}_{string.Join("_", typeArguments.Select(x => InstantiateTypeReference(x, typeArgumentsDictionary) switch
             {
                 LoweredConcreteTypeReference concrete => concrete.DefinitionId.FullName,
                 LoweredPointer(LoweredConcreteTypeReference pointerToConcrete) => $"Pointer_{pointerToConcrete.DefinitionId.FullName}_",
@@ -1371,8 +1471,12 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         return false;
     }
 
-    private TypeSizeInfo GetTypeSize(ILoweredTypeReference typeReference, Dictionary<string, ILoweredTypeReference> typeArguments)
+    private TypeSizeInfo GetTypeSize(
+        ILoweredTypeReference typeReference,
+        IReadOnlyDictionary<LoweredGenericPlaceholder, ILoweredTypeReference> currentTypeArguments)
     {
+        typeReference = InstantiateTypeReference(typeReference, currentTypeArguments);
+
         var foundTypeReference = _typeSizes.FirstOrDefault(x => AreTypeReferencesEqual(x.Key, typeReference));
         if (foundTypeReference.Key is not null)
         {
@@ -1427,7 +1531,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                         break;
                     }
 
-                    var dataType = _dataTypes[concreteTypeReference.DefinitionId];
+                    var dataType = GetDataType(concreteTypeReference.DefinitionId, concreteTypeReference.TypeArguments, currentTypeArguments);
 
                     foreach (var variant in dataType.Variants)
                     {
@@ -1444,7 +1548,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                                     .First(x => x.Item.PlaceholderName == genericPlaceholder.PlaceholderName).Index;
                                 fieldType = concreteTypeReference.TypeArguments[index];
                             }
-                            var fieldSize = GetTypeSize(fieldType, typeArguments);
+                            var fieldSize = GetTypeSize(fieldType, currentTypeArguments);
 
                             AlignInt(ref variantSize, fieldSize.Alignment);
 
@@ -1488,13 +1592,17 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                 }
             case LoweredGenericPlaceholder placeholder:
                 {
-                    var innerTypeSize = GetTypeSize(typeArguments[placeholder.PlaceholderName], typeArguments);
+                    if (!currentTypeArguments.TryGetValue(placeholder, out var instantiatedType))
+                    {
+                        throw new InvalidOperationException(placeholder.ToString());
+                    }
+                    var innerTypeSize = GetTypeSize(instantiatedType, currentTypeArguments);
                     _typeSizes.Add(KeyValuePair.Create(typeReference, innerTypeSize));
                     return innerTypeSize;
                 }
             case LoweredArray { Length: not null } array:
                 {
-                    var elementSize = GetTypeSize(array.ElementType, typeArguments);
+                    var elementSize = GetTypeSize(array.ElementType, currentTypeArguments);
                     if (elementSize.Size % elementSize.Alignment != 0)
                     {
                         throw new NotImplementedException();
@@ -1511,7 +1619,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                 }
             case LoweredArray { Length: null } array:
                 {
-                    var elementSize = GetTypeSize(array.ElementType, typeArguments);
+                    var elementSize = GetTypeSize(array.ElementType, currentTypeArguments);
                     if (elementSize.Size % elementSize.Alignment != 0)
                     {
                         throw new NotImplementedException();
@@ -1610,7 +1718,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
     private void ProcessMethod(LoweredMethod method, IReadOnlyList<ILoweredTypeReference> typeArguments)
     {
         _methodBody.Clear();
-        _codeSegment.AppendLine($"{GetMethodLabel(method, typeArguments)}:");
+        _codeSegment.AppendLine($"{GetMethodLabel(method, typeArguments, new Dictionary<LoweredGenericPlaceholder, ILoweredTypeReference>())}:");
 
         _registersUsedInMethod.Clear();
 
@@ -1618,20 +1726,16 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         _currentMethodId = methodId;
 
         Debug.Assert(method.TypeParameters.Count == typeArguments.Count);
-        _currentTypeArguments = typeArguments.Zip(method.TypeParameters).ToDictionary(x => x.Second.PlaceholderName, x => x.First);
+        var currentTypeArguments = typeArguments.Zip(method.TypeParameters).ToDictionary(x => x.Second, x => x.First);
         _currentMethod = method;
         _methodCount++;
         _locals[methodId] = [];
         var parameterStackOffset = PointerSize * 2; // start with offset by PointerSize * 2 because return address and rbp are on the top of the stack
 
-        var returnType = method.ReturnValue.Type;
-        if (returnType is LoweredGenericPlaceholder { PlaceholderName: var placeholderName })
-        {
-            returnType = _currentTypeArguments[placeholderName];
-        }
-        _ = GetTypeId(returnType, _currentTypeArguments);
+        var returnType = InstantiateTypeReference(method.ReturnValue.Type, currentTypeArguments);
+        _ = GetTypeId(returnType, currentTypeArguments);
 
-        var returnSize = GetTypeSize(returnType, _currentTypeArguments);
+        var returnSize = GetTypeSize(returnType, currentTypeArguments);
 
         IEnumerable<MethodLocal> parameters = method.ParameterLocals;
 
@@ -1662,13 +1766,9 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         for (var index = 0; index < paramsEnumerated.Length; index++)
         {
             var parameterLocal = paramsEnumerated[index];
-            var parameterType = parameterLocal.Type;
-            if (parameterType is LoweredGenericPlaceholder { PlaceholderName: var parameterPlaceholderName })
-            {
-                parameterType = _currentTypeArguments[parameterPlaceholderName];
-            }
-            _ = GetTypeId(parameterType, _currentTypeArguments);
-            var parameterSize = GetTypeSize(parameterType, _currentTypeArguments);
+            var parameterType = InstantiateTypeReference(parameterLocal.Type, currentTypeArguments);
+            _ = GetTypeId(parameterType, currentTypeArguments);
+            var parameterSize = GetTypeSize(parameterType, currentTypeArguments);
             Debug.Assert(parameterSize.Size.HasValue);
             var size = Math.Min(parameterSize.Size.Value, PointerSize);
 
@@ -1723,13 +1823,9 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
 
         foreach (var local in locals)
         {
-            var localType = local.Type;
-            if (localType is LoweredGenericPlaceholder { PlaceholderName: var localPlaceholderName })
-            {
-                localType = _currentTypeArguments[localPlaceholderName];
-            }
-            _ = GetTypeId(localType, _currentTypeArguments);
-            var typeSize = GetTypeSize(localType, _currentTypeArguments);
+            var localType = InstantiateTypeReference(local.Type, currentTypeArguments);
+            _ = GetTypeId(localType, currentTypeArguments);
+            var typeSize = GetTypeSize(localType, currentTypeArguments);
 
             // make sure stack offset is aligned to the size of the type
             AlignInt(ref localStackOffset, typeSize.Alignment);
@@ -1758,10 +1854,10 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
             _methodBody.AppendLine($"{GetBasicBlockLabel(basicBlock.Id)}:");
             foreach (var statement in basicBlock.Statements)
             {
-                ProcessStatement(statement);
+                ProcessStatement(statement, currentTypeArguments);
             }
 
-            ProcessTerminator(basicBlock.Terminator.NotNull());
+            ProcessTerminator(basicBlock.Terminator.NotNull(), currentTypeArguments);
         }
 
         // generate prolog after method body because we need to know which non volatile registers were used
@@ -1841,7 +1937,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         _codeSegment.Append(_methodBody);
         _codeSegment.AppendLine();
 
-        _codeSegment.AppendLine($"{GetMethodLabelEnd(method, typeArguments)}:");
+        _codeSegment.AppendLine($"{GetMethodLabelEnd(method, typeArguments, new Dictionary<LoweredGenericPlaceholder, ILoweredTypeReference>())}:");
 
         var prologEndLabel = GetBasicBlockLabel(method.BasicBlocks[0].Id);
         WriteMethodInfoBlob(
@@ -1851,7 +1947,8 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
             prologOperations,
             prologEndLabel,
             UnwindInfoMethodFlags.None,
-            null);
+            null,
+            currentTypeArguments);
     }
 
     private static string FormatOffset(int offset) => offset switch
@@ -1906,14 +2003,14 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
             indicates an overflow condition for signed-integer (two’s complement) arithmetic
     */
 
-    private void ProcessStatement(IStatement statement)
+    private void ProcessStatement(IStatement statement, IReadOnlyDictionary<LoweredGenericPlaceholder, ILoweredTypeReference> currentTypeArguments)
     {
         switch (statement)
         {
             case Assign assign:
                 {
-                    var asmPlace = PlaceToAsmPlace(assign.Place);
-                    AssignRValue(asmPlace, assign.RValue);
+                    var asmPlace = PlaceToAsmPlace(assign.Place, currentTypeArguments);
+                    AssignRValue(asmPlace, assign.RValue, currentTypeArguments);
                     break;
                 }
             case LocalAlive:
@@ -1931,11 +2028,11 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         Unsigned
     }
 
-    private IntSigned? GetIntSigned(IOperand operand)
+    private IntSigned? GetIntSigned(IOperand operand, IReadOnlyDictionary<LoweredGenericPlaceholder, ILoweredTypeReference> currentTypeArguments)
     {
         return operand switch
         {
-            Copy { Place: var place } => GetPlaceType(place) switch
+            Copy { Place: var place } => GetPlaceType(place, currentTypeArguments) switch
             {
                 LoweredConcreteTypeReference concrete when DefId.SignedInts.Contains(concrete.DefinitionId) => IntSigned.Signed,
                 LoweredConcreteTypeReference concrete when DefId.UnsignedInts.Contains(concrete.DefinitionId) => IntSigned.Unsigned,
@@ -1949,13 +2046,13 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
     }
 
 
-    private ILoweredTypeReference GetPlaceType(IPlace place)
+    private ILoweredTypeReference GetPlaceType(IPlace place, IReadOnlyDictionary<LoweredGenericPlaceholder, ILoweredTypeReference> currentTypeArguments)
     {
         switch (place)
         {
             case Field field:
                 {
-                    var ownerType = GetPlaceType(field.FieldOwner);
+                    var ownerType = GetPlaceType(field.FieldOwner, currentTypeArguments);
 
                     if (ownerType is LoweredArray)
                     {
@@ -1974,7 +2071,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                         {
                             LoweredConcreteTypeReference => ownerType,
                             LoweredFunctionReference => throw new InvalidOperationException("FunctionReference has no fields"),
-                            LoweredGenericPlaceholder(_, var placeholderName) => _currentTypeArguments[placeholderName],
+                            LoweredGenericPlaceholder placeholder => currentTypeArguments[placeholder],
                             LoweredPointer(var pointerTo) => pointerTo,
                             RawPointer => throw new InvalidOperationException("Raw Pointer has no fields"),
                             _ => throw new ArgumentOutOfRangeException(nameof(ownerType), ownerType.GetType().Name)
@@ -1983,7 +2080,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                         concreteOwner = ownerType as LoweredConcreteTypeReference;
                     }
 
-                    var dataType = _dataTypes[concreteOwner.DefinitionId];
+                    var dataType = GetDataType(concreteOwner.DefinitionId, concreteOwner.TypeArguments, currentTypeArguments);
                     var variant = dataType.Variants.First(x => x.Name == field.VariantName);
 
                     var type = variant.Fields.First(x => x.Name == field.FieldName).Type;
@@ -2004,12 +2101,12 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                 throw new NotImplementedException();
             case Deref deref:
                 {
-                    var pointerType = (GetPlaceType(deref.PointerPlace) as LoweredPointer).NotNull();
+                    var pointerType = (GetPlaceType(deref.PointerPlace, currentTypeArguments) as LoweredPointer).NotNull();
                     return pointerType.PointerTo;
                 }
             case Index index:
                 {
-                    var arrayType = (GetPlaceType(index.ArrayPlace) as LoweredArray).NotNull();
+                    var arrayType = (GetPlaceType(index.ArrayPlace, currentTypeArguments) as LoweredArray).NotNull();
                     return arrayType.ElementType;
                 }
             default:
@@ -2018,10 +2115,10 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
     }
 
 
-    private void ProcessBinaryOperation(IAsmPlace destination, IOperand left, IOperand right, BinaryOperationKind kind)
+    private void ProcessBinaryOperation(IAsmPlace destination, IOperand left, IOperand right, BinaryOperationKind kind, IReadOnlyDictionary<LoweredGenericPlaceholder, ILoweredTypeReference> currentTypeArguments)
     {
-        var operandType = GetOperandType(left);
-        var typeSize = GetTypeSize(operandType, _currentTypeArguments).Size;
+        var operandType = GetOperandType(left, currentTypeArguments);
+        var typeSize = GetTypeSize(operandType, currentTypeArguments).Size;
         Debug.Assert(typeSize.HasValue);
         var size = typeSize.Value;
 
@@ -2035,8 +2132,8 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                     leftOperandRegister = AllocateRegister();
                     rightOperandRegister = AllocateRegister();
 
-                    MoveOperandToDestination(left, leftOperandRegister);
-                    MoveOperandToDestination(right, rightOperandRegister);
+                    MoveOperandToDestination(left, leftOperandRegister, currentTypeArguments);
+                    MoveOperandToDestination(right, rightOperandRegister, currentTypeArguments);
                     _methodBody.AppendLine($"    add     {leftOperandRegister.ToAsm(size)}, {rightOperandRegister.ToAsm(size)}");
                     MoveIntoPlace(destination, leftOperandRegister, size);
                     break;
@@ -2046,8 +2143,8 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                     leftOperandRegister = AllocateRegister();
                     rightOperandRegister = AllocateRegister();
 
-                    MoveOperandToDestination(left, leftOperandRegister);
-                    MoveOperandToDestination(right, rightOperandRegister);
+                    MoveOperandToDestination(left, leftOperandRegister, currentTypeArguments);
+                    MoveOperandToDestination(right, rightOperandRegister, currentTypeArguments);
                     _methodBody.AppendLine($"    sub     {leftOperandRegister.ToAsm(size)}, {rightOperandRegister.ToAsm(size)}");
                     MoveIntoPlace(destination, leftOperandRegister, size);
                     break;
@@ -2059,9 +2156,9 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                     AllocateRegister(leftOperandRegister);
                     rightOperandRegister = AllocateRegister();
 
-                    MoveOperandToDestination(left, leftOperandRegister);
-                    MoveOperandToDestination(right, rightOperandRegister);
-                    var intSigned = GetIntSigned(left).NotNull();
+                    MoveOperandToDestination(left, leftOperandRegister, currentTypeArguments);
+                    MoveOperandToDestination(right, rightOperandRegister, currentTypeArguments);
+                    var intSigned = GetIntSigned(left, currentTypeArguments).NotNull();
 
                     // imul with one operand implicitly goes into the a register (rax or al),
                     // and the destination is in the a register too
@@ -2081,12 +2178,12 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                         AllocateRegister(Register.D);
                     }
 
-                    if (GetIntSigned(left) == IntSigned.Signed)
+                    if (GetIntSigned(left, currentTypeArguments) == IntSigned.Signed)
                     {
                         rightOperandRegister = AllocateRegister();
 
-                        MoveOperandToDestination(left, leftOperandRegister);
-                        MoveOperandToDestination(right, rightOperandRegister);
+                        MoveOperandToDestination(left, leftOperandRegister, currentTypeArguments);
+                        MoveOperandToDestination(right, rightOperandRegister, currentTypeArguments);
 
                         // sign extend for signed division
                         _methodBody.AppendLine(size switch
@@ -2102,8 +2199,8 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                     else
                     {
                         rightOperandRegister = AllocateRegister();
-                        MoveOperandToDestination(left, leftOperandRegister);
-                        MoveOperandToDestination(right, rightOperandRegister);
+                        MoveOperandToDestination(left, leftOperandRegister, currentTypeArguments);
+                        MoveOperandToDestination(right, rightOperandRegister, currentTypeArguments);
 
                         // zero extend for unsigned division
                         _methodBody.AppendLine(size switch
@@ -2132,8 +2229,8 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                     leftOperandRegister = AllocateRegister();
                     rightOperandRegister = AllocateRegister();
 
-                    MoveOperandToDestination(left, leftOperandRegister);
-                    MoveOperandToDestination(right, rightOperandRegister);
+                    MoveOperandToDestination(left, leftOperandRegister, currentTypeArguments);
+                    MoveOperandToDestination(right, rightOperandRegister, currentTypeArguments);
                     _methodBody.AppendLine($"    cmp     {leftOperandRegister.ToAsm(size)}, {rightOperandRegister.ToAsm(size)}");
                     _methodBody.AppendLine("    pushf");
                     _methodBody.AppendLine($"    pop     {leftOperandRegister.ToAsm(PointerSize)}");
@@ -2149,8 +2246,8 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                     leftOperandRegister = AllocateRegister();
                     rightOperandRegister = AllocateRegister();
 
-                    MoveOperandToDestination(left, leftOperandRegister);
-                    MoveOperandToDestination(right, rightOperandRegister);
+                    MoveOperandToDestination(left, leftOperandRegister, currentTypeArguments);
+                    MoveOperandToDestination(right, rightOperandRegister, currentTypeArguments);
                     _methodBody.AppendLine($"    cmp     {rightOperandRegister.ToAsm(size)}, {leftOperandRegister.ToAsm(size)}");
                     _methodBody.AppendLine("    pushf");
                     _methodBody.AppendLine($"    pop     {leftOperandRegister.ToAsm(PointerSize)}");
@@ -2165,8 +2262,8 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                 {
                     leftOperandRegister = AllocateRegister();
                     rightOperandRegister = AllocateRegister();
-                    MoveOperandToDestination(left, leftOperandRegister);
-                    MoveOperandToDestination(right, rightOperandRegister);
+                    MoveOperandToDestination(left, leftOperandRegister, currentTypeArguments);
+                    MoveOperandToDestination(right, rightOperandRegister, currentTypeArguments);
                     _methodBody.AppendLine($"    cmp     {leftOperandRegister.ToAsm(size)}, {rightOperandRegister.ToAsm(size)}");
                     _methodBody.AppendLine("    pushf");
                     _methodBody.AppendLine($"    pop     {leftOperandRegister.ToAsm(PointerSize)}");
@@ -2179,8 +2276,8 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                 {
                     leftOperandRegister = AllocateRegister();
                     rightOperandRegister = AllocateRegister();
-                    MoveOperandToDestination(left, leftOperandRegister);
-                    MoveOperandToDestination(right, rightOperandRegister);
+                    MoveOperandToDestination(left, leftOperandRegister, currentTypeArguments);
+                    MoveOperandToDestination(right, rightOperandRegister, currentTypeArguments);
                     _methodBody.AppendLine($"    cmp     {leftOperandRegister.ToAsm(size)}, {rightOperandRegister.ToAsm(size)}");
                     _methodBody.AppendLine("    pushf");
                     _methodBody.AppendLine($"    pop     {leftOperandRegister.ToAsm(PointerSize)}");
@@ -2198,25 +2295,25 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         FreeRegister(rightOperandRegister);
     }
 
-    private void AssignRValue(IAsmPlace place, IRValue rValue)
+    private void AssignRValue(IAsmPlace place, IRValue rValue, IReadOnlyDictionary<LoweredGenericPlaceholder, ILoweredTypeReference> currentTypeArguments)
     {
         switch (rValue)
         {
             case BinaryOperation binaryOperation:
                 {
-                    ProcessBinaryOperation(place, binaryOperation.LeftOperand, binaryOperation.RightOperand, binaryOperation.Kind);
+                    ProcessBinaryOperation(place, binaryOperation.LeftOperand, binaryOperation.RightOperand, binaryOperation.Kind, currentTypeArguments);
                     break;
                 }
             case CreateObject createObject:
                 {
-                    var size = GetTypeSize(createObject.Type, _currentTypeArguments);
+                    var size = GetTypeSize(createObject.Type, currentTypeArguments);
                     FillMemory(place, "0x0", size.Size!.Value);
 
                     break;
                 }
             case CreateArray createArray:
                 {
-                    var size = GetTypeSize(createArray.Array, _currentTypeArguments);
+                    var size = GetTypeSize(createArray.Array, currentTypeArguments);
                     if (size.Size > 0)
                     {
                         FillMemory(place, "0x0", size.Size.Value);
@@ -2226,19 +2323,19 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                 }
             case UnaryOperation unaryOperation:
                 {
-                    ProcessUnaryOperation(place, unaryOperation.Operand, unaryOperation.Kind);
+                    ProcessUnaryOperation(place, unaryOperation.Operand, unaryOperation.Kind, currentTypeArguments);
                     break;
                 }
             case Use use:
                 {
-                    MoveOperandToDestination(use.Operand, place);
+                    MoveOperandToDestination(use.Operand, place, currentTypeArguments);
                     break;
                 }
             case FillArray fill:
                 {
                     // todo: this is naive, do something smarter
-                    var elementType = GetOperandType(fill.Value);
-                    var elementSize = GetTypeSize(elementType, _currentTypeArguments);
+                    var elementType = GetOperandType(fill.Value, currentTypeArguments);
+                    var elementSize = GetTypeSize(elementType, currentTypeArguments);
                     Debug.Assert(place.IsMemoryPlace);
                     var (remainingOffset, addressRegister, freeRegister) = FollowOffsetPointerChain(place);
                     for (var i = 0; i < fill.Count; i++)
@@ -2249,7 +2346,8 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                                 new PointerTo(addressRegister),
                                 null,
                                 (i * (int)elementSize.Size!.Value) + remainingOffset + 8 // + 8 to skip past array length
-                            )
+                            ),
+                            currentTypeArguments
                         );
                     }
 
@@ -2265,17 +2363,17 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         }
     }
 
-    private void ProcessUnaryOperation(IAsmPlace place, IOperand operand, UnaryOperationKind kind)
+    private void ProcessUnaryOperation(IAsmPlace place, IOperand operand, UnaryOperationKind kind, IReadOnlyDictionary<LoweredGenericPlaceholder, ILoweredTypeReference> currentTypeArguments)
     {
-        var operandType = GetOperandType(operand);
-        var operandSize = GetTypeSize(operandType, _currentTypeArguments);
+        var operandType = GetOperandType(operand, currentTypeArguments);
+        var operandSize = GetTypeSize(operandType, currentTypeArguments);
 
         switch (kind)
         {
             case UnaryOperationKind.Not:
                 {
                     var operandRegister = AllocateRegister();
-                    MoveOperandToDestination(operand, operandRegister);
+                    MoveOperandToDestination(operand, operandRegister, currentTypeArguments);
 
                     // btc instruction must be performed on 16 bit registers or greater
                     var registerSize = operandRegister.ToAsm(Math.Max(operandSize.Size!.Value, 2));
@@ -2287,7 +2385,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
             case UnaryOperationKind.Negate:
                 {
                     var operandRegister = AllocateRegister();
-                    MoveOperandToDestination(operand, operandRegister);
+                    MoveOperandToDestination(operand, operandRegister, currentTypeArguments);
 
                     _methodBody.AppendLine($"    neg     {operandRegister.ToAsm(operandSize.Size!.Value)}");
                     MoveIntoPlace(place, operandRegister, operandSize.Size!.Value);
@@ -2300,7 +2398,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         }
     }
 
-    private void ProcessTerminator(ITerminator terminator)
+    private void ProcessTerminator(ITerminator terminator, IReadOnlyDictionary<LoweredGenericPlaceholder, ILoweredTypeReference> currentTypeArguments)
     {
         switch (terminator)
         {
@@ -2308,17 +2406,13 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                 _methodBody.AppendLine($"    jmp     {GetBasicBlockLabel(goTo.BasicBlockId)}");
                 break;
             case MethodCall methodCall:
-                ProcessMethodCall(methodCall);
+                ProcessMethodCall(methodCall, currentTypeArguments);
                 break;
             case Return:
                 {
-                    var returnType = _currentMethod.NotNull().ReturnValue.Type;
-                    if (returnType is LoweredGenericPlaceholder { PlaceholderName: var placeholderName })
-                    {
-                        returnType = _currentTypeArguments[placeholderName];
-                    }
-                    var returnSize = GetTypeSize(returnType, _currentTypeArguments);
-                    var returnValuePlace = PlaceToAsmPlace(new Local(_currentMethod.NotNull().ReturnValue.CompilerGivenName));
+                    var returnType = InstantiateTypeReference(_currentMethod.NotNull().ReturnValue.Type, currentTypeArguments);
+                    var returnSize = GetTypeSize(returnType, currentTypeArguments);
+                    var returnValuePlace = PlaceToAsmPlace(new Local(_currentMethod.NotNull().ReturnValue.CompilerGivenName), currentTypeArguments);
 
                     AllocateRegister(Register.A);
                     if (returnSize.Size > MaxParameterSize)
@@ -2345,9 +2439,9 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
             case SwitchInt switchInt:
                 {
                     var register = AllocateRegister();
-                    MoveOperandToDestination(switchInt.Operand, register);
-                    var operandType = GetOperandType(switchInt.Operand);
-                    var operandSize = GetTypeSize(operandType, _currentTypeArguments);
+                    MoveOperandToDestination(switchInt.Operand, register, currentTypeArguments);
+                    var operandType = GetOperandType(switchInt.Operand, currentTypeArguments);
+                    var operandSize = GetTypeSize(operandType, currentTypeArguments);
                     foreach (var (intCase, jumpTo) in switchInt.Cases)
                     {
                         _methodBody.AppendLine($"    cmp     {register.ToAsm(operandSize.Size!.Value)}, {intCase}");
@@ -2361,7 +2455,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
             case Assert assert:
                 {
                     // TODO: actually assert
-                    ProcessTerminator(new GoTo(assert.GoTo));
+                    ProcessTerminator(new GoTo(assert.GoTo), currentTypeArguments);
                     break;
                 }
             default:
@@ -2369,19 +2463,19 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         }
     }
 
-    private ILoweredTypeReference GetOperandType(IOperand operand)
+    private ILoweredTypeReference GetOperandType(IOperand operand, IReadOnlyDictionary<LoweredGenericPlaceholder, ILoweredTypeReference> currentTypeArguments)
     {
         switch (operand)
         {
-            case BoolConstant boolConstant:
+            case BoolConstant:
                 {
                     return new LoweredConcreteTypeReference(
                         DefId.Boolean,
                         []);
                 }
             case Copy copy:
-                return GetPlaceType(copy.Place);
-            case FunctionPointerConstant functionPointerConstant:
+                return GetPlaceType(copy.Place, currentTypeArguments);
+            case FunctionPointerConstant:
                 return new RawPointer();
             case IntConstant intConstant:
                 {
@@ -2420,14 +2514,14 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         }
     }
 
-    private void ProcessMethodCall(MethodCall methodCall)
+    private void ProcessMethodCall(MethodCall methodCall, IReadOnlyDictionary<LoweredGenericPlaceholder, ILoweredTypeReference> currentTypeArguments)
     {
         var arity = methodCall.Arguments.Count;
 
         _methodBody.AppendLine($"; MethodCall({arity})");
 
         // ILoweredTypeReference returnType;
-        Dictionary<string, ILoweredTypeReference> calleeTypeArgumentsDictionary;
+        IReadOnlyDictionary<LoweredGenericPlaceholder, ILoweredTypeReference> calleeTypeArgumentsDictionary;
         string methodToCall;
         var registersToFree = new List<Register>();
 
@@ -2437,50 +2531,29 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                 {
                     IReadOnlyList<ILoweredTypeReference> calleeTypeArguments =
                         [
-                            ..functionReference.TypeArguments.Select(ILoweredTypeReference (x) =>
-                            {
-                                switch (x)
-                                {
-                                    case LoweredConcreteTypeReference concreteArgument:
-                                        return concreteArgument;
-                                    case LoweredGenericPlaceholder genericReefTypeReference:
-                                    {
-                                        Debug.Assert(genericReefTypeReference.OwnerDefinitionId == _currentMethod.NotNull().Id);
-                                        return _currentTypeArguments[genericReefTypeReference.PlaceholderName];
-                                    }
-                                    case LoweredPointer loweredPointer:
-                                    {
-                                        return loweredPointer;
-                                    }
-                                    default:
-                                        throw new NotImplementedException(x.GetType().ToString());
-                                }
-                            })
+                            ..functionReference.TypeArguments.Select(x => InstantiateTypeReference(x, currentTypeArguments))
                         ];
 
                     var calleeMethod = GetMethod(functionReference.DefinitionId).NotNull();
 
-                    calleeTypeArgumentsDictionary = calleeMethod.TypeParameters.Index()
-                        .ToDictionary(x => x.Item.PlaceholderName, x => calleeTypeArguments[x.Index]);
+                    calleeTypeArgumentsDictionary = calleeMethod.TypeParameters.Zip(calleeTypeArguments)
+                        .ToDictionary(x => x.First, x => x.Second);
 
                     if (calleeMethod is LoweredMethod loweredMethod)
                     {
-                        TryEnqueueMethodForProcessing(loweredMethod, calleeTypeArguments);
+                        TryEnqueueMethodForProcessing(loweredMethod, calleeTypeArguments, currentTypeArguments);
                     }
 
-                    methodToCall = GetMethodLabel(calleeMethod, calleeTypeArguments);
-
-                    // returnType = calleeMethod.ReturnValue.Type;
-
+                    methodToCall = GetMethodLabel(calleeMethod, calleeTypeArguments, currentTypeArguments);
 
                     break;
                 }
             case MethodPointerFunctionReference methodPointerReference:
                 {
                     // returnType = methodPointerReference.ReturnType;
-                    calleeTypeArgumentsDictionary = [];
+                    calleeTypeArgumentsDictionary = new Dictionary<LoweredGenericPlaceholder, ILoweredTypeReference>();
                     var methodInRegister = AllocateRegister();
-                    MoveOperandToDestination(methodPointerReference.MethodPointer, methodInRegister);
+                    MoveOperandToDestination(methodPointerReference.MethodPointer, methodInRegister, currentTypeArguments);
                     registersToFree.Add(methodInRegister);
 
                     methodToCall = methodInRegister.ToAsm(PointerSize);
@@ -2493,7 +2566,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                 }
         }
 
-        var returnType = GetPlaceType(methodCall.PlaceDestination);
+        var returnType = GetPlaceType(methodCall.PlaceDestination, currentTypeArguments);
 
         if (returnType is LoweredGenericPlaceholder genericReturnType)
         {
@@ -2501,9 +2574,9 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
             // returnType = calleeTypeArgumentsDictionary[genericReturnType.PlaceholderName];
         }
 
-        var returnSize = GetTypeSize(returnType, calleeTypeArgumentsDictionary);
+        var returnSize = GetTypeSize(returnType, calleeTypeArgumentsDictionary.Concat(currentTypeArguments).ToDictionary(x => x.Key, x => x.Value));
 
-        var argumentTypesEnumerable = methodCall.Arguments.Select(x => (GetOperandType(x), x));
+        var argumentTypesEnumerable = methodCall.Arguments.Select(x => (GetOperandType(x, currentTypeArguments), x));
 
         if (returnSize.Size > MaxParameterSize)
         {
@@ -2529,7 +2602,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         {
             var (argumentType, argument) = argumentTypes[i];
 
-            var size = GetTypeSize(argumentType, _currentTypeArguments);
+            var size = GetTypeSize(argumentType, currentTypeArguments);
 
             if (size.Size > MaxParameterSize)
             {
@@ -2537,7 +2610,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                 largeParametersSpace += size.Size!.Value;
                 parameterPointers[i] = -(int)largeParametersSpace;
                 _methodBody.AppendLine($"; Parameter {i} ({size} bytes) at offset {-largeParametersSpace}");
-                MoveOperandToDestination(argument.NotNull(), new MemoryOffset(new PointerTo(Register.StackPointer), null, -(int)largeParametersSpace));
+                MoveOperandToDestination(argument.NotNull(), new MemoryOffset(new PointerTo(Register.StackPointer), null, -(int)largeParametersSpace), currentTypeArguments);
             }
         }
 
@@ -2561,7 +2634,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
 
             var (type, argument) = argumentTypes[i];
 
-            var size = GetTypeSize(type, _currentTypeArguments);
+            var size = GetTypeSize(type, currentTypeArguments);
 
 
             if (argumentDestination is Register register)
@@ -2572,7 +2645,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
 
             if (size.Size <= MaxParameterSize)
             {
-                MoveOperandToDestination(argument, argumentDestination);
+                MoveOperandToDestination(argument, argumentDestination, currentTypeArguments);
             }
             else
             {
@@ -2600,7 +2673,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
             returnSource = new PointerTo(returnSource);
         }
 
-        var destination = PlaceToAsmPlace(methodCall.PlaceDestination);
+        var destination = PlaceToAsmPlace(methodCall.PlaceDestination, currentTypeArguments);
 
         MoveIntoPlace(
             destination,
@@ -2740,14 +2813,14 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         public bool IsMemoryPlace => true;
     }
 
-    private uint WriteObjectHeaderBlob(StringBuilder sb, ILoweredTypeReference typeReference)
+    private uint WriteObjectHeaderBlob(StringBuilder sb, ILoweredTypeReference typeReference, IReadOnlyDictionary<LoweredGenericPlaceholder, ILoweredTypeReference> currentTypeArguments)
     {
-        sb.AppendLine($"        dd 0x{GetTypeId(typeReference, _currentTypeArguments):X}");
+        sb.AppendLine($"        dd 0x{GetTypeId(typeReference, currentTypeArguments):X}");
         return 4;
     }
 
 
-    private string GetStringConstantLabel(string constant)
+    private string GetStringConstantLabel(string constant, IReadOnlyDictionary<LoweredGenericPlaceholder, ILoweredTypeReference> currentTypeArguments)
     {
         if (_strings.TryGetValue(constant, out var stringName))
         {
@@ -2759,7 +2832,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         var str = constant.AsSpan();
         _stringDataSubSegment.AppendLine($"    {stringName}:");
 
-        var bytesWritten = WriteObjectHeaderBlob(_stringDataSubSegment, new LoweredConcreteTypeReference(DefId.String, []));
+        var bytesWritten = WriteObjectHeaderBlob(_stringDataSubSegment, new LoweredConcreteTypeReference(DefId.String, []), currentTypeArguments);
 
         PadAlignment(ref bytesWritten, _stringDataSubSegment, 8);
 
@@ -2832,7 +2905,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         return stringName;
     }
 
-    private void MoveOperandToDestination(IOperand operand, IAsmPlace destination)
+    private void MoveOperandToDestination(IOperand operand, IAsmPlace destination, IReadOnlyDictionary<LoweredGenericPlaceholder, ILoweredTypeReference> currentTypeArguments)
     {
         switch (operand)
         {
@@ -2841,16 +2914,21 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                 break;
             case Copy copy:
                 {
-                    var operandType = GetOperandType(operand);
-                    var size = GetTypeSize(operandType, _currentTypeArguments);
-                    MoveIntoPlace(destination, PlaceToAsmPlace(copy.Place), size.Size!.Value);
+                    var operandType = GetOperandType(operand, currentTypeArguments);
+                    var size = GetTypeSize(operandType, currentTypeArguments);
+                    MoveIntoPlace(destination, PlaceToAsmPlace(copy.Place, currentTypeArguments), size.Size!.Value);
                     break;
                 }
             case FunctionPointerConstant functionPointerConstant:
                 {
                     var method = program.Methods.First(x => x.Id == functionPointerConstant.Value.DefinitionId);
 
-                    var methodLabel = GetMethodLabel(method, functionPointerConstant.Value.TypeArguments);
+                    if (method is LoweredMethod loweredMethod)
+                    {
+                        TryEnqueueMethodForProcessing(loweredMethod, functionPointerConstant.Value.TypeArguments, currentTypeArguments);
+                    }
+
+                    var methodLabel = GetMethodLabel(method, functionPointerConstant.Value.TypeArguments, currentTypeArguments);
 
                     StorePlaceAddress(destination, $"[{methodLabel}]");
                     break;
@@ -2862,7 +2940,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                 }
             case StringConstant stringConstant:
                 {
-                    var stringName = GetStringConstantLabel(stringConstant.Value);
+                    var stringName = GetStringConstantLabel(stringConstant.Value, currentTypeArguments);
 
                     StorePlaceAddress(destination, $"[{stringName}]");
                     break;
@@ -2875,20 +2953,20 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                 break;
             case AddressOf(var place):
                 {
-                    var asmPlace = PlaceToAsmPlace(place);
+                    var asmPlace = PlaceToAsmPlace(place, currentTypeArguments);
 
                     StorePlaceAddress(destination, asmPlace);
                     break;
                 }
             case SizeOf(var sizeOfType):
                 {
-                    var size = GetTypeSize(sizeOfType, _currentTypeArguments);
+                    var size = GetTypeSize(sizeOfType, currentTypeArguments);
                     MoveIntoPlace(destination, $"0x{size.Size:X}", PointerSize);
                     break;
                 }
             case TypeIdOf(var type):
                 {
-                    var typeId = GetTypeId(type, _currentTypeArguments);
+                    var typeId = GetTypeId(type, currentTypeArguments);
                     MoveIntoPlace(destination, $"0x{typeId:X}", PointerSize);
                     break;
                 }
@@ -3264,37 +3342,37 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         { 8, "QWORD" },
     };
 
-    private IAsmPlace PlaceToAsmPlace(IPlace place)
+    private IAsmPlace PlaceToAsmPlace(IPlace place, IReadOnlyDictionary<LoweredGenericPlaceholder, ILoweredTypeReference> currentTypeArguments)
     {
         return place switch
         {
-            Field field => FieldToAsmPlace(field),
+            Field field => FieldToAsmPlace(field, currentTypeArguments),
             Local local => _locals[_currentMethodId][local.LocalName].Place,
             StaticField staticField => throw new NotImplementedException(),
-            Deref deref => DerefToAsmPlace(deref),
-            Index index => IndexToAsmPlace(index),
+            Deref deref => DerefToAsmPlace(deref, currentTypeArguments),
+            Index index => IndexToAsmPlace(index, currentTypeArguments),
             _ => throw new ArgumentOutOfRangeException(nameof(place))
         };
     }
 
-    private IAsmPlace DerefToAsmPlace(Deref deref)
+    private IAsmPlace DerefToAsmPlace(Deref deref, IReadOnlyDictionary<LoweredGenericPlaceholder, ILoweredTypeReference> currentTypeArguments)
     {
-        var pointerPlace = PlaceToAsmPlace(deref.PointerPlace);
+        var pointerPlace = PlaceToAsmPlace(deref.PointerPlace, currentTypeArguments);
 
         return new PointerTo(pointerPlace);
     }
 
-    private IAsmPlace IndexToAsmPlace(Index index)
+    private IAsmPlace IndexToAsmPlace(Index index, IReadOnlyDictionary<LoweredGenericPlaceholder, ILoweredTypeReference> currentTypeArguments)
     {
-        var arrayPlace = PlaceToAsmPlace(index.ArrayPlace);
-        var arrayType = GetPlaceType(index.ArrayPlace) switch
+        var arrayPlace = PlaceToAsmPlace(index.ArrayPlace, currentTypeArguments);
+        var arrayType = GetPlaceType(index.ArrayPlace, currentTypeArguments) switch
         {
             LoweredArray x => x,
             LoweredPointer(LoweredConcreteTypeReference x) => (x.TypeArguments[0] as LoweredArray).NotNull(),
             var x => throw new UnreachableException(x.GetType().ToString())
         };
 
-        var elementSize = GetTypeSize(arrayType.ElementType, _currentTypeArguments);
+        var elementSize = GetTypeSize(arrayType.ElementType, currentTypeArguments);
 
         return new MemoryOffset(
             arrayPlace,
@@ -3304,15 +3382,15 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
 
         void GetOffsetInRegister(Register indexRegister)
         {
-            MoveOperandToDestination(index.ArrayIndex, indexRegister);
+            MoveOperandToDestination(index.ArrayIndex, indexRegister, currentTypeArguments);
             _methodBody.AppendLine($"    imul    {indexRegister.ToAsm(PointerSize)}, 0x{elementSize.Size:x}");
         }
     }
 
-    private IAsmPlace FieldToAsmPlace(Field field)
+    private IAsmPlace FieldToAsmPlace(Field field, IReadOnlyDictionary<LoweredGenericPlaceholder, ILoweredTypeReference> currentTypeArguments)
     {
-        var ownerPlace = PlaceToAsmPlace(field.FieldOwner);
-        var ownerType = GetPlaceType(field.FieldOwner);
+        var ownerPlace = PlaceToAsmPlace(field.FieldOwner, currentTypeArguments);
+        var ownerType = GetPlaceType(field.FieldOwner, currentTypeArguments);
 
         if (!ownerPlace.IsMemoryPlace)
         {
@@ -3333,11 +3411,11 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
 
         while (concreteOwner is null)
         {
-            ownerType = ownerType switch
+            ownerType = InstantiateTypeReference(ownerType, currentTypeArguments) switch
             {
                 LoweredConcreteTypeReference => ownerType,
                 LoweredFunctionReference => throw new InvalidOperationException("FunctionReference has no fields"),
-                LoweredGenericPlaceholder(_, var placeholderName) => _currentTypeArguments[placeholderName],
+                LoweredGenericPlaceholder => throw new UnreachableException(),
                 LoweredPointer(var pointerTo) => pointerTo,
                 RawPointer => throw new InvalidOperationException("Raw Pointer has no fields"),
                 _ => throw new ArgumentOutOfRangeException(nameof(ownerType))
@@ -3346,7 +3424,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
             concreteOwner = ownerType as LoweredConcreteTypeReference;
         }
 
-        var typeSize = GetTypeSize(ownerType, _currentTypeArguments);
+        var typeSize = GetTypeSize(ownerType, currentTypeArguments);
         var fieldSize = typeSize.VariantSizeInfo[field.VariantName].FieldOffsets[field.FieldName];
 
         return new MemoryOffset(ownerPlace, null, (int)fieldSize.Offset);
