@@ -23,7 +23,29 @@ public class ExceptionTests : IntegrationTestBase
         result.StandardOutput.Should().Be("Unhandled panic!");
     }
 
-    [Fact, TestMe]
+    [Fact]
+    public async Task GlobalHandlerInsideMethod()
+    {
+        await SetupTest(
+            """
+            fn throws() {
+                panic();
+            }
+
+            throws();
+            """);
+
+
+        var result = await Run();
+
+        using var _ = new AssertionScope();
+
+        result.ExitCode.Should().Be(1);
+        result.StandardError.Should().Be("");
+        result.StandardOutput.Should().Be("Unhandled panic!");
+    }
+
+    [Fact]
     public async Task CatchFnDoesntThrow()
     {
         await SetupTest(
@@ -43,6 +65,39 @@ public class ExceptionTests : IntegrationTestBase
 
         result.ExitCode.Should().Be(0);
         result.StandardOutput.Should().Be("hi");
+    }
+
+    [Fact]
+    public async Task CatchPanic_UsesStackValues()
+    {
+        await SetupTest(
+            """
+            fn throws(): string {
+                panic();
+                return "hi";
+            }
+
+            var a = 2;
+
+            match (catch_unwind(throws)) {
+                result::Ok(var x) => print_string(x),
+                result::Error => {
+                    print_string("error thrown 1\n");
+                    print_u32(a);
+                }
+            }
+            """
+        );
+
+        var result = await Run();
+
+        result.ExitCode.Should().Be(0);
+        result.StandardOutput.Should().Be(
+            """
+            error thrown 1
+            2
+            """
+        );
     }
 
     [Fact]

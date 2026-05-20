@@ -201,7 +201,8 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         string prologEndLabel,
         UnwindInfoMethodFlags methodFlags,
         string? exceptionHandlerLabel,
-        IReadOnlyDictionary<LoweredGenericPlaceholder, ILoweredTypeReference> currentTypeArguments)
+        IReadOnlyDictionary<LoweredGenericPlaceholder, ILoweredTypeReference> currentTypeArguments,
+        BasicBlockId? continueToBasicBlock)
     {
         var methodInfoReference = new LoweredConcreteTypeReference(
             DefId.MethodInfo,
@@ -353,7 +354,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
 
         Debug.Assert(bytesWritten == methodInfoSize.Size, $"BytesWritten: {bytesWritten}, methodInfoSize: {methodInfoSize.Size}");
 
-        WriteMethodUnwindData(methodId, prologEndLabel, startLabel, endLabel, prologOperations, methodFlags, exceptionHandlerLabel);
+        WriteMethodUnwindData(methodId, prologEndLabel, startLabel, endLabel, prologOperations, methodFlags, exceptionHandlerLabel, continueToBasicBlock);
     }
 
     [Flags]
@@ -372,7 +373,8 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         string endLabel,
         IReadOnlyList<IPrologOperation> prologOperations,
         UnwindInfoMethodFlags methodFlags,
-        string? exceptionHandlerLabel)
+        string? exceptionHandlerLabel,
+        BasicBlockId? continueToBasicBlock)
     {
         // https://github.com/MicrosoftDocs/cpp-docs/blob/main/docs/build/exception-handling-x64.md#struct-unwind_info
         var unwindInfoLabel = $"unwind_info_{methodId}";
@@ -539,6 +541,14 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                 _unwindInfo.AppendLine($"        dw 0 ; padding");
             }
             _unwindInfo.AppendLine($"        dd {exceptionHandlerLabel} wrt ..imagebase");
+            if (continueToBasicBlock is not null)
+            {
+                _unwindInfo.AppendLine($"        dd {GetBasicBlockLabel(continueToBasicBlock)} wrt ..imagebase");
+            }
+            else
+            {
+                _unwindInfo.AppendLine("        dd 0");
+            }
         }
 
         _procData.AppendLine($"        dd {startLabel} wrt ..imagebase");
@@ -1336,7 +1346,9 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
             "main_end",
             prologOperations,
             UnwindInfoMethodFlags.UNW_FLAG_EHANDLER,
-            "global_handle_exception");
+            "global_handle_exception",
+            null
+        );
 
         _codeSegment.AppendLine("main:");
 
@@ -1947,9 +1959,12 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
             methodId,
             prologOperations,
             prologEndLabel,
-            UnwindInfoMethodFlags.None,
-            null,
-            currentTypeArguments);
+            method.UnwindContinueToBlock is null
+            ? UnwindInfoMethodFlags.None
+            : UnwindInfoMethodFlags.UNW_FLAG_EHANDLER,
+            method.UnwindContinueToBlock is null ? null : "global_handle_exception",
+            currentTypeArguments,
+            method.UnwindContinueToBlock);
     }
 
     private static string FormatOffset(int offset) => offset switch
