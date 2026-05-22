@@ -36,7 +36,7 @@ public static class ParseErrorTestCases
             (
                 "#[ fn some_fn(){}",
                 Program("ParseErrorTestCases", functions: [Function("some_fn", block: Block().Block)]),
-                [ParserError.ExpectedToken(Token.Fn(SourceSpan.Default), TokenType.Identifier)]
+                [ParserError.ExpectedToken(Token.Fn(SourceSpan.Default), TokenType.Identifier, TokenType.TripleColon)]
             ),
             (
                 "#[attribute_name fn some_fn(){}",

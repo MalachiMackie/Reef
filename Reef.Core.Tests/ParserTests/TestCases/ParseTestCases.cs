@@ -29,6 +29,40 @@ public static class ParseTestCases
             ),
             (
                 """
+                #[other_module:::some_attribute]
+                pub fn some_fn() {}
+                """,
+                Program(
+                    "ParseTestCases",
+                    functions: [
+                        Function(
+                            "some_fn",
+                            isPublic: true,
+                            block: Block().Block,
+                            attributes: [Attribute("some_attribute", ["other_module"])]
+                        )
+                    ]
+                )
+            ),
+            (
+                """
+                #[:::other_module:::some_attribute]
+                pub fn some_fn() {}
+                """,
+                Program(
+                    "ParseTestCases",
+                    functions: [
+                        Function(
+                            "some_fn",
+                            isPublic: true,
+                            block: Block().Block,
+                            attributes: [Attribute("some_attribute", ["other_module"], modulePathIsGlobal: true)]
+                        )
+                    ]
+                )
+            ),
+            (
+                """
                 #[some_attribute]
                 pub fn some_fn() {}
                 """,

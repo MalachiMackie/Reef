@@ -732,40 +732,106 @@ public sealed class Parser : IDisposable
     private IReadOnlyList<LangAttribute> GetAttributes()
     {
         var attributes = new List<LangAttribute>();
-        while (Current.Type == TokenType.Hash)
+        while (_hasNext && Current.Type == TokenType.Hash)
         {
-            var start = Current;
-            if (Current.Type != TokenType.Hash)
+            var attribute = GetAttribute();
+            if (attribute is null)
             {
                 break;
             }
-
-            if (!ExpectNextToken(TokenType.LeftSquareBracket))
-            {
-                break;
-            }
-
-            if (!ExpectNextIdentifier(out var identifier))
-            {
-                break;
-            }
-            var last = Current;
-
-            var foundEndBracket = false;
-            if (ExpectNextToken(TokenType.RightSquareBracket))
-            {
-                foundEndBracket = true;
-                last = Current;
-            }
-            attributes.Add(new LangAttribute(identifier, new SourceRange(start.SourceSpan, last.SourceSpan)));
-
-            if (!foundEndBracket || !MoveNext())
-            {
-                break;
-            }
+            attributes.Add(attribute);
         }
 
         return attributes;
+    }
+
+    private LangAttribute? GetAttribute()
+    {
+        var start = Current;
+        if (!ExpectNextToken(TokenType.LeftSquareBracket))
+        {
+            return null;
+        }
+
+        if (!MoveNext())
+        {
+            _errors.Add(ParserError.ExpectedToken(null, TokenType.TripleColon, TokenType.Identifier));
+            return null;
+        }
+
+        var isGlobalPath = false;
+
+        var identifiers = new List<StringToken>();
+        if (Current.Type == TokenType.TripleColon)
+        {
+            isGlobalPath = true;
+            if (!ExpectNextIdentifier(out var modulePathSegment))
+            {
+                return null;
+            }
+            identifiers.Add(modulePathSegment);
+        }
+        // use manual check instead of `ExpectCurrentIdentifier` so we can display the `ExpectedType` error
+        else if (Current is StringToken { Type: TokenType.Identifier } typeIdentifier)
+        {
+            identifiers.Add(typeIdentifier);
+        }
+        else
+        {
+            _errors.Add(ParserError.ExpectedToken(Current, TokenType.TripleColon, TokenType.Identifier));
+            return null;
+        }
+
+        if (!MoveNext())
+        {
+            return new LangAttribute(
+                identifiers[^1],
+                new SourceRange(start.SourceSpan, identifiers[^1].SourceSpan),
+                identifiers[..^1],
+                isGlobalPath);
+        }
+
+        while (_hasNext && Current.Type == TokenType.TripleColon)
+        {
+            if (!ExpectNextIdentifier(out var identifier))
+            {
+                return null;
+            }
+
+            identifiers.Add(identifier);
+
+            MoveNext();
+        }
+
+        if (isGlobalPath && identifiers.Count == 1)
+        {
+            _errors.Add(ParserError.ExpectedToken(_hasNext ? Current : null, TokenType.TripleColon));
+            return null;
+        }
+
+        if (!ExpectCurrentToken(TokenType.RightSquareBracket))
+        {
+            return new LangAttribute(
+                identifiers[^1],
+                new SourceRange(start.SourceSpan, identifiers[^1].SourceSpan),
+                identifiers[..^1],
+                isGlobalPath
+            );
+        }
+
+
+        var lastIdentifier = identifiers[^1];
+
+        var lastToken = Current;
+
+        MoveNext();
+
+        return new LangAttribute(
+            lastIdentifier,
+            new SourceRange(start.SourceSpan, lastToken.SourceSpan),
+            identifiers[..^1],
+            isGlobalPath
+        );
     }
 
     private (

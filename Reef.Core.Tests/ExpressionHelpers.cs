@@ -54,11 +54,18 @@ public static class ExpressionHelpers
         return UnaryOperatorExpression(UnaryOperatorType.Negate, value);
     }
 
-    public static LangAttribute Attribute(string identifier)
+    public static LangAttribute Attribute(
+        string identifier,
+        IEnumerable<string>? modulePath = null,
+        bool modulePathIsGlobal = false)
     {
-        return new LangAttribute(Identifier(identifier), SourceRange.Default);
+        return new LangAttribute(
+            Identifier(identifier),
+            SourceRange.Default,
+            [.. modulePath?.Select(x => Token.Identifier(x, SourceSpan.Default)) ?? []],
+            modulePathIsGlobal
+        );
     }
-
 
     public static BlockExpression Block(IReadOnlyList<IExpression>? expressions = null, IReadOnlyList<ModuleImport>? moduleImports = null)
     {

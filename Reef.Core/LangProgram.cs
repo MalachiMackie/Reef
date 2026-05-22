@@ -188,8 +188,20 @@ public record BoxedConstraint(NamedTypeIdentifier ConstrainedType) : IConstraint
 public record BoxedOfConstraint(NamedTypeIdentifier ConstrainedType, ITypeIdentifier BoxedOfType) : IConstraint;
 public record UnboxedOfConstraint(NamedTypeIdentifier ConstrainedType, ITypeIdentifier UnboxedOfType) : IConstraint;
 
+
+// #[:::my_module:::my_attribute]
+public record LangAttribute(
+    StringToken Identifier,
+    SourceRange SourceRange,
+    IReadOnlyList<StringToken> ModulePath,
+    bool ModulePathIsGlobal
+);
+
 // pub attribute my_attribute{}
-public record AttributeDefinition(StringToken Identifier, AccessModifier? AccessModifier);
+public record AttributeDefinition(StringToken Identifier, AccessModifier? AccessModifier)
+{
+    public TypeChecker.AttributeSignature? Signature { get; set; }
+}
 
 public record LangFunction(
     AccessModifier? AccessModifier,

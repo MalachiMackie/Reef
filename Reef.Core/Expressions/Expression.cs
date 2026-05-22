@@ -329,7 +329,7 @@ public record IfExpressionExpression(IfExpression IfExpression, SourceRange Sour
     }
 }
 
-public record LangAttribute(StringToken Identifier, SourceRange SourceRange);
+public record AttributeReference(DefId AttributeId);
 
 public record BlockExpression(Block Block, SourceRange SourceRange) : IExpression
 {

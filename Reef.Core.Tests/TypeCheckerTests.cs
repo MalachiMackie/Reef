@@ -126,6 +126,66 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     "main.rf",
                     """
+                    attribute my_attribute{}
+
+                    #[my_attribute]
+                    fn my_fn() {}
+                    """
+                },
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    attribute other_attribute{}
+                    attribute my_attribute{}
+
+                    #[my_attribute]
+                    #[other_attribute]
+                    fn my_fn() {}
+                    """
+                },
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    #[other:::my_attribute]
+                    fn my_fn() {}
+                    """
+                },
+                {
+                    "other.rf",
+                    """
+                    pub attribute my_attribute{}
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    use other:::*;
+
+                    #[my_attribute]
+                    fn my_fn() {}
+                    """
+                },
+                {
+                    "other.rf",
+                    """
+                    pub attribute my_attribute{}
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
                     fn some_string_check(val: string): bool {
                         return true;
                     }
@@ -3348,7 +3408,69 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
         return new TheoryData<string, Dictionary<string, (string contents, IReadOnlyList<TypeCheckerError> expectedErrors)>>
         {
             {
-                "uninitialized variable from matches in and condition before it is initialized",
+                "missing attribute name",
+                new()
+                {
+                    {
+                        "main.rf",
+                        ("""
+                        #[my_attribute]
+                        fn my_fn(){}
+                        """,
+                        [TypeCheckerError.SymbolNotFound(Identifier("my_attribute"))])
+                    }
+                }
+            },
+            {
+                "attribute not in scope",
+                new()
+                {
+                    {
+                        "main.rf",
+                        ("""
+                            use other:::*;
+
+                        #[private_attribute]
+                        fn my_fn(){}
+                        """,
+                        [TypeCheckerError.SymbolNotFound(Identifier("private_attribute"))])
+                    },
+                    {
+                        "other.rf",
+                        (
+                            """
+                            attribute private_attribute{}
+                            """,
+                            []
+                        )
+                    }
+                }
+            },
+            {
+                    "attribute not in scope 2",
+                    new()
+                    {
+                        {
+                            "main.rf",
+                            ("""
+                            #[other:::private_attribute]
+                            fn my_fn(){}
+                            """,
+                            [TypeCheckerError.SymbolNotFound(Identifier("private_attribute"))])
+                        },
+                        {
+                            "other.rf",
+                            (
+                                """
+                                attribute private_attribute{}
+                                """,
+                                []
+                            )
+                        }
+                    }
+                },
+            {
+            "uninitialized variable from matches in and condition before it is initialized",
                 new()
                 {
                     {
@@ -3371,7 +3493,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 }
             },
             {
-                "uninitialized variable from matches in or condition",
+            "uninitialized variable from matches in or condition",
                 new()
                 {
                     {
@@ -3389,7 +3511,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 }
             },
             {
-                "unboxed type used for boxed constrained type",
+            "unboxed type used for boxed constrained type",
                 new()
                 {
                     {
@@ -3406,7 +3528,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 }
             },
             {
-                "invalid fallout return type",
+            "invalid fallout return type",
                 new()
                 {
                     {
@@ -3427,7 +3549,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 }
             },
             {
-                "invalid fallout operand type",
+            "invalid fallout operand type",
                 new()
                 {
                     {
@@ -3444,7 +3566,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 }
             },
             {
-                "mismatched concrete boxing constraint",
+            "mismatched concrete boxing constraint",
                 new()
                 {
                     {
@@ -3458,7 +3580,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 }
             },
             {
-                "mismatched concrete boxing constraint",
+            "mismatched concrete boxing constraint",
                 new()
                 {
                     {
@@ -3472,7 +3594,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 }
             },
             {
-                "non type parameters referenced in type constraint",
+            "non type parameters referenced in type constraint",
                 new()
                 {
                     {
@@ -3487,7 +3609,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 }
             },
             {
-                "non type parameters referenced in type constraint",
+            "non type parameters referenced in type constraint",
                 new()
                 {
                     {
@@ -3502,7 +3624,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 }
             },
             {
-                "Extern function defines body",
+            "Extern function defines body",
                 new()
                 {
                     {
@@ -3517,7 +3639,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 }
             },
             {
-                "Extern function defines body",
+            "Extern function defines body",
                 new()
                 {
                     {
@@ -3532,7 +3654,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 }
             },
             {
-                "Non Extern function does not define body",
+            "Non Extern function does not define body",
                 new()
                 {
                     {
@@ -3547,7 +3669,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 }
             },
             {
-                "Top level statements in non main module",
+            "Top level statements in non main module",
                 new()
                 {
                     {
@@ -3571,7 +3693,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 }
             },
             {
-                "Referencing Symbols not imported",
+            "Referencing Symbols not imported",
                 new()
                 {
                     {
@@ -3598,7 +3720,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 }
             },
             {
-                "relative import not relative to current module",
+            "relative import not relative to current module",
                 new()
                 {
                     {
@@ -3625,7 +3747,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 }
             },
             {
-                "Import non existent item",
+            "Import non existent item",
                 new()
                 {
                     {
@@ -3654,7 +3776,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "Imported item not public",
+            "Imported item not public",
                 new()
                 {
                     {
@@ -3678,7 +3800,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 }
             },
             {
-                "Reference non public item when using star import",
+            "Reference non public item when using star import",
                 new()
                 {
                     {
@@ -3704,7 +3826,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 }
             },
             {
-                "Reference non public item when using star import",
+            "Reference non public item when using star import",
                 new()
                 {
                     {
@@ -3729,7 +3851,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 }
             },
             {
-                "Function object return type mutability mismatch",
+            "Function object return type mutability mismatch",
                 new()
                 {
                     {
@@ -3742,7 +3864,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "assign non mutable variable to mutable field",
+            "assign non mutable variable to mutable field",
                 new()
                 {
                     {
@@ -3757,7 +3879,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "return non mutable variable through mutable return",
+            "return non mutable variable through mutable return",
                 new()
                 {
                     {
@@ -3777,7 +3899,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "assign non mutable variable to mutable variable",
+            "assign non mutable variable to mutable variable",
                 new()
                 {
                     {
@@ -3792,7 +3914,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "assign to field of object inside non mutable array",
+            "assign to field of object inside non mutable array",
                 new()
                 {
                     {
@@ -3811,7 +3933,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "assign to non mutable array",
+            "assign to non mutable array",
                 new()
                 {
                     {
@@ -3826,7 +3948,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "Incorrect array element type",
+            "Incorrect array element type",
                 new()
                 {
                     {
@@ -3838,7 +3960,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "Incorrect array length",
+            "Incorrect array length",
                 new()
                 {
                     {
@@ -3850,7 +3972,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "Incorrect array length - fill collection expression",
+            "Incorrect array length - fill collection expression",
                 new()
                 {
                     {
@@ -3862,7 +3984,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "different array element types",
+            "different array element types",
                 new()
                 {
                     {
@@ -3874,7 +3996,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "Incorrect array boxing - boxed",
+            "Incorrect array boxing - boxed",
                 new()
                 {
                     {
@@ -3893,7 +4015,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "Incorrect array boxing - unboxed",
+            "Incorrect array boxing - unboxed",
                 new()
                 {
                     {
@@ -3912,7 +4034,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "Incorrect array element boxing - unboxed",
+            "Incorrect array element boxing - unboxed",
                 new()
                 {
                     {
@@ -3932,7 +4054,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "Incorrect array element boxing - boxed",
+            "Incorrect array element boxing - boxed",
                 new()
                 {
                     {
@@ -3951,7 +4073,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "mismatched boxing for unbox method return value",
+            "mismatched boxing for unbox method return value",
                 new()
                 {
                     {
@@ -3967,7 +4089,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "mismatched boxing for unbox method parameter",
+            "mismatched boxing for unbox method parameter",
                 new()
                 {
                     {
@@ -3985,7 +4107,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "mismatched boxing for box method return value",
+            "mismatched boxing for box method return value",
                 new()
                 {
                     {
@@ -4000,7 +4122,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "mismatched boxing for box method parameter",
+            "mismatched boxing for box method parameter",
                 new()
                 {
                     {
@@ -4018,7 +4140,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "incorrect while loop check expression type",
+            "incorrect while loop check expression type",
                 new()
                 {
                     {
@@ -4031,7 +4153,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "break outside of loop",
+            "break outside of loop",
                 new()
                 {
                     {
@@ -4043,7 +4165,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "continue outside of loop",
+            "continue outside of loop",
                 new()
                 {
                     {
@@ -4055,7 +4177,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "incompatible int types",
+            "incompatible int types",
                 new()
                 {
                     {
@@ -4068,7 +4190,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "incompatible inferred int types through generic",
+            "incompatible inferred int types through generic",
                 new()
                 {
                     {
@@ -4083,7 +4205,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "incompatible inferred int types through int operation",
+            "incompatible inferred int types through int operation",
                 new()
                 {
                     {
@@ -4102,7 +4224,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "too many arguments for function object from tuple variant",
+            "too many arguments for function object from tuple variant",
                 new()
                 {
                     {
@@ -4119,7 +4241,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "not enough arguments for function object from tuple variant",
+            "not enough arguments for function object from tuple variant",
                 new()
                 {
                     {
@@ -4133,7 +4255,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "incorrect type argument for function object from tuple variant",
+            "incorrect type argument for function object from tuple variant",
                 new()
                 {
                     {
@@ -4147,7 +4269,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "union tuple variant with no members",
+            "union tuple variant with no members",
                 new()
                 {
                     {
@@ -4159,7 +4281,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "assign else if to variable without else",
+            "assign else if to variable without else",
                 new()
                 {
                     {
@@ -4171,7 +4293,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "assign if to variable without else",
+            "assign if to variable without else",
                 new()
                 {
                     {
@@ -4183,7 +4305,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "duplicate variable declaration",
+            "duplicate variable declaration",
                 new()
                 {
                     {
@@ -4196,7 +4318,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "assigning to 'this'",
+            "assigning to 'this'",
                 new()
                 {
                     {
@@ -4214,7 +4336,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "closure accesses variable before declaration",
+            "closure accesses variable before declaration",
                 new()
                 {
                     {
@@ -4235,7 +4357,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "closure accesses variable before declaration",
+            "closure accesses variable before declaration",
                 new()
                 {
                     {
@@ -4256,7 +4378,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "accessing closure before captured variables have been declared",
+            "accessing closure before captured variables have been declared",
                 new()
                 {
                     {
@@ -4276,7 +4398,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "matches - mutable variable declaration on non mutable variable",
+            "matches - mutable variable declaration on non mutable variable",
                 new()
                 {
                     {
@@ -4289,7 +4411,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "matches - type pattern mutable variable on non mutable variable",
+            "matches - type pattern mutable variable on non mutable variable",
                 new()
                 {
                     {
@@ -4302,7 +4424,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "matches - class pattern mutable variable on non mutable variable",
+            "matches - class pattern mutable variable on non mutable variable",
                 new()
                 {
                     {
@@ -4316,7 +4438,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "matches - class pattern field mutable variable on non mutable variable",
+            "matches - class pattern field mutable variable on non mutable variable",
                 new()
                 {
                     {
@@ -4330,7 +4452,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "matches - mutable union variant pattern on non mutable variable",
+            "matches - mutable union variant pattern on non mutable variable",
                 new()
                 {
                     {
@@ -4345,7 +4467,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "matches - mutable tuple variant pattern variable on non mutable variable",
+            "matches - mutable tuple variant pattern variable on non mutable variable",
                 new()
                 {
                     {
@@ -4360,7 +4482,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "matches - mutable variable declaration tuple member pattern on non mutable variable",
+            "matches - mutable variable declaration tuple member pattern on non mutable variable",
                 new()
                 {
                     {
@@ -4378,7 +4500,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "matches - mutable class variant pattern variable on non mutable variable",
+            "matches - mutable class variant pattern variable on non mutable variable",
                 new()
                 {
                     {
@@ -4392,7 +4514,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "matches - mutable class variant field pattern on non mutable variable",
+            "matches - mutable class variant field pattern on non mutable variable",
                 new()
                 {
                     {
@@ -4406,7 +4528,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "match - mutable variable declaration on non mutable variable",
+            "match - mutable variable declaration on non mutable variable",
                 new()
                 {
                     {
@@ -4419,7 +4541,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "match - type pattern mutable variable on non mutable variable",
+            "match - type pattern mutable variable on non mutable variable",
                 new()
                 {
                     {
@@ -4432,7 +4554,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "match - class pattern mutable variable on non mutable variable",
+            "match - class pattern mutable variable on non mutable variable",
                 new()
                 {
                     {
@@ -4446,7 +4568,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "match - class pattern field mutable variable on non mutable variable",
+            "match - class pattern field mutable variable on non mutable variable",
                 new()
                 {
                     {
@@ -4460,7 +4582,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "match - mutable union variant pattern on non mutable variable",
+            "match - mutable union variant pattern on non mutable variable",
                 new()
                 {
                     {
@@ -4474,7 +4596,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "match - mutable tuple variant pattern variable on non mutable variable",
+            "match - mutable tuple variant pattern variable on non mutable variable",
                 new()
                 {
                     {
@@ -4488,7 +4610,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "match - mutable variable declaration tuple member pattern on non mutable variable",
+            "match - mutable variable declaration tuple member pattern on non mutable variable",
                 new()
                 {
                     {
@@ -4504,7 +4626,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "match - mutable class variant pattern variable on non mutable variable",
+            "match - mutable class variant pattern variable on non mutable variable",
                 new()
                 {
                     {
@@ -4518,7 +4640,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "match - mutable class variant field pattern on non mutable variable",
+            "match - mutable class variant field pattern on non mutable variable",
                 new()
                 {
                     {
@@ -4532,7 +4654,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "mutating non mutable pattern variable",
+            "mutating non mutable pattern variable",
                 new()
                 {
                     {
@@ -4550,7 +4672,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "static field used in class pattern",
+            "static field used in class pattern",
                 new()
                 {
                     {
@@ -4566,7 +4688,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "non bool used in or",
+            "non bool used in or",
                 new()
                 {
                     {
@@ -4578,7 +4700,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "non bool used in or",
+            "non bool used in or",
                 new()
                 {
                     {
@@ -4590,7 +4712,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "non bool used in and",
+            "non bool used in and",
                 new()
                 {
                     {
@@ -4602,7 +4724,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "non bool used in and",
+            "non bool used in and",
                 new()
                 {
                     {
@@ -4614,7 +4736,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "missing field in instance method",
+            "missing field in instance method",
                 new()
                 {
                     {
@@ -4632,7 +4754,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "closure mutates non mutable variable",
+            "closure mutates non mutable variable",
                 new()
                 {
                     {
@@ -4647,7 +4769,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "missing class static member",
+            "missing class static member",
                 new()
                 {
                     {
@@ -4660,7 +4782,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "missing class instance member",
+            "missing class instance member",
                 new()
                 {
                     {
@@ -4674,7 +4796,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "missing union static member",
+            "missing union static member",
                 new()
                 {
                     {
@@ -4687,7 +4809,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "missing union instance member",
+            "missing union instance member",
                 new()
                 {
                     {
@@ -4701,7 +4823,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "union class variant missing initializer",
+            "union class variant missing initializer",
                 new()
                 {
                     {
@@ -4716,7 +4838,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "static class function accessed through member access",
+            "static class function accessed through member access",
                 new()
                 {
                     {
@@ -4730,7 +4852,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "static class field accessed through member access",
+            "static class field accessed through member access",
                 new()
                 {
                     {
@@ -4744,7 +4866,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "static union function accessed through member access",
+            "static union function accessed through member access",
                 new()
                 {
                     {
@@ -4758,7 +4880,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "instance class function accessed through static access",
+            "instance class function accessed through static access",
                 new()
                 {
                     {
@@ -4771,7 +4893,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "instance class field accessed through static access",
+            "instance class field accessed through static access",
                 new()
                 {
                     {
@@ -4784,7 +4906,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "instance union function accessed through static access",
+            "instance union function accessed through static access",
                 new()
                 {
                     {
@@ -4797,7 +4919,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "non function variable has type arguments",
+            "non function variable has type arguments",
                 new()
                 {
                     {
@@ -4810,7 +4932,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "function variable has type arguments",
+            "function variable has type arguments",
                 new()
                 {
                     {
@@ -4824,7 +4946,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "non function class member access has type arguments",
+            "non function class member access has type arguments",
                 new()
                 {
                     {
@@ -4838,7 +4960,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "union variant has type arguments",
+            "union variant has type arguments",
                 new()
                 {
                     {
@@ -4851,7 +4973,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "union tuple variant has type arguments",
+            "union tuple variant has type arguments",
                 new()
                 {
                     {
@@ -4864,7 +4986,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "union unit variant has type arguments",
+            "union unit variant has type arguments",
                 new()
                 {
                     {
@@ -4877,7 +4999,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "creating mutable function object",
+            "creating mutable function object",
                 new()
                 {
                     {
@@ -4897,7 +5019,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "assigning value to unit type",
+            "assigning value to unit type",
                 new()
                 {
                     {
@@ -4909,7 +5031,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "incorrect tuple types",
+            "incorrect tuple types",
                 new()
                 {
                     {
@@ -4924,7 +5046,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "too many tuple members",
+            "too many tuple members",
                 new()
                 {
                     {
@@ -4939,7 +5061,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "not enough tuple members",
+            "not enough tuple members",
                 new()
                 {
                     {
@@ -4954,7 +5076,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "function type too many parameters",
+            "function type too many parameters",
                 new()
                 {
                     {
@@ -4972,7 +5094,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "function type incorrect parameter type",
+            "function type incorrect parameter type",
                 new()
                 {
                     {
@@ -4990,7 +5112,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "function type not enough parameters",
+            "function type not enough parameters",
                 new()
                 {
                     {
@@ -5008,7 +5130,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "function type incorrect return type when expected unit",
+            "function type incorrect return type when expected unit",
                 new()
                 {
                     {
@@ -5026,7 +5148,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "function type expected return type but used void",
+            "function type expected return type but used void",
                 new()
                 {
                     {
@@ -5044,7 +5166,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "function type incorrect return type",
+            "function type incorrect return type",
                 new()
                 {
                     {
@@ -5062,7 +5184,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "function type incorrect parameter mutability",
+            "function type incorrect parameter mutability",
                 new()
                 {
                     {
@@ -5080,7 +5202,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "function type incorrect parameter mutability",
+            "function type incorrect parameter mutability",
                 new()
                 {
                     {
@@ -5098,7 +5220,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "reassigning incompatible inferred function type ",
+            "reassigning incompatible inferred function type ",
                 new()
                 {
                     {
@@ -5118,7 +5240,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "assign unknown variable",
+            "assign unknown variable",
                 new()
                 {
                     {
@@ -5130,7 +5252,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "unresolved generic type when referencing the same generic type",
+            "unresolved generic type when referencing the same generic type",
                 new()
                 {
                     {
@@ -5146,7 +5268,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "access instance method in static method - class",
+            "access instance method in static method - class",
                 new()
                 {
                     {
@@ -5164,7 +5286,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "access instance method in static method - union",
+            "access instance method in static method - union",
                 new()
                 {
                     {
@@ -5182,7 +5304,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "global function marked as mutable",
+            "global function marked as mutable",
                 new()
                 {
                     {
@@ -5195,7 +5317,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "deeply nested if branch doesn't return",
+            "deeply nested if branch doesn't return",
                 new()
                 {
                     {
@@ -5221,7 +5343,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "static method doesn't return value",
+            "static method doesn't return value",
                 new()
                 {
                     {
@@ -5233,7 +5355,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "static class method doesn't return value",
+            "static class method doesn't return value",
                 new()
                 {
                     {
@@ -5245,7 +5367,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "static union method doesn't return value",
+            "static union method doesn't return value",
                 new()
                 {
                     {
@@ -5257,7 +5379,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "method doesn't return from all if branches",
+            "method doesn't return from all if branches",
                 new()
                 {
                     {
@@ -5273,7 +5395,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "method doesn't return from all if branches",
+            "method doesn't return from all if branches",
                 new()
                 {
                     {
@@ -5291,7 +5413,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "method doesn't return from all if branches",
+            "method doesn't return from all if branches",
                 new()
                 {
                     {
@@ -5309,7 +5431,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "method doesn't return from all if branches",
+            "method doesn't return from all if branches",
                 new()
                 {
                     {
@@ -5330,7 +5452,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "mutating instance field from non mutable inner function",
+            "mutating instance field from non mutable inner function",
                 new()
                 {
                     {
@@ -5350,7 +5472,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "creating mutable inner function from non mutable parent function",
+            "creating mutable inner function from non mutable parent function",
                 new()
                 {
                     {
@@ -5370,7 +5492,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "static method marked as mutable",
+            "static method marked as mutable",
                 new()
                 {
                     {
@@ -5384,7 +5506,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "Calling mut instance function with non mut variable",
+            "Calling mut instance function with non mut variable",
                 new()
                 {
                     {
@@ -5404,7 +5526,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "negate non integer",
+            "negate non integer",
                 new()
                 {
                     {
@@ -5416,7 +5538,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "negate unsigned value",
+            "negate unsigned value",
                 new()
                 {
                     {
@@ -5429,7 +5551,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "Assigning mut instance reference with non mut variable",
+            "Assigning mut instance reference with non mut variable",
                 new()
                 {
                     {
@@ -5445,7 +5567,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "Mutating from non mutable instance function",
+            "Mutating from non mutable instance function",
                 new()
                 {
                     {
@@ -5466,7 +5588,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "Single field class exhaustive fail",
+            "Single field class exhaustive fail",
                 new()
                 {
                     {
@@ -5484,7 +5606,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "double field class not all combinations of union variants are matched",
+            "double field class not all combinations of union variants are matched",
                 new()
                 {
                     {
@@ -5506,7 +5628,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "Deeply nested non exhaustive match",
+            "Deeply nested non exhaustive match",
                 new()
                 {
                     {
@@ -5532,7 +5654,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "tuple pattern match not exhaustive",
+            "tuple pattern match not exhaustive",
                 new()
                 {
                     {
@@ -5551,7 +5673,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "type inference from same function variable into two variables",
+            "type inference from same function variable into two variables",
                 new()
                 {
                     {
@@ -5570,7 +5692,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "Static local function cannot access local variables",
+            "Static local function cannot access local variables",
                 new()
                 {
                     {
@@ -5587,7 +5709,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "nested function parameter mismatched types return types",
+            "nested function parameter mismatched types return types",
                 new()
                 {
                     {
@@ -5609,7 +5731,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "incompatible inferred types",
+            "incompatible inferred types",
                 new()
                 {
                     {
@@ -5626,7 +5748,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "incompatible inferred result type",
+            "incompatible inferred result type",
                 new()
                 {
                     {
@@ -5638,7 +5760,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "this used outside of class instance",
+            "this used outside of class instance",
                 new()
                 {
                     {
@@ -5650,7 +5772,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "this used in static class function",
+            "this used in static class function",
                 new()
                 {
                     {
@@ -5666,7 +5788,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "this used in static union function",
+            "this used in static union function",
                 new()
                 {
                     {
@@ -5682,7 +5804,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "pattern variable used in wrong match arm",
+            "pattern variable used in wrong match arm",
                 new()
                 {
                     {
@@ -5704,7 +5826,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "match expression not exhaustive",
+            "match expression not exhaustive",
                 new()
                 {
                     {
@@ -5726,7 +5848,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "match expression not exhaustive",
+            "match expression not exhaustive",
                 new()
                 {
                     {
@@ -5743,7 +5865,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "incompatible pattern type",
+            "incompatible pattern type",
                 new()
                 {
                     {
@@ -5759,7 +5881,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "Unknown type used in pattern",
+            "Unknown type used in pattern",
                 new()
                 {
                     {
@@ -5775,7 +5897,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "match arms provide incompatible types",
+            "match arms provide incompatible types",
                 new()
                 {
                     {
@@ -5792,7 +5914,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "matches pattern variable used outside of true if check",
+            "matches pattern variable used outside of true if check",
                 new()
                 {
                     {
@@ -5808,7 +5930,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "matches pattern variable used outside of true if check",
+            "matches pattern variable used outside of true if check",
                 new()
                 {
                     {
@@ -5823,7 +5945,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "matches pattern variable used outside of true if check",
+            "matches pattern variable used outside of true if check",
                 new()
                 {
                     {
@@ -5838,7 +5960,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "matches pattern variable used outside of true if check",
+            "matches pattern variable used outside of true if check",
                 new()
                 {
                     {
@@ -5853,7 +5975,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "union class pattern field used outside of true if check",
+            "union class pattern field used outside of true if check",
                 new()
                 {
                     {
@@ -5868,7 +5990,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "matches pattern variable used outside of true if check",
+            "matches pattern variable used outside of true if check",
                 new()
                 {
                     {
@@ -5883,7 +6005,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "matches pattern variable used outside of true if check",
+            "matches pattern variable used outside of true if check",
                 new()
                 {
                     {
@@ -5898,7 +6020,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "matches pattern variable used outside of true if check",
+            "matches pattern variable used outside of true if check",
                 new()
                 {
                     {
@@ -5913,7 +6035,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "matches pattern variable used outside of true if check",
+            "matches pattern variable used outside of true if check",
                 new()
                 {
                     {
@@ -5933,7 +6055,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "matches pattern variable used in false if check",
+            "matches pattern variable used in false if check",
                 new()
                 {
                     {
@@ -5949,7 +6071,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "matches pattern variable used in false if check",
+            "matches pattern variable used in false if check",
                 new()
                 {
                     {
@@ -5965,7 +6087,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "matches pattern variable used in false if check",
+            "matches pattern variable used in false if check",
                 new()
                 {
                     {
@@ -5981,7 +6103,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "matches pattern variable used in false if check",
+            "matches pattern variable used in false if check",
                 new()
                 {
                     {
@@ -5997,7 +6119,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "matches pattern variable used in false if check",
+            "matches pattern variable used in false if check",
                 new()
                 {
                     {
@@ -6013,7 +6135,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "matches pattern variable used in false if check",
+            "matches pattern variable used in false if check",
                 new()
                 {
                     {
@@ -6029,7 +6151,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "matches pattern variable used in false if check",
+            "matches pattern variable used in false if check",
                 new()
                 {
                     {
@@ -6045,7 +6167,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "matches pattern variable used in false if check",
+            "matches pattern variable used in false if check",
                 new()
                 {
                     {
@@ -6061,7 +6183,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "matches pattern variable used in false if check",
+            "matches pattern variable used in false if check",
                 new()
                 {
                     {
@@ -6082,7 +6204,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "mismatched variable declaration assignment in union method",
+            "mismatched variable declaration assignment in union method",
                 new()
                 {
                     {
@@ -6100,7 +6222,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "incorrect not operator expression type",
+            "incorrect not operator expression type",
                 new()
                 {
                     {
@@ -6112,7 +6234,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "missing type in pattern",
+            "missing type in pattern",
                 new()
                 {
                     {
@@ -6124,7 +6246,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "extra patterns in union tuple pattern",
+            "extra patterns in union tuple pattern",
                 new()
                 {
                     {
@@ -6144,7 +6266,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "missing patterns in union tuple pattern",
+            "missing patterns in union tuple pattern",
                 new()
                 {
                     {
@@ -6164,7 +6286,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "Unknown variant used in matches union variant pattern",
+            "Unknown variant used in matches union variant pattern",
                 new()
                 {
                     {
@@ -6178,7 +6300,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "mismatched type used for field in class variant pattern",
+            "mismatched type used for field in class variant pattern",
                 new()
                 {
                     {
@@ -6192,7 +6314,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "variant name not specified for class variant pattern",
+            "variant name not specified for class variant pattern",
                 new()
                 {
                     {
@@ -6206,7 +6328,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "class variant pattern does not list all fields",
+            "class variant pattern does not list all fields",
                 new()
                 {
                     {
@@ -6225,7 +6347,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "incompatible field type used in class pattern",
+            "incompatible field type used in class pattern",
                 new()
                 {
                     {
@@ -6239,7 +6361,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "class pattern does not list all fields",
+            "class pattern does not list all fields",
                 new()
                 {
                     {
@@ -6253,7 +6375,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "non public field in class pattern",
+            "non public field in class pattern",
                 new()
                 {
                     {
@@ -6277,7 +6399,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "mismatched pattern type",
+            "mismatched pattern type",
                 new()
                 {
                     {
@@ -6291,7 +6413,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "class initializer sets private field",
+            "class initializer sets private field",
                 new()
                 {
                     {
@@ -6308,7 +6430,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "non mutable field assigned in class method",
+            "non mutable field assigned in class method",
                 new()
                 {
                     {
@@ -6326,7 +6448,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "instance field used in static class method",
+            "instance field used in static class method",
                 new()
                 {
                     {
@@ -6344,7 +6466,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "non mutable variable assigned twice",
+            "non mutable variable assigned twice",
                 new()
                 {
                     {
@@ -6360,7 +6482,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "non mutable field assigned through member access",
+            "non mutable field assigned through member access",
                 new()
                 {
                     {
@@ -6381,7 +6503,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "mutable field assigned from non mutable instance variable",
+            "mutable field assigned from non mutable instance variable",
                 new()
                 {
                     {
@@ -6397,7 +6519,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "non mutable variable assigned",
+            "non mutable variable assigned",
                 new()
                 {
                     {
@@ -6411,7 +6533,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "non mutable static field assigned through static member access",
+            "non mutable static field assigned through static member access",
                 new()
                 {
                     {
@@ -6431,7 +6553,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "non mutable param member assigned",
+            "non mutable param member assigned",
                 new()
                 {
                     {
@@ -6449,7 +6571,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "not mutable param assigned",
+            "not mutable param assigned",
                 new()
                 {
                     {
@@ -6464,7 +6586,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "non mutable variable passed to mutable function parameter",
+            "non mutable variable passed to mutable function parameter",
                 new()
                 {
                     {
@@ -6481,7 +6603,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "mismatched type when assigning field to generic field",
+            "mismatched type when assigning field to generic field",
                 new()
                 {
                     {
@@ -6500,7 +6622,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "unknown field assigned in class variant initializer",
+            "unknown field assigned in class variant initializer",
                 new()
                 {
                     {
@@ -6519,7 +6641,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "Unknown variant name used in union class variant initializer",
+            "Unknown variant name used in union class variant initializer",
                 new()
                 {
                     {
@@ -6538,7 +6660,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "incorrect expression type used in union class variant initializer",
+            "incorrect expression type used in union class variant initializer",
                 new()
                 {
                     {
@@ -6557,7 +6679,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "Union class variant initializer used for tuple union variant",
+            "Union class variant initializer used for tuple union variant",
                 new()
                 {
                     {
@@ -6574,7 +6696,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "incorrect expression type used in union class variant initializer",
+            "incorrect expression type used in union class variant initializer",
                 new()
                 {
                     {
@@ -6593,7 +6715,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "incorrect expression type used in union tuple",
+            "incorrect expression type used in union tuple",
                 new()
                 {
                     {
@@ -6608,7 +6730,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "duplicate union variant name in union declaration",
+            "duplicate union variant name in union declaration",
                 new()
                 {
                     {
@@ -6623,7 +6745,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "duplicate union names",
+            "duplicate union names",
                 new()
                 {
                     {
@@ -6635,7 +6757,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "duplicate union names with type errors",
+            "duplicate union names with type errors",
                 new()
                 {
                     {
@@ -6651,7 +6773,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "union name conflicts with class name",
+            "union name conflicts with class name",
                 new()
                 {
                     {
@@ -6663,7 +6785,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "duplicate class name with inner errors",
+            "duplicate class name with inner errors",
                 new()
                 {
                     {
@@ -6686,7 +6808,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "duplicate field in union class variant",
+            "duplicate field in union class variant",
                 new()
                 {
                     {
@@ -6708,7 +6830,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "incorrect type arguments for return value of same type",
+            "incorrect type arguments for return value of same type",
                 new()
                 {
                     {
@@ -6729,7 +6851,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "incorrect expression type for generic type in union tuple variant",
+            "incorrect expression type for generic type in union tuple variant",
                 new()
                 {
                     {
@@ -6741,7 +6863,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "incorrect expression type for generic type in generic class and generic method call",
+            "incorrect expression type for generic type in generic class and generic method call",
                 new()
                 {
                     {
@@ -6759,7 +6881,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "incorrect type used in generic class and generic method call",
+            "incorrect type used in generic class and generic method call",
                 new()
                 {
                     {
@@ -6777,7 +6899,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "incorrect expression type used in generic class and generic method",
+            "incorrect expression type used in generic class and generic method",
                 new()
                 {
                     {
@@ -6795,7 +6917,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "incorrect expression type in variable assignment",
+            "incorrect expression type in variable assignment",
                 new()
                 {
                     {
@@ -6807,7 +6929,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "incorrect expression type in variable assignment",
+            "incorrect expression type in variable assignment",
                 new()
                 {
                     {
@@ -6819,7 +6941,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "variable declaration without type or assignment never inferred",
+            "variable declaration without type or assignment never inferred",
                 new()
                 {
                     {
@@ -6831,7 +6953,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "variable declaration without type or assignment never inferred",
+            "variable declaration without type or assignment never inferred",
                 new()
                 {
                     {
@@ -6850,7 +6972,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "variable declaration without type or assignment never inferred",
+            "variable declaration without type or assignment never inferred",
                 new()
                 {
                     {
@@ -6866,7 +6988,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "variable declaration without type or assignment never inferred",
+            "variable declaration without type or assignment never inferred",
                 new()
                 {
                     {
@@ -6884,7 +7006,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "incorrect type in return value",
+            "incorrect type in return value",
                 new()
                 {
                     {
@@ -6896,7 +7018,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "return value for function without return type",
+            "return value for function without return type",
                 new()
                 {
                     {
@@ -6908,7 +7030,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "duplicate function declaration",
+            "duplicate function declaration",
                 new()
                 {
                     {
@@ -6920,7 +7042,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "duplicate function declaration in union",
+            "duplicate function declaration in union",
                 new()
                 {
                     {
@@ -6932,7 +7054,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "duplicate function declaration in class",
+            "duplicate function declaration in class",
                 new()
                 {
                     {
@@ -6944,7 +7066,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "function contains duplicate parameter",
+            "function contains duplicate parameter",
                 new()
                 {
                     {
@@ -6963,7 +7085,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "no return value provided when return value expected",
+            "no return value provided when return value expected",
                 new()
                 {
                     {
@@ -6975,7 +7097,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "incorrect expression type in variable assignment",
+            "incorrect expression type in variable assignment",
                 new()
                 {
                     {
@@ -6987,7 +7109,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "variable used before initialization",
+            "variable used before initialization",
                 new()
                 {
                     {
@@ -6999,7 +7121,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "function used outside of declaration scope",
+            "function used outside of declaration scope",
                 new()
                 {
                     {
@@ -7011,7 +7133,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "call missing method",
+            "call missing method",
                 new()
                 {
                     {
@@ -7026,7 +7148,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "object initializer for unknown type",
+            "object initializer for unknown type",
                 new()
                 {
                     {
@@ -7038,7 +7160,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "object initializer for unknown type",
+            "object initializer for unknown type",
                 new()
                 {
                     {
@@ -7053,7 +7175,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "incorrect expression types in method call",
+            "incorrect expression types in method call",
                 new()
                 {
                     {
@@ -7065,7 +7187,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "missing function arguments",
+            "missing function arguments",
                 new()
                 {
                     {
@@ -7077,7 +7199,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "too many function arguments",
+            "too many function arguments",
                 new()
                 {
                     {
@@ -7090,7 +7212,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "member accessed on generic instance variable",
+            "member accessed on generic instance variable",
                 new()
                 {
                     {
@@ -7102,7 +7224,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "static member accessed on generic type",
+            "static member accessed on generic type",
                 new()
                 {
                     {
@@ -7117,7 +7239,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "generic variable returned as concrete class",
+            "generic variable returned as concrete class",
                 new()
                 {
                     {
@@ -7129,7 +7251,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "duplicate function generic parameter",
+            "duplicate function generic parameter",
                 new()
                 {
                     {
@@ -7141,7 +7263,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "duplicate function generic parameter",
+            "duplicate function generic parameter",
                 new()
                 {
                     {
@@ -7156,7 +7278,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "duplicate function generic parameter",
+            "duplicate function generic parameter",
                 new()
                 {
                     {
@@ -7171,7 +7293,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "incorrect type in if check",
+            "incorrect type in if check",
                 new()
                 {
                     {
@@ -7183,7 +7305,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "incorrect type in else if check",
+            "incorrect type in else if check",
                 new()
                 {
                     {
@@ -7195,7 +7317,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "incorrect type in variable declaration in if body",
+            "incorrect type in variable declaration in if body",
                 new()
                 {
                     {
@@ -7207,7 +7329,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "incorrect type in variable declaration in else if body",
+            "incorrect type in variable declaration in else if body",
                 new()
                 {
                     {
@@ -7219,7 +7341,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "incorrect type in variable declaration in else body",
+            "incorrect type in variable declaration in else body",
                 new()
                 {
                     {
@@ -7231,7 +7353,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "incorrect type in second else if body",
+            "incorrect type in second else if body",
                 new()
                 {
                     {
@@ -7243,7 +7365,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "unresolved inferred types",
+            "unresolved inferred types",
                 new()
                 {
                     {
@@ -7260,7 +7382,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "unresolved inferred types",
+            "unresolved inferred types",
                 new()
                 {
                     {
@@ -7277,7 +7399,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "unresolved inferred types",
+            "unresolved inferred types",
                 new()
                 {
                     {
@@ -7293,7 +7415,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "incorrect number of type arguments",
+            "incorrect number of type arguments",
                 new()
                 {
                     {
@@ -7305,7 +7427,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "incorrect number of type arguments",
+            "incorrect number of type arguments",
                 new()
                 {
                     {
@@ -7317,7 +7439,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "incorrect number of type arguments",
+            "incorrect number of type arguments",
                 new()
                 {
                     {
@@ -7329,7 +7451,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "incorrect number of type arguments",
+            "incorrect number of type arguments",
                 new()
                 {
                     {
@@ -7341,7 +7463,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "too many type arguments",
+            "too many type arguments",
                 new()
                 {
                     {
@@ -7351,7 +7473,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "unresolved global function generic type",
+            "unresolved global function generic type",
                 new()
                 {
                     {
@@ -7363,7 +7485,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "unresolved instance function generic type",
+            "unresolved instance function generic type",
                 new()
                 {
                     {
@@ -7383,7 +7505,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "unresolved static function generic type",
+            "unresolved static function generic type",
                 new()
                 {
                     {
@@ -7402,7 +7524,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "too many function type arguments",
+            "too many function type arguments",
                 new()
                 {
                     {
@@ -7419,7 +7541,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "unresolved function type argument",
+            "unresolved function type argument",
                 new()
                 {
                     {
@@ -7431,7 +7553,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "incorrect type for class initializer field assignment",
+            "incorrect type for class initializer field assignment",
                 new()
                 {
                     {
@@ -7446,7 +7568,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "field assigned twice in object initializer",
+            "field assigned twice in object initializer",
                 new()
                 {
                     {
@@ -7461,7 +7583,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "unknown field assigned in object initializer",
+            "unknown field assigned in object initializer",
                 new()
                 {
                     {
@@ -7476,7 +7598,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "field not assigned in object initializer",
+            "field not assigned in object initializer",
                 new()
                 {
                     {
@@ -7495,7 +7617,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "incorrect expression type in static field initializer",
+            "incorrect expression type in static field initializer",
                 new()
                 {
                     {
@@ -7507,7 +7629,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "function generic type conflict with parent class",
+            "function generic type conflict with parent class",
                 new()
                 {
                     {
@@ -7521,7 +7643,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "duplicate generic type in class definition",
+            "duplicate generic type in class definition",
                 new()
                 {
                     {
@@ -7533,7 +7655,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "duplicate generic type in class definition",
+            "duplicate generic type in class definition",
                 new()
                 {
                     {
@@ -7548,7 +7670,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "duplicate generic type in class definition",
+            "duplicate generic type in class definition",
                 new()
                 {
                     {
@@ -7563,7 +7685,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "Generic type conflicts with existing type",
+            "Generic type conflicts with existing type",
                 new()
                 {
                     {
@@ -7576,7 +7698,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "Generic type conflicts with existing type",
+            "Generic type conflicts with existing type",
                 new()
                 {
                     {
@@ -7589,7 +7711,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "Generic type conflicts with existing type",
+            "Generic type conflicts with existing type",
                 new()
                 {
                     {
@@ -7602,7 +7724,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "Generic type conflicts with existing type",
+            "Generic type conflicts with existing type",
                 new()
                 {
                     {
@@ -7615,7 +7737,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "Generic type conflicts with existing type",
+            "Generic type conflicts with existing type",
                 new()
                 {
                     {
@@ -7628,7 +7750,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "Generic type conflicts with existing type",
+            "Generic type conflicts with existing type",
                 new()
                 {
                     {
@@ -7641,7 +7763,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "Generic type conflicts with existing type",
+            "Generic type conflicts with existing type",
                 new()
                 {
                     {
@@ -7654,7 +7776,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "Generic type conflicts with existing type",
+            "Generic type conflicts with existing type",
                 new()
                 {
                     {
@@ -7667,7 +7789,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "incorrect return type",
+            "incorrect return type",
                 new()
                 {
                     {
@@ -7683,7 +7805,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
             // binary operators
             // less than
             {
-                "incorrect type for less than",
+            "incorrect type for less than",
                 new()
                 {
                     {
@@ -7695,7 +7817,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "incorrect type for less than",
+            "incorrect type for less than",
                 new()
                 {
                     {
@@ -7707,7 +7829,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "incorrect type for less than variable declaration",
+            "incorrect type for less than variable declaration",
                 new()
                 {
                     {
@@ -7719,8 +7841,8 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                // GreaterThan,
-                "incorrect type for greater than",
+            // GreaterThan,
+            "incorrect type for greater than",
                 new()
                 {
                     {
@@ -7732,7 +7854,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "incorrect type for greater than",
+            "incorrect type for greater than",
                 new()
                 {
                     {
@@ -7744,7 +7866,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "incorrect type for greater than in variable declaration",
+            "incorrect type for greater than in variable declaration",
                 new()
                 {
                     {
@@ -7756,8 +7878,8 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                // Plus,
-                "incorrect type for plus",
+            // Plus,
+            "incorrect type for plus",
                 new()
                 {
                     {
@@ -7769,7 +7891,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "incorrect type for plus",
+            "incorrect type for plus",
                 new()
                 {
                     {
@@ -7781,7 +7903,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "incorrect type for plus in variable declaration",
+            "incorrect type for plus in variable declaration",
                 new()
                 {
                     {
@@ -7793,8 +7915,8 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                // Minus,
-                "incorrect type for minus",
+            // Minus,
+            "incorrect type for minus",
                 new()
                 {
                     {
@@ -7806,7 +7928,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "incorrect type for minus",
+            "incorrect type for minus",
                 new()
                 {
                     {
@@ -7818,7 +7940,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "incorrect type for minus in variable declaration",
+            "incorrect type for minus in variable declaration",
                 new()
                 {
                     {
@@ -7830,8 +7952,8 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                // Multiply,
-                "incorrect type for multiply",
+            // Multiply,
+            "incorrect type for multiply",
                 new()
                 {
                     {
@@ -7843,7 +7965,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "incorrect type for multiply",
+            "incorrect type for multiply",
                 new()
                 {
                     {
@@ -7855,7 +7977,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "incorrect type for multiply in variable declaration",
+            "incorrect type for multiply in variable declaration",
                 new()
                 {
                     {
@@ -7867,8 +7989,8 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                // Divide,
-                "incorrect type for divide",
+            // Divide,
+            "incorrect type for divide",
                 new()
                 {
                     {
@@ -7880,7 +8002,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "incorrect type for divide",
+            "incorrect type for divide",
                 new()
                 {
                     {
@@ -7892,7 +8014,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "incorrect type for divide in variable declaration",
+            "incorrect type for divide in variable declaration",
                 new()
                 {
                     {
@@ -7904,8 +8026,8 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                // Equality Check
-                "incorrect type for equality check",
+            // Equality Check
+            "incorrect type for equality check",
                 new()
                 {
                     {
@@ -7917,7 +8039,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "incorrect type for negative equality check",
+            "incorrect type for negative equality check",
                 new()
                 {
                     {
@@ -7929,7 +8051,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "incorrect type for equality check",
+            "incorrect type for equality check",
                 new()
                 {
                     {
@@ -7941,7 +8063,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "incorrect type for negative equality check",
+            "incorrect type for negative equality check",
                 new()
                 {
                     {
@@ -7953,7 +8075,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "incorrect type for equality check in variable declaration",
+            "incorrect type for equality check in variable declaration",
                 new()
                 {
                     {
@@ -7965,7 +8087,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "incorrect type for negative equality check in variable declaration",
+            "incorrect type for negative equality check in variable declaration",
                 new()
                 {
                     {
@@ -7977,8 +8099,8 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                // ValueAssignment,
-                "incompatible type used for variable assignment",
+            // ValueAssignment,
+            "incompatible type used for variable assignment",
                 new()
                 {
                     {
@@ -7990,7 +8112,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "assignment to literal",
+            "assignment to literal",
                 new()
                 {
                     {
@@ -8004,8 +8126,8 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                // MemberAccess,
-                "incorrect type in variable declaration",
+            // MemberAccess,
+            "incorrect type in variable declaration",
                 new()
                 {
                     {
@@ -8018,8 +8140,8 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                // StaticMemberAccess
-                "incorrect type in variable declaration",
+            // StaticMemberAccess
+            "incorrect type in variable declaration",
                 new()
                 {
                     {
@@ -8033,7 +8155,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "no fields provided in class pattern",
+            "no fields provided in class pattern",
                 new()
                 {
                     {
@@ -8047,7 +8169,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "calling closure when variable is uninitialized",
+            "calling closure when variable is uninitialized",
                 new()
                 {
                     {
@@ -8067,7 +8189,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "calling deep closure when variable is uninitialized",
+            "calling deep closure when variable is uninitialized",
                 new()
                 {
                     {
@@ -8092,7 +8214,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "assigning closure to variable when variable is uninitialized",
+            "assigning closure to variable when variable is uninitialized",
                 new()
                 {
                     {
@@ -8112,7 +8234,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "Mismatched type boxing",
+            "Mismatched type boxing",
                 new()
                 {
                     {
@@ -8125,7 +8247,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "Mismatched type boxing",
+            "Mismatched type boxing",
                 new()
                 {
                     {
@@ -8138,7 +8260,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "Mismatched type boxing",
+            "Mismatched type boxing",
                 new()
                 {
                     {
@@ -8151,7 +8273,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "Mismatched type boxing",
+            "Mismatched type boxing",
                 new()
                 {
                     {
@@ -8168,7 +8290,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "Mismatched type boxing",
+            "Mismatched type boxing",
                 new()
                 {
                     {
@@ -8185,7 +8307,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "Mismatched type boxing",
+            "Mismatched type boxing",
                 new()
                 {
                     {
@@ -8202,7 +8324,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-                "TypeIdentifier without static access",
+            "TypeIdentifier without static access",
                 new()
                 {
                     {
@@ -8217,7 +8339,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 }
 
             }
-        };
+    };
     }
 
     private const string Mvp =

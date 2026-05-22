@@ -385,6 +385,10 @@ public partial class TypeChecker
         return instantiatedFunction;
     }
 
+    public record AttributeSignature(DefId Id, StringToken NameToken)
+    {
+    }
+
     public record FunctionSignature(
         DefId Id,
         StringToken NameToken,
