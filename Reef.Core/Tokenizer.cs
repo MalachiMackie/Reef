@@ -12,26 +12,45 @@ public class Tokenizer
     private static readonly SearchValues<char> Digits = SearchValues.Create("0123456789");
 
     private readonly List<int> _notTokens = [];
+    private readonly List<TokenizerError> _errors = [];
 
     private readonly Dictionary<string, string>.AlternateLookup<ReadOnlySpan<char>> _stringsAlternateLookup =
         new Dictionary<string, string>().GetAlternateLookup<ReadOnlySpan<char>>();
 
-    public static IEnumerable<Token> Tokenize(string sourceStr)
+    public record TokenizerError(SourceSpan SourceSpan, string Message);
+    public record Result(IReadOnlyList<Token> Tokens, IReadOnlyList<TokenizerError> Errors);
+
+    public static Result Tokenize(string sourceStr)
     {
         var tokenizer = new Tokenizer();
-        return tokenizer.TokenizeInner(sourceStr);
+        var tokens = tokenizer.TokenizeInner(sourceStr);
+        return new Result([.. tokens], tokenizer._errors);
     }
 
     private IEnumerable<Token> TokenizeInner(string sourceStr)
     {
-        if (sourceStr.Length == 0)
+        if (sourceStr.Length == 0 || sourceStr.IsWhiteSpace())
         {
             yield break;
         }
 
         var endIndex = sourceStr.Length - 1;
         var chars = sourceStr.AsSpan()[..(endIndex + 1)];
-        var nextToken = EatToken(chars, new SourcePosition(0, 0, 0));
+
+        var initialStartSourcePosition = new SourcePosition(0, 0, 0);
+        var previousStartPosition = 0u;
+        var firstTokenResult = EatToken(chars, initialStartSourcePosition);
+        while (firstTokenResult.Token is null && !firstTokenResult.End)
+        {
+            // double check we're actually moving forward and wont get stuck in an infinite loop
+            Debug.Assert(initialStartSourcePosition.Start > previousStartPosition);
+            previousStartPosition = initialStartSourcePosition.Start;
+
+            firstTokenResult = EatToken(
+                sourceStr.AsSpan()[(int)initialStartSourcePosition.Start..], initialStartSourcePosition);
+        }
+        var nextToken = firstTokenResult.Token;
+
         while (nextToken is not null)
         {
             var token = nextToken;
@@ -40,7 +59,7 @@ public class Tokenizer
             var startIndex = (int)(token.SourceSpan.Position.Start + token.SourceSpan.Length);
 
             var nextSource = sourceStr.AsSpan()[startIndex..(endIndex + 1)];
-            if (nextSource.IsEmpty)
+            if (nextSource.IsEmpty || nextSource.IsWhiteSpace())
             {
                 break;
             }
@@ -54,28 +73,69 @@ public class Tokenizer
                 ? (ushort)(token.SourceSpan.Position.LinePosition + token.SourceSpan.Length)
                 : (ushort)(token.SourceSpan.Length - (lastNewLine + 1));
 
-            nextToken = EatToken(nextSource, new SourcePosition(
-                token.SourceSpan.Position.Start + token.SourceSpan.Length,
-                (ushort)(token.SourceSpan.Position.LineNumber + newLinesInToken),
-                newLinePosition));
+            var nextSourcePosition = new SourcePosition(
+                            token.SourceSpan.Position.Start + token.SourceSpan.Length,
+                            (ushort)(token.SourceSpan.Position.LineNumber + newLinesInToken),
+                            newLinePosition);
+
+            previousStartPosition = nextSourcePosition.Start;
+            var nextTokenResult = EatToken(nextSource, nextSourcePosition);
+
+            while (nextTokenResult.Token is null && !nextTokenResult.End)
+            {
+                Debug.Assert(nextSourcePosition.Start > previousStartPosition);
+
+                nextSource = sourceStr.AsSpan()[(int)nextSourcePosition.Start..(endIndex + 1)];
+                if (nextSource.IsEmpty || nextSource.IsWhiteSpace())
+                {
+                    break;
+                }
+                nextTokenResult = EatToken(nextSource, nextSourcePosition);
+            }
+            nextToken = nextTokenResult.Token;
         }
     }
 
-    private Token? EatToken(
+    private record EatTokenResult(Token? Token, bool Error, bool End);
+
+    private EatTokenResult EatToken(
         ReadOnlySpan<char> source,
         SourcePosition startPosition)
     {
         var sourceTrimmed = source.TrimStart();
         if (sourceTrimmed.Length == 0)
         {
-            return null;
+            return new EatTokenResult(null, false, true);
         }
+
+        var trimmedChars = source[..^sourceTrimmed.Length];
 
         Span<TokenType?> potentialTokens = stackalloc TokenType?[MaxPotentialTokenTypes];
         var potentialTokensCount = GetPotentiallyValidTokenTypes(sourceTrimmed[0], ref potentialTokens);
         if (potentialTokensCount == 0)
         {
-            throw new InvalidOperationException($"Unexpected token {sourceTrimmed[0]}");
+            var errorPosition = new SourcePosition(
+                startPosition.Start,
+                startPosition.LineNumber,
+                startPosition.LinePosition);
+
+            SetNextPosition(errorPosition, trimmedChars);
+
+            _errors.Add(new TokenizerError(
+                new SourceSpan(errorPosition, 1),
+                $"Unexpected character '{sourceTrimmed[0]}'"));
+
+            if (trimmedChars.Length + 1 >= source.Length)
+            {
+                return new EatTokenResult(null, true, true);
+            }
+
+            var nextTrimmed = source[(trimmedChars.Length + 1)..].TrimStart();
+            trimmedChars = source[..^nextTrimmed.Length];
+
+            SetNextPosition(startPosition, trimmedChars);
+
+            return new EatTokenResult(null, true, false);
         }
 
         for (ushort i = 1; i < source.Length; i++)
@@ -101,16 +161,13 @@ public class Tokenizer
             if (_notTokens.Count == potentialTokensCount)
             {
                 // only calculate new position when we are going to resolve the token
-                if (trimmed.Length != part.Length)
-                {
-                    var trimmedCharacters = part[..^trimmed.Length];
-                    SetNextPosition(startPosition, trimmedCharacters);
-                }
+                trimmedChars = part[..^trimmed.Length];
+                SetNextPosition(startPosition, trimmedChars);
 
                 // previously we had at least one potential token, now we have none. need to resolve to one.
                 // this will happen in the case of `int)`
                 var tokenSource = trimmed[..^1];
-                return ResolveToken(tokenSource, potentialTokens, startPosition);
+                return new EatTokenResult(ResolveToken(tokenSource, potentialTokens, startPosition), false, false);
             }
 
             foreach (var index in _notTokens)
@@ -132,18 +189,21 @@ public class Tokenizer
 
         if (allNull)
         {
-            return null;
+            return new EatTokenResult(null, false, true);
         }
 
-        var outerTrimmedChars = source[..^sourceTrimmed.Length];
+        SetNextPosition(startPosition, trimmedChars);
 
-        SetNextPosition(startPosition, outerTrimmedChars);
-
-        return ResolveToken(sourceTrimmed, potentialTokens, startPosition);
+        return new EatTokenResult(ResolveToken(sourceTrimmed, potentialTokens, startPosition), false, false);
     }
 
     private static void SetNextPosition(SourcePosition start, ReadOnlySpan<char> trimmedCharacters)
     {
+        if (trimmedCharacters.IsEmpty)
+        {
+            return;
+        }
+
         var outerLinePosition = start.LinePosition;
         var outerNewLines = 0;
         var lastNewLineIndex = -1;

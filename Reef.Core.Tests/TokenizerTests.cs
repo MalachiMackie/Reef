@@ -2,112 +2,42 @@ namespace Reef.Core.Tests;
 
 public class TokenizerTests
 {
-    private const string MediumSource = """
-                                        pub fn DoSomething(a: int): result<int, string> {
-                                            var b = 2;
-
-                                            if (a > b) {
-                                                return ok(a);
-                                            }
-                                            else if (a == b) {
-                                                return ok(b);
-                                            }
-
-                                            return error("something wrong");
-                                        }
-
-                                        pub fn SomethingElse(a: int): result<int, string> {
-                                            b = DoSomething(a)?;
-
-                                            return b;
-                                        }
-
-                                        Println(DoSomething(5));
-                                        Println(DoSomething(1));
-                                        Println(SomethingElse(1));
-
-                                        """;
-
-    private const string LargeSource = $"""
-                                        {MediumSource}
-                                        {MediumSource}
-                                        {MediumSource}
-                                        {MediumSource}
-                                        {MediumSource}
-                                        {MediumSource}
-                                        {MediumSource}
-                                        {MediumSource}
-                                        {MediumSource}
-                                        {MediumSource}
-                                        {MediumSource}
-                                        {MediumSource}
-                                        {MediumSource}
-                                        {MediumSource}
-                                        {MediumSource}
-                                        {MediumSource}
-                                        {MediumSource}
-                                        {MediumSource}
-                                        {MediumSource}
-                                        {MediumSource}
-                                        {MediumSource}
-                                        {MediumSource}
-                                        {MediumSource}
-                                        {MediumSource}
-                                        {MediumSource}
-                                        {MediumSource}
-                                        {MediumSource}
-                                        {MediumSource}
-                                        {MediumSource}
-                                        {MediumSource}
-                                        {MediumSource}
-                                        {MediumSource}
-                                        {MediumSource}
-                                        {MediumSource}
-                                        {MediumSource}
-                                        {MediumSource}
-                                        {MediumSource}
-                                        {MediumSource}
-                                        {MediumSource}
-                                        {MediumSource}
-                                        {MediumSource}
-                                        {MediumSource}
-                                        {MediumSource}
-                                        {MediumSource}
-                                        {MediumSource}
-                                        {MediumSource}
-                                        {MediumSource}
-                                        {MediumSource}
-                                        {MediumSource}
-                                        {MediumSource}
-                                        {MediumSource}
-                                        """;
-
     [Theory]
     [MemberData(nameof(TestCases))]
     public void Tests(string source, IEnumerable<Token> expectedTokens)
     {
         var result = Tokenizer.Tokenize(source);
-
-        result.Should().BeEquivalentTo(expectedTokens);
+        result.Errors.Should().BeEmpty();
+        result.Tokens.Should().BeEquivalentTo(expectedTokens);
     }
 
     [Theory]
     [MemberData(nameof(SingleTestCases))]
     public void SingleTests(string source, IEnumerable<Token> expectedTokens)
     {
-        var result = Tokenizer.Tokenize(source);
+        var result = Tokenizer.Tokenize(source).Tokens;
 
         result.Should().BeEquivalentTo(expectedTokens);
     }
 
     [Fact]
-    public void Should_Throw_When_SymbolCharacterIsFound()
+    public void Should_ReturnError_When_SymbolCharacterIsFound()
     {
-        const string source = "@";
+        const string source = "@@ @ fn @@ @";
 
-        var act = () => Tokenizer.Tokenize(source).Count();
+        var result = Tokenizer.Tokenize(source);
 
-        act.Should().Throw<InvalidOperationException>();
+        result.Tokens.Should().BeEquivalentTo([Token.Fn(new SourceSpan(new SourcePosition(5, 0, 5), 2))]);
+        result.Errors.Should().BeEquivalentTo(
+            [
+                new Tokenizer.TokenizerError(new SourceSpan(new SourcePosition(0, 0, 0), 1), $"Unexpected character '@'"),
+                new Tokenizer.TokenizerError(new SourceSpan(new SourcePosition(1, 0, 1), 1), $"Unexpected character '@'"),
+                new Tokenizer.TokenizerError(new SourceSpan(new SourcePosition(3, 0, 3), 1), $"Unexpected character '@'"),
+                new Tokenizer.TokenizerError(new SourceSpan(new SourcePosition(8, 0, 8), 1), $"Unexpected character '@'"),
+                new Tokenizer.TokenizerError(new SourceSpan(new SourcePosition(9, 0, 9), 1), $"Unexpected character '@'"),
+                new Tokenizer.TokenizerError(new SourceSpan(new SourcePosition(11, 0, 11), 1), $"Unexpected character '@'"),
+            ]
+        );
     }
 
     [Fact]
@@ -115,15 +45,9 @@ public class TokenizerTests
     {
         const string source = "漢";
 
-        var result = Tokenizer.Tokenize(source);
+        var result = Tokenizer.Tokenize(source).Tokens;
 
         result.Should().BeEquivalentTo([Token.Identifier("漢", new SourceSpan(new SourcePosition(0, 0, 0), 1))]);
-    }
-
-    [Fact]
-    public void Perf()
-    {
-        Tokenizer.Tokenize(LargeSource).Count().Should().BeGreaterThan(0);
     }
 
     public static IEnumerable<object[]> SingleTestCases()

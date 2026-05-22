@@ -1,6 +1,7 @@
 using System.IO.Abstractions.TestingHelpers;
 using System.Text;
 using Reef.Core.Abseil;
+using Reef.Core.Common;
 using Reef.Core.LoweredExpressions;
 using Reef.Core.Tests.IntegrationTests.Helpers;
 
@@ -37,10 +38,11 @@ public class TestBase
 
         var moduleResult = results[moduleId];
 
+        moduleResult.TokenizerErrors.Should().BeEmpty();
         moduleResult.ParserErrors.Should().BeEmpty();
         moduleResult.TypeCheckerErrors.Should().BeEmpty();
 
-        return [.. results.Select(x => x.Value.Module).Concat(importedModules)];
+        return [.. results.Select(x => x.Value.Module.NotNull()).Concat(importedModules)];
     }
 
     protected void PrintPrograms(LoweredProgram expected, LoweredProgram actual, bool parensAroundExpressions = true, bool printValueUseful = true)

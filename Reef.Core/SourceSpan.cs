@@ -3,6 +3,8 @@
 public record SourceSpan(SourcePosition Position, ushort Length)
 {
     public static readonly SourceSpan Default = new(SourcePosition.Default, 0);
+
+    public SourceRange ToRange() => new(this, this);
 }
 
 public record SourceRange(SourceSpan Start, SourceSpan End)

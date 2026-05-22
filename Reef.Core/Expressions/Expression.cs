@@ -329,6 +329,8 @@ public record IfExpressionExpression(IfExpression IfExpression, SourceRange Sour
     }
 }
 
+public record LangAttribute(StringToken Identifier, SourceRange SourceRange);
+
 public record BlockExpression(Block Block, SourceRange SourceRange) : IExpression
 {
     public ExpressionType ExpressionType => ExpressionType.Block;

@@ -110,6 +110,6 @@ public static class FailTestCases
             "(a",
             "(a b)",
         ];
-        return strings.Select(x => new object[] { x, Tokenizer.Tokenize(x) });
+        return strings.Select(x => new object[] { x, Tokenizer.Tokenize(x).Tokens });
     }
 }

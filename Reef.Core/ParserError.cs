@@ -1,62 +1,28 @@
-﻿namespace Reef.Core;
+﻿using System.Diagnostics;
+using System.Text;
+using Reef.Core.Expressions;
+
+namespace Reef.Core;
 
 public record ParserError
 {
-    private ParserError(Token? receivedToken, ParserErrorType type)
+    private ParserError(ParserErrorType type, SourceRange? sourceRange, string message)
     {
-        ReceivedToken = receivedToken;
         Type = type;
-    }
-
-    private ParserError(Token? receivedToken, IReadOnlyList<TokenType> expectedTokens, ParserErrorType type)
-    {
-        ExpectedTokenTypes = [.. expectedTokens.Order()];
-        ReceivedToken = receivedToken;
-        Type = type;
+        SourceRange = sourceRange;
+        Message = message;
     }
 
     public ParserErrorType Type { get; }
-    public IReadOnlyList<TokenType>? ExpectedTokenTypes { get; }
-    public Token? ReceivedToken { get; }
-
-    public string Format()
-    {
-        if (Type == ParserErrorType.DuplicateModifier)
-        {
-            return $"Duplicate modifier {ReceivedToken.NotNull()}";
-        }
-
-        var expectedMessage = Type switch
-        {
-            ParserErrorType.ExpectedToken when ExpectedTokenTypes is { Count: > 1 } =>
-                $"Expected one of [{string.Join(", ", ExpectedTokenTypes)}]",
-            ParserErrorType.ExpectedToken => $"Expected {ExpectedTokenTypes.NotNull()[0]}",
-            ParserErrorType.ExpectedConstraint => $"Expected constraint",
-            ParserErrorType.ExpectedExpression => "Expected expression",
-            ParserErrorType.ExpectedType => "Expected type",
-            ParserErrorType.ExpectedPattern => "Expected pattern",
-            ParserErrorType.ExpectedPatternOrToken when ExpectedTokenTypes is { Count: > 1 } =>
-                $"Expected pattern or one of [{string.Join(", ", ExpectedTokenTypes)}]",
-            ParserErrorType.ExpectedPatternOrToken => $"Expected pattern or {ExpectedTokenTypes.NotNull()[0]}",
-            ParserErrorType.ExpectedTypeOrToken when ExpectedTokenTypes is { Count: > 1 } =>
-                $"Expected type or one of [{string.Join(", ", ExpectedTokenTypes)}]",
-            ParserErrorType.ExpectedTypeOrToken => $"Expected type or {ExpectedTokenTypes.NotNull()[0]}",
-            ParserErrorType.ExpectedTokenOrExpression when ExpectedTokenTypes is { Count: > 1 } =>
-                $"Expected expression or one of [{string.Join(", ", ExpectedTokenTypes)}]",
-            ParserErrorType.ExpectedTokenOrExpression => $"Expected expression or {ExpectedTokenTypes.NotNull()[0]}",
-            ParserErrorType.ExpectedTypeName => "Expected type name",
-            ParserErrorType.UnexpectedModifier when ExpectedTokenTypes is { Count: > 1 } =>
-                $"Expected one of modifiers [{string.Join(", ", ExpectedTokenTypes)}]",
-            ParserErrorType.UnexpectedModifier => $"Expected modifier {ExpectedTokenTypes.NotNull()[0]}",
-            _ => throw new ArgumentOutOfRangeException()
-        };
-
-        return expectedMessage + $", but received {ReceivedToken?.ToString() ?? "EOF"}";
-    }
+    public SourceRange? SourceRange { get; }
+    public string Message { get; }
 
     public static ParserError ExpectedConstraint(Token? receivedToken)
     {
-        return new ParserError(receivedToken, [], ParserErrorType.ExpectedConstraint);
+        return new ParserError(
+            ParserErrorType.ExpectedConstraint,
+            receivedToken?.SourceSpan.ToRange(),
+            $"Expected type constraint, but found {receivedToken?.ToString() ?? "EOF"}");
     }
 
     public static ParserError ExpectedToken(Token? receivedToken, params IReadOnlyList<TokenType> expectedTokens)
@@ -66,7 +32,10 @@ public record ParserError
             throw new InvalidOperationException("Expected at least one token type");
         }
 
-        return new ParserError(receivedToken, expectedTokens, ParserErrorType.ExpectedToken);
+        return new ParserError(
+            ParserErrorType.ExpectedToken,
+            receivedToken?.SourceSpan.ToRange(),
+            $"Expcted one of token types: [{string.Join(", ", expectedTokens.Order())}], but found {receivedToken?.ToString() ?? "EOF"}");
     }
 
     public static ParserError ExpectedTokenOrExpression(Token? receivedToken, params IReadOnlyList<TokenType> expectedTokens)
@@ -76,46 +45,90 @@ public record ParserError
             throw new InvalidOperationException("Expected at least one token type");
         }
 
-        return new ParserError(receivedToken, expectedTokens, ParserErrorType.ExpectedTokenOrExpression);
+        return new ParserError(
+            ParserErrorType.ExpectedTokenOrExpression,
+            receivedToken?.SourceSpan.ToRange(),
+            $"Expcted either expression or one of token types: [{string.Join(", ", expectedTokens.Order())}], but found {receivedToken?.ToString() ?? "EOF"}");
     }
 
     public static ParserError ExpectedType(Token? receivedToken)
     {
-        return new ParserError(receivedToken, ParserErrorType.ExpectedType);
+        return new ParserError(
+            ParserErrorType.ExpectedType,
+            receivedToken?.SourceSpan.ToRange(),
+            $"Expcted type identifier, but found {receivedToken?.ToString() ?? "EOF"}");
     }
 
     public static ParserError ExpectedTypeName(Token? receivedToken)
     {
-        return new ParserError(receivedToken, ParserErrorType.ExpectedTypeName);
+        return new ParserError(
+            ParserErrorType.ExpectedTypeName,
+            receivedToken?.SourceSpan.ToRange(),
+            $"Expcted type name, but found {receivedToken?.ToString() ?? "EOF"}");
     }
 
     public static ParserError ExpectedTypeOrToken(Token? receivedToken, params IReadOnlyList<TokenType> expectedTokens)
     {
-        return new ParserError(receivedToken, expectedTokens, ParserErrorType.ExpectedTypeOrToken);
+        Debug.Assert(expectedTokens.Count > 0);
+
+        return new ParserError(
+            ParserErrorType.ExpectedTypeOrToken,
+            receivedToken?.SourceSpan.ToRange(),
+            $"Expcted type identifier or one of tokens: [{string.Join(",", expectedTokens.Order())}], but found {receivedToken?.ToString() ?? "EOF"}");
     }
 
     public static ParserError ExpectedExpression(Token? receivedToken)
     {
-        return new ParserError(receivedToken, ParserErrorType.ExpectedExpression);
+        return new ParserError(
+            ParserErrorType.ExpectedExpression,
+            receivedToken?.SourceSpan.ToRange(),
+            $"Expcted expression, but found {receivedToken?.ToString() ?? "EOF"}");
     }
 
     public static ParserError UnexpectedModifier(Token receivedToken, params IReadOnlyList<TokenType> allowedModifiers)
     {
-        return new ParserError(receivedToken, allowedModifiers, ParserErrorType.UnexpectedModifier);
+        var error = new StringBuilder("Unexpected modifier");
+        if (allowedModifiers.Count > 0)
+        {
+            error.Append($", allowed modifiers: [{string.Join(", ", allowedModifiers.Order())}]");
+        }
+        return new ParserError(
+            ParserErrorType.UnexpectedModifier,
+            receivedToken.SourceSpan.ToRange(),
+            error.ToString());
     }
 
     public static ParserError DuplicateModifier(Token receivedToken)
     {
-        return new ParserError(receivedToken, ParserErrorType.DuplicateModifier);
+        return new ParserError(
+            ParserErrorType.DuplicateModifier,
+            receivedToken.SourceSpan.ToRange(),
+            $"Duplicate modifier \"{receivedToken}\"");
     }
 
     public static ParserError ExpectedPattern(Token? receivedToken)
     {
-        return new ParserError(receivedToken, ParserErrorType.ExpectedPattern);
+        return new ParserError(
+            ParserErrorType.ExpectedPattern,
+            receivedToken?.SourceSpan.ToRange(),
+            $"Expcted pattern, but found {receivedToken?.ToString() ?? "EOF"}");
     }
     public static ParserError ExpectedPatternOrToken(Token? receivedToken, params IReadOnlyList<TokenType> tokens)
     {
-        return new ParserError(receivedToken, tokens, ParserErrorType.ExpectedPatternOrToken);
+        Debug.Assert(tokens.Count > 0);
+
+        return new ParserError(
+            ParserErrorType.ExpectedPatternOrToken,
+            receivedToken?.SourceSpan.ToRange(),
+            $"Expcted expression or one of tokens: [{string.Join(", ", tokens.Order())}], but found {receivedToken?.ToString() ?? "EOF"}");
+    }
+
+    public static ParserError UnexpectedAttribute(LangAttribute attribute)
+    {
+        return new ParserError(
+            ParserErrorType.UnexpectedAttribute,
+            attribute.SourceRange,
+            $"Unexpected attribute: \"{attribute}\"");
     }
 }
 
@@ -134,4 +147,5 @@ public enum ParserErrorType
 
     ExpectedTypeName,
     ExpectedConstraint,
+    UnexpectedAttribute,
 }

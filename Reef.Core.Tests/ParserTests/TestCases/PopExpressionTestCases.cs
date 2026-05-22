@@ -3163,6 +3163,6 @@ public static class PopExpressionTestCases
                 "--a",
                 Negate(Negate(VariableAccessor("a")))
             )
-        }.Select(x => new object[] { x.Source, Tokenizer.Tokenize(x.Source), x.ExpectedExpression });
+        }.Select(x => new object[] { x.Source, Tokenizer.Tokenize(x.Source).Tokens, x.ExpectedExpression });
     }
 }

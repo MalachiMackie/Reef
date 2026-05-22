@@ -32,11 +32,21 @@ public class Compiler
         var (typeCheckResults, moduleIdToFileName, mainModuleId, importedModules) = await innerCompiler.TypeCheck();
 
         var hadError = false;
+
+        foreach (var (moduleId, typeCheckResult) in typeCheckResults)
+        {
+            foreach (var error in typeCheckResult.TokenizerErrors)
+            {
+                logger.LogError("{fileName}({Position}): {Error}", moduleIdToFileName[moduleId], error.SourceSpan.Position.ToString() ?? "EOF", error.Message);
+                hadError = true;
+            }
+        }
+
         foreach (var (moduleId, typeCheckResult) in typeCheckResults)
         {
             foreach (var error in typeCheckResult.ParserErrors)
             {
-                logger.LogError("{fileName}({Position}): Parser Error: {Error}", moduleIdToFileName[moduleId], error.ReceivedToken?.SourceSpan.Position, error.Format());
+                logger.LogError("{fileName}({Position}): {Error}", moduleIdToFileName[moduleId], error.SourceRange?.Start.Position.ToString() ?? "EOF", error.Message);
                 hadError = true;
             }
         }
@@ -63,7 +73,7 @@ public class Compiler
 
         logger.LogInformation("Lowering...");
         var loweredProgram = ProgramAbseil.Lower(
-            typeCheckResults.Select(x => x.Value.Module).Concat(importedModules).ToDictionary(x => x.ModuleId),
+            typeCheckResults.Select(x => x.Value.Module.NotNull()).Concat(importedModules).ToDictionary(x => x.ModuleId),
             mainModuleId
         );
 

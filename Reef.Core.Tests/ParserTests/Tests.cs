@@ -67,7 +67,11 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
 
         IEnumerable<ParserError> expectedErrors = [];
 
-        var result = Parser.Parse(new ModuleId("ParseTestCases"), Tokenizer.Tokenize(source)).NotNull();
+        var tokens = Tokenizer.Tokenize(source);
+
+        tokens.Errors.Should().BeEmpty();
+
+        var result = Parser.Parse(new ModuleId("ParseTestCases"), tokens.Tokens).NotNull();
 
         testOutputHelper.WriteLine("Expected {0}, found {1}", expectedProgram, result.ParsedModule);
 
@@ -109,7 +113,9 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
     {
         var tokens = Tokenizer.Tokenize(source);
 
-        var output = Parser.Parse(new ModuleId("ParseErrorTestCases"), tokens);
+        tokens.Errors.Should().BeEmpty();
+
+        var output = Parser.Parse(new ModuleId("ParseErrorTestCases"), tokens.Tokens);
 
         testOutputHelper.WriteLine(source);
 

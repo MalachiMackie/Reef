@@ -27,33 +27,55 @@ public class ReefCompiler(
         var moduleIdToFileName = new Dictionary<ModuleId, string>();
 
         var parseErrors = new Dictionary<ModuleId, IReadOnlyList<ParserError>>();
-        foreach (var (parseResult, fileName) in parsedModules)
+        var tokenizerErrors = new Dictionary<ModuleId, IReadOnlyList<Tokenizer.TokenizerError>>();
+        foreach (var (parseResult, fileTokenizerErrors, fileName, moduleId) in parsedModules)
         {
-            var moduleId = parseResult.ParsedModule.ModuleId;
             moduleIdToFileName[moduleId] = fileName;
-            modules.Add(parseResult.ParsedModule);
-            if (parseResult.Errors.Count > 0)
+            if (fileTokenizerErrors.Count > 0)
             {
-                parseErrors[moduleId] = parseResult.Errors;
+                tokenizerErrors[moduleId] = fileTokenizerErrors;
+            }
+            if (parseResult is not null)
+            {
+                modules.Add(parseResult.ParsedModule);
+                if (parseResult.Errors.Count > 0)
+                {
+                    parseErrors[moduleId] = parseResult.Errors;
+                }
             }
         }
 
         var parsedStandardLibraryModules = GetStandardLibraryModules();
 
         var standardLibraryModules = new List<LangModule>();
-        await foreach (var module in parsedStandardLibraryModules)
+        var stdLibFailed = false;
+        await foreach (var (module, stdLibTokenizerErrors, moduleId) in parsedStandardLibraryModules)
         {
+            if (stdLibTokenizerErrors.Count > 0)
+            {
+                stdLibFailed = true;
+                logger.LogError("Tokenizer error in module {ModuleId}", moduleId);
+                foreach (var error in stdLibTokenizerErrors)
+                {
+                    logger.LogError("{LineNumber}: {Error}", error.SourceSpan.Position.ToString() ?? "EOF", error.Message);
+                }
+            }
+            if (module is null) continue;
             if (module.Errors.Count > 0)
             {
                 logger.LogError("Parser error in module {ModuleId}", module.ParsedModule.ModuleId);
                 foreach (var error in module.Errors)
                 {
-                    logger.LogError("{LineNumber}: {ErrorType}, {ExpectedTokens} - {ReceivedToken}", error.ReceivedToken?.SourceSpan.Position.LineNumber, error.Type, string.Join(", ", error.ExpectedTokenTypes ?? []), error.ReceivedToken);
+                    logger.LogError("{LineNumber}: {Error}", error.SourceRange?.Start.Position.ToString() ?? "EOF", error.Message);
                 }
 
                 throw new InvalidOperationException($"Parser error in module {module.ParsedModule.ModuleId}");
             }
             standardLibraryModules.Add(module.ParsedModule);
+        }
+        if (stdLibFailed)
+        {
+            throw new InvalidOperationException($"Parser/Tokenizer error in standard library");
         }
 
         var stdLibHadTypeCheckErrors = false;
@@ -76,10 +98,11 @@ public class ReefCompiler(
 
         return (
             parsedModules
-                .ToDictionary(x => x.Item1.ParsedModule.ModuleId, x => new TypeCheckResult(
-                    x.Item1.ParsedModule,
-                    parseErrors.GetValueOrDefault(x.Item1.ParsedModule.ModuleId, []),
-                    typeCheckErrors.GetValueOrDefault(x.Item1.ParsedModule.ModuleId, []))),
+                .ToDictionary(x => x.moduleId, x => new TypeCheckResult(
+                    x.Item1?.ParsedModule,
+                    tokenizerErrors.GetValueOrDefault(x.moduleId, []),
+                    parseErrors.GetValueOrDefault(x.moduleId, []),
+                    typeCheckErrors.GetValueOrDefault(x.moduleId, []))),
             moduleIdToFileName,
             mainModuleId,
             standardLibraryModules
@@ -100,7 +123,7 @@ public class ReefCompiler(
             .Select(x => (x, (Func<StreamReader>)(() => fileSystem.File.OpenText(x))));
     }
 
-    private async IAsyncEnumerable<Parser.ParseResult> GetStandardLibraryModules()
+    private async IAsyncEnumerable<(Parser.ParseResult?, IReadOnlyList<Tokenizer.TokenizerError>, ModuleId)> GetStandardLibraryModules()
     {
         var contentTasks = GetStandardLibraryFileStreams()
             .Select(async x =>
@@ -117,9 +140,15 @@ public class ReefCompiler(
             var moduleId = GetModuleIdFromProjectRelativeFileName(projectRelativeFileName, new ModuleId("Reef:::Core"));
 
             var tokens = Tokenizer.Tokenize(contents);
-            var parseResult = Parser.Parse(moduleId, tokens);
 
-            yield return parseResult;
+            if (tokens.Errors.Count > 0)
+            {
+                yield return (null, tokens.Errors, moduleId);
+            }
+
+            var parseResult = Parser.Parse(moduleId, tokens.Tokens);
+
+            yield return (parseResult, [], moduleId);
         }
     }
 
@@ -140,7 +169,7 @@ public class ReefCompiler(
         }
     }
 
-    private async IAsyncEnumerable<(Parser.ParseResult, string fileName)> GetReefModules(string projectDir, string directory)
+    private async IAsyncEnumerable<(Parser.ParseResult?, IReadOnlyList<Tokenizer.TokenizerError>, string fileName, ModuleId moduleId)> GetReefModules(string projectDir, string directory)
     {
         var contentTasks = EnumerateReefFiles(directory)
             .Select(async fileName => (fileName, await fileSystem.File.ReadAllTextAsync(fileName)));
@@ -152,9 +181,15 @@ public class ReefCompiler(
             var projectRelativeFileName = GetProjectRelativeFileName(projectDir, fileName);
             var moduleId = GetModuleIdFromProjectRelativeFileName(projectRelativeFileName, mainModuleId);
             var tokens = Tokenizer.Tokenize(fileContents);
-            var parseResult = Parser.Parse(moduleId, tokens);
 
-            yield return (parseResult, projectRelativeFileName);
+            if (tokens.Errors.Count > 0)
+            {
+                yield return (null, tokens.Errors, projectRelativeFileName, moduleId);
+            }
+
+            var parseResult = Parser.Parse(moduleId, tokens.Tokens);
+
+            yield return (parseResult, [], projectRelativeFileName, moduleId);
         }
     }
 
@@ -192,5 +227,9 @@ public class ReefCompiler(
         return result;
     }
 
-    public sealed record TypeCheckResult(LangModule Module, IReadOnlyList<ParserError> ParserErrors, IReadOnlyList<TypeCheckerError> TypeCheckerErrors);
+    public sealed record TypeCheckResult(
+        LangModule? Module,
+        IReadOnlyList<Tokenizer.TokenizerError> TokenizerErrors,
+        IReadOnlyList<ParserError> ParserErrors,
+        IReadOnlyList<TypeCheckerError> TypeCheckerErrors);
 }
