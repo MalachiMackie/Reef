@@ -103,7 +103,7 @@ public sealed class Parser : IDisposable
     {
         if (!MoveNext())
         {
-            return new ParseResult(new LangModule(_moduleId, [], [], [], [], []), []);
+            return new ParseResult(new LangModule(_moduleId, [], [], [], [], [], []), []);
         }
 
         var scope = GetScope(
@@ -112,11 +112,19 @@ public sealed class Parser : IDisposable
                 Scope.ScopeType.TypeDefinition,
                 Scope.ScopeType.Expression,
                 Scope.ScopeType.Function,
-                Scope.ScopeType.ModuleImport
+                Scope.ScopeType.ModuleImport,
+                Scope.ScopeType.AttributeDefinition
             ]);
 
         return new ParseResult(
-            new LangModule(_moduleId, scope.Expressions, scope.Functions, scope.Classes, scope.Unions, scope.ModuleImports),
+            new LangModule(
+                _moduleId,
+                scope.Expressions,
+                scope.Functions,
+                scope.Classes,
+                scope.Unions,
+                scope.ModuleImports,
+                scope.AttributeDefinitions),
             _errors
         );
     }
@@ -154,6 +162,7 @@ public sealed class Parser : IDisposable
                 Functions = [],
                 Unions = [],
                 Variants = [],
+                AttributeDefinitions = [],
                 ModuleImports = [],
                 SourceRange = new SourceRange(start, start)
             };
@@ -241,6 +250,7 @@ public sealed class Parser : IDisposable
             Fields = fields,
             Unions = [],
             Variants = variants,
+            AttributeDefinitions = [],
             ModuleImports = [],
             SourceRange = new SourceRange(start, endToken.SourceSpan)
         };
@@ -271,6 +281,7 @@ public sealed class Parser : IDisposable
                 Scope.ScopeType.TypeDefinition => [TokenType.Class, TokenType.Union, TokenType.Pub, TokenType.Unboxed, TokenType.Boxed, TokenType.Extern],
                 Scope.ScopeType.Expression => [],
                 Scope.ScopeType.ModuleImport => [TokenType.Use],
+                Scope.ScopeType.AttributeDefinition => [TokenType.Attribute],
                 _ => throw new ArgumentOutOfRangeException(type.ToString())
             });
         }
@@ -301,6 +312,7 @@ public sealed class Parser : IDisposable
                 Unions = [],
                 Variants = [],
                 ModuleImports = [],
+                AttributeDefinitions = [],
                 SourceRange = new SourceRange(start, start)
             };
         }
@@ -314,6 +326,7 @@ public sealed class Parser : IDisposable
         var classes = new List<ProgramClass>();
         var unions = new List<ProgramUnion>();
         var variants = new List<IProgramUnionVariant>();
+        var attributeDefinitions = new List<AttributeDefinition>();
         var moduleImports = new List<ModuleImport>();
 
         while (_hasNext)
@@ -363,12 +376,28 @@ public sealed class Parser : IDisposable
                 break;
             }
 
+            if (Current.Type == TokenType.Attribute && allowedScopeTypes.Contains(Scope.ScopeType.AttributeDefinition))
+            {
+                _errors.AddRange(attributes.Select(ParserError.UnexpectedAttribute));
+                if (mutabilityModifier is not null)
+                    _errors.Add(ParserError.UnexpectedModifier(mutabilityModifier.Modifier));
+                if (staticModifier is not null)
+                    _errors.Add(ParserError.UnexpectedModifier(staticModifier.Token));
+                if (externModifier is not null)
+                    _errors.Add(ParserError.UnexpectedModifier(externModifier.Token));
+                if (boxingModifier is not null)
+                    _errors.Add(ParserError.UnexpectedModifier(boxingModifier.Token));
+
+                if (GetAttributeDefinition(accessModifier) is { } attributeDef)
+                {
+                    attributeDefinitions.Add(attributeDef);
+                }
+                continue;
+            }
+
             if (Current.Type == TokenType.Use && allowedScopeTypes.Contains(Scope.ScopeType.ModuleImport))
             {
-                foreach (var attribute in attributes)
-                {
-                    _errors.Add(ParserError.UnexpectedAttribute(attribute));
-                }
+                _errors.AddRange(attributes.Select(ParserError.UnexpectedAttribute));
 
                 if (mutabilityModifier is not null)
                     _errors.Add(ParserError.UnexpectedModifier(mutabilityModifier.Modifier));
@@ -402,10 +431,7 @@ public sealed class Parser : IDisposable
             if (allowedScopeTypes.Contains(Scope.ScopeType.TypeDefinition) && Current.Type is TokenType.Union or TokenType.Class)
             {
                 // todo: attributes on type definitions
-                foreach (var attribute in attributes)
-                {
-                    _errors.Add(ParserError.UnexpectedAttribute(attribute));
-                }
+                _errors.AddRange(attributes.Select(ParserError.UnexpectedAttribute));
 
                 if (mutabilityModifier is not null)
                     _errors.Add(ParserError.UnexpectedModifier(mutabilityModifier.Modifier, TokenType.Pub));
@@ -449,6 +475,7 @@ public sealed class Parser : IDisposable
                         Functions = [],
                         Unions = [],
                         Variants = [],
+                        AttributeDefinitions = [],
                         ModuleImports = [],
                         SourceRange = new SourceRange(start, start)
                     };
@@ -456,10 +483,7 @@ public sealed class Parser : IDisposable
                 continue;
             }
 
-            foreach (var attribute in attributes)
-            {
-                _errors.Add(ParserError.UnexpectedAttribute(attribute));
-            }
+            _errors.AddRange(attributes.Select(ParserError.UnexpectedAttribute));
 
             var consumedTokensFromModifiers = new[] {
                 accessModifier?.Token,
@@ -558,8 +582,29 @@ public sealed class Parser : IDisposable
             Unions = unions,
             Variants = variants,
             ModuleImports = moduleImports,
+            AttributeDefinitions = attributeDefinitions,
             SourceRange = new SourceRange(start, endToken.SourceSpan)
         };
+    }
+
+    private AttributeDefinition? GetAttributeDefinition(AccessModifier? accessModifier)
+    {
+        if (!ExpectNextIdentifier(out var identifier))
+        {
+            return null;
+        }
+
+        if (!ExpectNextToken(TokenType.LeftBrace))
+        {
+            return new AttributeDefinition(identifier, accessModifier);
+        }
+
+        if (ExpectNextToken(TokenType.RightBrace))
+        {
+            MoveNext();
+        }
+
+        return new AttributeDefinition(identifier, accessModifier);
     }
 
     private ModulePathSegment? GetModulePathSegment()
@@ -700,13 +745,11 @@ public sealed class Parser : IDisposable
                 break;
             }
 
-            var last = Current;
-
             if (!ExpectNextIdentifier(out var identifier))
             {
                 break;
             }
-            last = Current;
+            var last = Current;
 
             var foundEndBracket = false;
             if (ExpectNextToken(TokenType.RightSquareBracket))
@@ -3089,7 +3132,8 @@ public sealed class Parser : IDisposable
             Expression,
             Function,
             TypeDefinition,
-            ModuleImport
+            ModuleImport,
+            AttributeDefinition
         }
 
         public required IReadOnlyList<IExpression> Expressions { get; init; }
@@ -3099,6 +3143,7 @@ public sealed class Parser : IDisposable
         public required IReadOnlyList<ClassField> Fields { get; init; }
         public required IReadOnlyList<ProgramUnion> Unions { get; init; }
         public required IReadOnlyList<IProgramUnionVariant> Variants { get; init; }
+        public required IReadOnlyList<AttributeDefinition> AttributeDefinitions { get; init; }
         public required SourceRange SourceRange { get; init; }
     }
 }

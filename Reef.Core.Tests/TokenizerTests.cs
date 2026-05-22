@@ -88,6 +88,7 @@ public class TokenizerTests
             ["unboxed", new[] { Token.Unboxed(new SourceSpan(new SourcePosition(0, 0, 0), 7)) }],
             ["extern", new[] { Token.Extern(new SourceSpan(new SourcePosition(0, 0, 0), 6)) }],
             ["boxed", new[] { Token.Boxed(new SourceSpan(new SourcePosition(0, 0, 0), 5)) }],
+            ["attribute", new[] { Token.Attribute(new SourceSpan(new SourcePosition(0, 0, 0), 9)) }],
             ["union", new[] { Token.Union(new SourceSpan(new SourcePosition(0, 0, 0), 5)) }],
             ["static", new[] { Token.Static(new SourceSpan(new SourcePosition(0, 0, 0), 6)) }],
             ["matches", new[] { Token.Matches(new SourceSpan(new SourcePosition(0, 0, 0), 7)) }],

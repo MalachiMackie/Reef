@@ -5,10 +5,28 @@ namespace Reef.Core.Tests.ParserTests.TestCases;
 
 public static class ParseTestCases
 {
-    public static IEnumerable<object[]> TestCases()
+    public static TheoryData<string, IEnumerable<Token>, LangModule> TestCases()
     {
-        return new (string Source, LangModule ExpectedProgram)[]
+        return [.. new (string Source, LangModule ExpectedProgram)[]
         {
+            (
+                """
+                attribute my_attribute{}
+                """,
+                Program("ParseTestCases",
+                    attributes: [
+                        AttributeDef("my_attribute")
+                    ])
+            ),
+            (
+                """
+                pub attribute my_attribute{}
+                """,
+                Program("ParseTestCases",
+                    attributes: [
+                        AttributeDef("my_attribute", isPublic: true)
+                    ])
+            ),
             (
                 """
                 #[some_attribute]
@@ -1650,7 +1668,6 @@ public static class ParseTestCases
                         ]
                         , null)
                 ]))
-        }.Select(x => new object[] { x.Source, Tokenizer.Tokenize(x.Source).Tokens, x.ExpectedProgram
-});
+        }.Select(x => ( x.Source, Tokenizer.Tokenize(x.Source).Tokens, x.ExpectedProgram))];
     }
 }

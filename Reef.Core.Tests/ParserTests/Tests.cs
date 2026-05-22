@@ -10,17 +10,8 @@ namespace Reef.Core.Tests.ParserTests;
 
 public class ParserTests(ITestOutputHelper testOutputHelper)
 {
-    public static IEnumerable<object[]> FailTestCases => TestCases.FailTestCases.TestCases();
-
-    public static IEnumerable<object[]> PopExpressionTestCases => TestCases.PopExpressionTestCases.TestCases();
-
-    public static IEnumerable<object[]> ParseTestCases => TestCases.ParseTestCases.TestCases();
-
-    public static TheoryData<string, LangModule, IEnumerable<ParserError>> ParseErrorTestCases =>
-        TestCases.ParseErrorTestCases.TestCases();
-
     [Theory]
-    [MemberData(nameof(FailTestCases))]
+    [MemberData(nameof(TestCases.FailTestCases.TestCases), MemberType = typeof(TestCases.FailTestCases))]
     public void FailTests(
         [SuppressMessage("Usage", "xUnit1026:Theory methods should use all of their parameters")]
         string source,
@@ -32,7 +23,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
     }
 
     [Theory]
-    [MemberData(nameof(PopExpressionTestCases))]
+    [MemberData(nameof(TestCases.PopExpressionTestCases.TestCases), MemberType = typeof(TestCases.PopExpressionTestCases))]
     public void PopExpressionTests(
         [SuppressMessage("Usage", "xUnit1026:Theory methods should use all of their parameters")]
         string source,
@@ -82,7 +73,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
     }
 
     [Theory]
-    [MemberData(nameof(ParseTestCases))]
+    [MemberData(nameof(TestCases.ParseTestCases.TestCases), MemberType = typeof(TestCases.ParseTestCases))]
     public void ParseTest(
         [SuppressMessage("Usage", "xUnit1026:Theory methods should use all of their parameters")]
         string source,
@@ -108,7 +99,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
     }
 
     [Theory]
-    [MemberData(nameof(ParseErrorTestCases))]
+    [MemberData(nameof(TestCases.ParseErrorTestCases.TestCases), MemberType = typeof(TestCases.ParseErrorTestCases))]
     public void ParseErrorTests(string source, LangModule expectedProgram, IEnumerable<ParserError> expectedErrors)
     {
         var tokens = Tokenizer.Tokenize(source);

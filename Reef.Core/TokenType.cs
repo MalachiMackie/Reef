@@ -63,4 +63,6 @@ public enum TokenType
     Extern,
     Where,
     Hash,
+    Attribute,
+
 }

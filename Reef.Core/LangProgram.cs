@@ -10,7 +10,8 @@ public record LangModule(
     IReadOnlyList<LangFunction> Functions,
     IReadOnlyCollection<ProgramClass> Classes,
     IReadOnlyCollection<ProgramUnion> Unions,
-    IReadOnlyList<ModuleImport> TopLevelImports)
+    IReadOnlyList<ModuleImport> TopLevelImports,
+    IReadOnlyList<AttributeDefinition> Attributes)
 {
     public bool TypeChecked { get; set; }
 
@@ -186,6 +187,9 @@ public interface IConstraint
 public record BoxedConstraint(NamedTypeIdentifier ConstrainedType) : IConstraint;
 public record BoxedOfConstraint(NamedTypeIdentifier ConstrainedType, ITypeIdentifier BoxedOfType) : IConstraint;
 public record UnboxedOfConstraint(NamedTypeIdentifier ConstrainedType, ITypeIdentifier UnboxedOfType) : IConstraint;
+
+// pub attribute my_attribute{}
+public record AttributeDefinition(StringToken Identifier, AccessModifier? AccessModifier);
 
 public record LangFunction(
     AccessModifier? AccessModifier,

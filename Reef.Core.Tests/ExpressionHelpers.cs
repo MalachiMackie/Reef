@@ -65,13 +65,19 @@ public static class ExpressionHelpers
         return new BlockExpression(new Block(expressions ?? [], [], moduleImports ?? []), SourceRange.Default);
     }
 
+    public static AttributeDefinition AttributeDef(string name, bool isPublic = false)
+    {
+        return new AttributeDefinition(Identifier(name), isPublic ? new AccessModifier(Token.Pub(SourceSpan.Default)) : null);
+    }
+
     public static LangModule Program(
         string moduleId,
         IReadOnlyList<IExpression>? expressions = null,
         IReadOnlyList<LangFunction>? functions = null,
         IReadOnlyList<ProgramClass>? classes = null,
         IReadOnlyList<ProgramUnion>? unions = null,
-        IReadOnlyList<ModuleImport>? moduleImports = null)
+        IReadOnlyList<ModuleImport>? moduleImports = null,
+        IReadOnlyList<AttributeDefinition>? attributes = null)
     {
         return new LangModule(
             new ModuleId(moduleId),
@@ -79,7 +85,8 @@ public static class ExpressionHelpers
             functions ?? [],
             classes ?? [],
             unions ?? [],
-            moduleImports ?? []);
+            moduleImports ?? [],
+            attributes ?? []);
     }
 
     public static BreakExpression Break()

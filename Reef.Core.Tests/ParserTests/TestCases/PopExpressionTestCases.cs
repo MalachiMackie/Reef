@@ -5,9 +5,9 @@ namespace Reef.Core.Tests.ParserTests.TestCases;
 
 public static class PopExpressionTestCases
 {
-    public static IEnumerable<object[]> TestCases()
+    public static TheoryData<string, IEnumerable<Token>, IExpression> TestCases()
     {
-        return new (string Source, IExpression ExpectedExpression)[]
+        return [.. new (string Source, IExpression ExpectedExpression)[]
         {
             (
                 "todo!",
@@ -3163,6 +3163,6 @@ public static class PopExpressionTestCases
                 "--a",
                 Negate(Negate(VariableAccessor("a")))
             )
-        }.Select(x => new object[] { x.Source, Tokenizer.Tokenize(x.Source).Tokens, x.ExpectedExpression });
+        }.Select(x => (x.Source, (IEnumerable<Token>)Tokenizer.Tokenize(x.Source).Tokens, x.ExpectedExpression))];
     }
 }

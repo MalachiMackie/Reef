@@ -16,7 +16,7 @@ public class ParserMetaTests
         ValueAccessType? valueAccessType, UnaryOperatorType? unaryOperatorType, BinaryOperatorType? binaryOperatorType)
     {
         var testCases = PopExpressionTestCases.TestCases()
-            .Select(x => x[^1])
+            .Select(x => x.Data.Item3)
             .Cast<IExpression>()
             // only check test cases that check for a single expression
             .ToArray();
@@ -53,7 +53,7 @@ public class ParserMetaTests
         UnaryOperatorType? unaryA, UnaryOperatorType? unaryB)
     {
         var testCases = PopExpressionTestCases.TestCases()
-            .Select(x => x[^1])
+            .Select(x => x.Data.Item3)
             .Cast<IExpression>()
             .ToArray();
 
