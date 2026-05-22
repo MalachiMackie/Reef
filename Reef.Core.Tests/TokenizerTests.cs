@@ -82,6 +82,7 @@ public class TokenizerTests
             ["&&", new [] { Token.DoubleAmpersand(new SourceSpan(new SourcePosition(0, 0, 0), 2)) }],
             ["||", new [] { Token.DoubleBar(new SourceSpan(new SourcePosition(0, 0, 0), 2)) }],
             ["::", new[] { Token.DoubleColon(new SourceSpan(new SourcePosition(0, 0, 0), 2)) }],
+            ["#", new[] { Token.Hash(new SourceSpan(new SourcePosition(0, 0, 0), 1)) }],
             [":::", new[] { Token.TripleColon(new SourceSpan(new SourcePosition(0, 0, 0), 3)) }],
             ["pub", new[] { Token.Pub(new SourceSpan(new SourcePosition(0, 0, 0), 3)) }],
             ["unboxed", new[] { Token.Unboxed(new SourceSpan(new SourcePosition(0, 0, 0), 7)) }],

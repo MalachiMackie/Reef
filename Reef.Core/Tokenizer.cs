@@ -339,6 +339,7 @@ public class Tokenizer
             TokenType.Unboxed when source is "unboxed" => Token.Unboxed(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Extern when source is "extern" => Token.Extern(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Boxed when source is "boxed" => Token.Boxed(new SourceSpan(position, (ushort)source.Length)),
+            TokenType.Hash when source is "#" => Token.Hash(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Break when source is "break" => Token.Break(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Continue when source is "continue" => Token.Continue(new SourceSpan(position, (ushort)source.Length)),
             TokenType.TripleColon when source is ":::" => Token.TripleColon(new SourceSpan(position,
@@ -421,6 +422,9 @@ public class Tokenizer
         {
             case 'i':
                 tokens[i++] = TokenType.If;
+                break;
+            case '#':
+                tokens[i++] = TokenType.Hash;
                 break;
             case 'm':
                 tokens[i++] = TokenType.Mut;
@@ -575,6 +579,7 @@ public class Tokenizer
             TokenType.Use => Matches(source, "use"),
             TokenType.Extern => Matches(source, "extern"),
             TokenType.Where => Matches(source, "where"),
+            TokenType.Hash => Matches(source, "#"),
             TokenType.Underscore => Matches(source, "_"),
             TokenType.Bang => Matches(source, "!"),
             TokenType.Semicolon => Matches(source, ";"),

@@ -62,4 +62,5 @@ public enum TokenType
     Use,
     Extern,
     Where,
+    Hash,
 }

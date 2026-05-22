@@ -96,6 +96,7 @@ public record Token
             TokenType.Use => "use",
             TokenType.TripleColon => ":::",
             TokenType.Extern => "extern",
+            TokenType.Hash => "#",
             _ => throw new UnreachableException(Type.ToString())
         };
     }
@@ -368,4 +369,14 @@ public record Token
             SourceSpan = sourceSpan
         };
     }
+
+    public static Token Hash(SourceSpan sourceSpan)
+    {
+        return new Token
+        {
+            Type = TokenType.Hash,
+            SourceSpan = sourceSpan
+        };
+    }
+
 }

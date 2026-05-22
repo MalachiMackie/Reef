@@ -9,6 +9,26 @@ public static class ParseErrorTestCases
         IEnumerable<(string, LangModule, IEnumerable<ParserError>)> data =
         [
             (
+                "# fn some_fn(){}",
+                Program("ParseErrorTestCases", functions: [Function("some_fn", block: Block().Block)]),
+                [ParserError.ExpectedToken(Token.Fn(SourceSpan.Default), TokenType.LeftSquareBracket)]
+            ),
+            (
+                "#[ fn some_fn(){}",
+                Program("ParseErrorTestCases", functions: [Function("some_fn", block: Block().Block)]),
+                [ParserError.ExpectedToken(Token.Fn(SourceSpan.Default), TokenType.Identifier)]
+            ),
+            (
+                "#[attribute_name fn some_fn(){}",
+                Program("ParseErrorTestCases", functions: [Function("some_fn", block: Block().Block, attributes: [Attribute("attribute_name")])]),
+                [ParserError.ExpectedToken(Token.Fn(SourceSpan.Default), TokenType.RightSquareBracket)]
+            ),
+            (
+                "#[attribute_name] #[attribute_name fn some_fn(){}",
+                Program("ParseErrorTestCases", functions: [Function("some_fn", block: Block().Block, attributes: [Attribute("attribute_name"), Attribute("attribute_name")])]),
+                [ParserError.ExpectedToken(Token.Fn(SourceSpan.Default), TokenType.RightSquareBracket)]
+            ),
+            (
                 "fn some_fn() where{}",
                 Program("ParseErrorTestCases",
                     functions: [Function("some_fn", parameters: [], block: Block().Block)]),

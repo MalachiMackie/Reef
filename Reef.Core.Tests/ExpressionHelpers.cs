@@ -54,6 +54,12 @@ public static class ExpressionHelpers
         return UnaryOperatorExpression(UnaryOperatorType.Negate, value);
     }
 
+    public static LangAttribute Attribute(string identifier)
+    {
+        return new LangAttribute(Identifier(identifier), SourceRange.Default);
+    }
+
+
     public static BlockExpression Block(IReadOnlyList<IExpression>? expressions = null, IReadOnlyList<ModuleImport>? moduleImports = null)
     {
         return new BlockExpression(new Block(expressions ?? [], [], moduleImports ?? []), SourceRange.Default);
@@ -257,7 +263,8 @@ public static class ExpressionHelpers
         bool isMutableReturn = false,
         bool isExtern = false,
         Block? block = null,
-        IReadOnlyList<IConstraint>? constraints = null)
+        IReadOnlyList<IConstraint>? constraints = null,
+        IReadOnlyList<LangAttribute>? attributes = null)
     {
         return new LangFunction(isPublic
                 ? new AccessModifier(Token.Pub(SourceSpan.Default))
@@ -277,7 +284,8 @@ public static class ExpressionHelpers
             isExtern
                 ? new ExternModifier(Token.Extern(SourceSpan.Default))
                 : null,
-            constraints ?? []);
+            constraints ?? [],
+            attributes ?? []);
     }
 
     public static FunctionParameter FunctionParameter(string name, ITypeIdentifier? type = null, bool isMutable = false)

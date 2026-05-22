@@ -325,6 +325,8 @@ public sealed class Parser : IDisposable
                 break;
             }
 
+            var attributes = GetAttributes();
+
             var (accessModifier, mutabilityModifier, staticModifier, externModifier, boxingModifier) = GetModifiers();
 
             if (!_hasNext)
@@ -363,6 +365,11 @@ public sealed class Parser : IDisposable
 
             if (Current.Type == TokenType.Use && allowedScopeTypes.Contains(Scope.ScopeType.ModuleImport))
             {
+                foreach (var attribute in attributes)
+                {
+                    _errors.Add(ParserError.UnexpectedAttribute(attribute));
+                }
+
                 if (mutabilityModifier is not null)
                     _errors.Add(ParserError.UnexpectedModifier(mutabilityModifier.Modifier));
                 if (staticModifier is not null)
@@ -386,7 +393,7 @@ public sealed class Parser : IDisposable
             {
                 if (boxingModifier is not null)
                     _errors.Add(ParserError.UnexpectedModifier(boxingModifier.Token));
-                var functionDeclaration = GetFunctionDeclaration(accessModifier, staticModifier, mutabilityModifier, externModifier);
+                var functionDeclaration = GetFunctionDeclaration(accessModifier, staticModifier, mutabilityModifier, externModifier, attributes);
                 if (functionDeclaration is not null)
                     functions.Add(functionDeclaration);
                 continue;
@@ -394,6 +401,12 @@ public sealed class Parser : IDisposable
 
             if (allowedScopeTypes.Contains(Scope.ScopeType.TypeDefinition) && Current.Type is TokenType.Union or TokenType.Class)
             {
+                // todo: attributes on type definitions
+                foreach (var attribute in attributes)
+                {
+                    _errors.Add(ParserError.UnexpectedAttribute(attribute));
+                }
+
                 if (mutabilityModifier is not null)
                     _errors.Add(ParserError.UnexpectedModifier(mutabilityModifier.Modifier, TokenType.Pub));
                 if (staticModifier is not null)
@@ -441,6 +454,11 @@ public sealed class Parser : IDisposable
                     };
                 }
                 continue;
+            }
+
+            foreach (var attribute in attributes)
+            {
+                _errors.Add(ParserError.UnexpectedAttribute(attribute));
             }
 
             var consumedTokensFromModifiers = new[] {
@@ -666,6 +684,47 @@ public sealed class Parser : IDisposable
         UnionVariant
     }
 
+    private IReadOnlyList<LangAttribute> GetAttributes()
+    {
+        var attributes = new List<LangAttribute>();
+        while (Current.Type == TokenType.Hash)
+        {
+            var start = Current;
+            if (Current.Type != TokenType.Hash)
+            {
+                break;
+            }
+
+            if (!ExpectNextToken(TokenType.LeftSquareBracket))
+            {
+                break;
+            }
+
+            var last = Current;
+
+            if (!ExpectNextIdentifier(out var identifier))
+            {
+                break;
+            }
+            last = Current;
+
+            var foundEndBracket = false;
+            if (ExpectNextToken(TokenType.RightSquareBracket))
+            {
+                foundEndBracket = true;
+                last = Current;
+            }
+            attributes.Add(new LangAttribute(identifier, new SourceRange(start.SourceSpan, last.SourceSpan)));
+
+            if (!foundEndBracket || !MoveNext())
+            {
+                break;
+            }
+        }
+
+        return attributes;
+    }
+
     private (
         AccessModifier? AccessModifier,
         MutabilityModifier? MutabilityModifier,
@@ -725,6 +784,7 @@ public sealed class Parser : IDisposable
         if (allowedScopeTypes.Contains(MemberType.UnionVariant))
             expectedTokens.Add(TokenType.Identifier);
 
+        var attributes = GetAttributes();
         var (accessModifier, mutabilityModifier, staticModifier, externModifier, boxingModifier) = GetModifiers();
 
         if (boxingModifier is not null)
@@ -734,12 +794,17 @@ public sealed class Parser : IDisposable
 
         if (Current.Type == TokenType.Fn)
         {
-            var function = GetFunctionDeclaration(accessModifier, staticModifier, mutabilityModifier, externModifier);
+            var function = GetFunctionDeclaration(accessModifier, staticModifier, mutabilityModifier, externModifier, attributes);
             return (function, null, null);
         }
 
         if (Current.Type == TokenType.Field)
         {
+            foreach (var attribute in attributes)
+            {
+                _errors.Add(ParserError.UnexpectedAttribute(attribute));
+            }
+
             if (externModifier is not null)
                 _errors.Add(ParserError.UnexpectedModifier(externModifier.Token));
 
@@ -750,6 +815,11 @@ public sealed class Parser : IDisposable
 
         if (Current is StringToken { Type: TokenType.Identifier } name && allowedScopeTypes.Contains(MemberType.UnionVariant))
         {
+            foreach (var attribute in attributes)
+            {
+                _errors.Add(ParserError.UnexpectedAttribute(attribute));
+            }
+
             if (mutabilityModifier is not null)
                 _errors.Add(ParserError.UnexpectedModifier(mutabilityModifier.Modifier));
             if (staticModifier is not null)
@@ -1132,7 +1202,8 @@ public sealed class Parser : IDisposable
         AccessModifier? accessModifier,
         StaticModifier? staticModifier,
         MutabilityModifier? mutabilityModifier,
-        ExternModifier? externModifier)
+        ExternModifier? externModifier,
+        IReadOnlyList<LangAttribute> attributes)
     {
         if (!ExpectNextIdentifier(out var nameToken))
         {
@@ -1154,7 +1225,8 @@ public sealed class Parser : IDisposable
                 null,
                 null,
                 externModifier,
-                []);
+                [],
+                attributes);
         }
 
         IReadOnlyList<StringToken>? typeParameters = null;
@@ -1170,7 +1242,7 @@ public sealed class Parser : IDisposable
                     _errors.Add(ParserError.ExpectedToken(null, TokenType.LeftParenthesis));
                 }
                 return new LangFunction(accessModifier, staticModifier, mutabilityModifier, nameToken, typeParameters, [], null,
-                    null, null, externModifier, []);
+                    null, null, externModifier, [], attributes);
             }
         }
 
@@ -1179,7 +1251,7 @@ public sealed class Parser : IDisposable
             _errors.Add(ParserError.ExpectedToken(Current, typeParameters is null ? [TokenType.LeftParenthesis, TokenType.LeftAngleBracket] : [TokenType.LeftParenthesis]));
             MoveNext();
             return new LangFunction(accessModifier, staticModifier, mutabilityModifier, nameToken, typeParameters ?? [], [], null,
-                null, null, externModifier, []);
+                null, null, externModifier, [], attributes);
         }
         typeParameters ??= [];
 
@@ -1225,7 +1297,7 @@ public sealed class Parser : IDisposable
         if (!_hasNext)
         {
             return new LangFunction(accessModifier, staticModifier, mutabilityModifier, nameToken, typeParameters, parameterList, null,
-                null, null, externModifier, []);
+                null, null, externModifier, [], attributes);
         }
 
         Token? returnMutModifier = null;
@@ -1236,7 +1308,7 @@ public sealed class Parser : IDisposable
                 _errors.Add(ParserError.ExpectedTypeOrToken(null, TokenType.Mut));
 
                 return new LangFunction(accessModifier, staticModifier, mutabilityModifier, nameToken, typeParameters, parameterList, null,
-                    null, null, externModifier, []);
+                    null, null, externModifier, [], attributes);
             }
 
             if (Current.Type == TokenType.Mut)
@@ -1246,7 +1318,7 @@ public sealed class Parser : IDisposable
                 {
                     _errors.Add(ParserError.ExpectedType(null));
                     return new LangFunction(accessModifier, staticModifier, mutabilityModifier, nameToken, typeParameters, parameterList, null,
-                        returnMutModifier, null, externModifier, []);
+                        returnMutModifier, null, externModifier, [], attributes);
                 }
             }
 
@@ -1254,13 +1326,13 @@ public sealed class Parser : IDisposable
             {
                 MoveNext();
                 return new LangFunction(accessModifier, staticModifier, mutabilityModifier, nameToken, typeParameters, parameterList, null,
-                    returnMutModifier, null, externModifier, []);
+                    returnMutModifier, null, externModifier, [], attributes);
             }
 
             if (!_hasNext)
             {
                 return new LangFunction(accessModifier, staticModifier, mutabilityModifier, nameToken, typeParameters, parameterList, returnType,
-                    returnMutModifier, null, externModifier, []);
+                    returnMutModifier, null, externModifier, [], attributes);
             }
         }
 
@@ -1277,13 +1349,13 @@ public sealed class Parser : IDisposable
         if (!_hasNext || Current.Type != TokenType.LeftBrace)
         {
             return new LangFunction(accessModifier, staticModifier, mutabilityModifier, nameToken, typeParameters, parameterList, returnType,
-                returnMutModifier, null, externModifier, constraints);
+                returnMutModifier, null, externModifier, constraints, attributes);
         }
 
         var scope = GetScope(TokenType.RightBrace, [Scope.ScopeType.Expression, Scope.ScopeType.Function, Scope.ScopeType.ModuleImport]);
 
         return new LangFunction(accessModifier, staticModifier, mutabilityModifier, nameToken, typeParameters, parameterList, returnType,
-            returnMutModifier, new Block(scope.Expressions, scope.Functions, scope.ModuleImports), externModifier, constraints);
+            returnMutModifier, new Block(scope.Expressions, scope.Functions, scope.ModuleImports), externModifier, constraints, attributes);
     }
 
     private ITypeIdentifier? TryGetTypeIdentifier(Token? boxingSpecifier = null)

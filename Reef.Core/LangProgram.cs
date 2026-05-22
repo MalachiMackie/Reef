@@ -198,7 +198,8 @@ public record LangFunction(
     Token? ReturnMutabilityModifier,
     Block? Block,
     ExternModifier? ExternModifier,
-    IReadOnlyList<IConstraint> Constraints)
+    IReadOnlyList<IConstraint> Constraints,
+    IReadOnlyList<LangAttribute> Attributes)
 {
     public TypeChecker.FunctionSignature? Signature { get; set; }
 

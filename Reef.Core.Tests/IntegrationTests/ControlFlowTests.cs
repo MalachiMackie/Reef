@@ -137,10 +137,11 @@ public class ControlFlowTests : IntegrationTestBase
                 MyUnion::B => 2,
             };
             print_u8(b);
-            """
+            """,
+            variant
         );
 
-        var output = await Run();
+        var output = await Run(variant);
 
         Assert.Equal(0, output.ExitCode);
         Assert.Equal(expectedNumber, output.StandardOutput);
