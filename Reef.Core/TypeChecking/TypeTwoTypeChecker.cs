@@ -5,11 +5,11 @@ using Reef.Core.TypeChecking.PatternAnalysis;
 namespace Reef.Core.TypeChecking;
 
 // todo: this should probably be able to be a visitor
-public class TypeTwoTypeChecker(bool throwOnError, Dictionary<ModuleId, (List<TypeChecker.FunctionSignature>, List<TypeChecker.UnionSignature>, List<TypeChecker.ClassSignature>)> moduleSignatures)
+public class TypeTwoTypeChecker(bool throwOnError, Dictionary<ModuleId, (List<TypeChecker.FunctionSignature>, List<TypeChecker.UnionSignature>, List<TypeChecker.ClassSignature>, List<TypeChecker.AttributeSignature>)> moduleSignatures)
 {
     private readonly List<TypeCheckerError> _errors = [];
     private readonly Stack<Dictionary<TypeChecker.LocalVariable, bool>> _localVariablesInitialized = [];
-    private readonly Dictionary<ModuleId, (List<TypeChecker.FunctionSignature> Functions, List<TypeChecker.UnionSignature> Unions, List<TypeChecker.ClassSignature> Classes)> _moduleSignatures = moduleSignatures;
+    private readonly Dictionary<ModuleId, (List<TypeChecker.FunctionSignature> Functions, List<TypeChecker.UnionSignature> Unions, List<TypeChecker.ClassSignature> Classes, List<TypeChecker.AttributeSignature> Attributes)> _moduleSignatures = moduleSignatures;
 
     private void AddError(TypeCheckerError error)
     {
@@ -35,7 +35,7 @@ public class TypeTwoTypeChecker(bool throwOnError, Dictionary<ModuleId, (List<Ty
     }
 
     public static IReadOnlyList<TypeCheckerError> TypeTwoTypeCheck(
-        Dictionary<ModuleId, (List<TypeChecker.FunctionSignature>, List<TypeChecker.UnionSignature>, List<TypeChecker.ClassSignature>)> moduleSignatures,
+        Dictionary<ModuleId, (List<TypeChecker.FunctionSignature>, List<TypeChecker.UnionSignature>, List<TypeChecker.ClassSignature>, List<TypeChecker.AttributeSignature>)> moduleSignatures,
         LangModule program,
         bool throwOnError = false)
     {

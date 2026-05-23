@@ -692,7 +692,7 @@ public sealed class Parser : IDisposable
 
     private static bool IsMember(TokenType tokenType, bool allowVariant)
     {
-        return tokenType is TokenType.Pub or TokenType.Mut or TokenType.Static or TokenType.Fn or TokenType.Field
+        return tokenType is TokenType.Pub or TokenType.Mut or TokenType.Static or TokenType.Fn or TokenType.Field or TokenType.Hash
                || (allowVariant && tokenType == TokenType.Identifier);
     }
 

@@ -63,6 +63,33 @@ public partial class TypeChecker
         }
     }
 
+    private AttributeSignature? SearchForAttribute(string name, IReadOnlyList<string>? modulePath = null, bool modulePathIsGlobal = false)
+    {
+        var modulePathStr = string.Join(":::", modulePath ?? []);
+
+        var matchedAttributes = new List<AttributeSignature>();
+        var imports = _typeCheckingScopes.SelectMany(x => x.ModuleImports).ToArray();
+
+        foreach (var moduleId in _moduleSignatures.Keys)
+        {
+            var canMatchModule = CanMatchModule(moduleId, name, modulePath, modulePathStr, modulePathIsGlobal, imports);
+
+            if (canMatchModule
+                && GetModuleAttributes(moduleId).TryGetValue(name, out var attribute)
+                && (moduleId == CurrentModuleId || attribute.IsPublic))
+            {
+                matchedAttributes.Add(attribute);
+            }
+        }
+
+        if (matchedAttributes.Count > 1)
+        {
+            throw new NotImplementedException();
+        }
+
+        return matchedAttributes.FirstOrDefault();
+    }
+
     private ITypeSignature? SearchForType(string name, IReadOnlyList<string>? modulePath = null, bool modulePathIsGlobal = false)
     {
         var modulePathStr = string.Join(":::", modulePath ?? []);
@@ -88,6 +115,17 @@ public partial class TypeChecker
         }
 
         return matchedTypes.FirstOrDefault();
+    }
+
+    private Dictionary<string, AttributeSignature> GetModuleAttributes(ModuleId? moduleId = null)
+    {
+        moduleId ??= CurrentModuleId;
+        if (!_moduleSignatures.TryGetValue(moduleId, out var moduleSignatures))
+        {
+            return [];
+        }
+
+        return moduleSignatures.Attributes.ToDictionary(x => x.NameToken.StringValue);
     }
 
     private Dictionary<string, ITypeSignature> GetModuleTypes(ModuleId? moduleId = null)
@@ -129,13 +167,14 @@ public partial class TypeChecker
             Debug.Assert(module.TypeChecked);
             if (!_moduleSignatures.TryGetValue(module.ModuleId, out var lists))
             {
-                lists = ([], [], []);
+                lists = ([], [], [], []);
                 _moduleSignatures.Add(module.ModuleId, lists);
             }
 
             lists.Functions.AddRange(module.Functions.Select(x => x.Signature.NotNull()));
             lists.Classes.AddRange(module.Classes.Select(x => x.Signature.NotNull()));
             lists.Unions.AddRange(module.Unions.Select(x => x.Signature.NotNull()));
+            lists.Attributes.AddRange(module.Attributes.Select(x => x.Signature.NotNull()));
         }
 
         _modules = modules;
@@ -149,7 +188,7 @@ public partial class TypeChecker
     private ITypeReference? ExpectedReturnType => _typeCheckingScopes.Peek().ExpectedReturnType;
     private DefId? CurrentDefId => _typeCheckingScopes.Peek().CurrentDefId;
     private ModuleId CurrentModuleId => _typeCheckingScopes.Peek().ModuleId ?? throw new InvalidOperationException("No current module id");
-    private readonly Dictionary<ModuleId, (List<FunctionSignature> Functions, List<UnionSignature> Unions, List<ClassSignature> Classes)> _moduleSignatures;
+    private readonly Dictionary<ModuleId, (List<FunctionSignature> Functions, List<UnionSignature> Unions, List<ClassSignature> Classes, List<AttributeSignature> Attributes)> _moduleSignatures;
 
     private bool AddScopedFunction(FunctionSignature functionSignature)
     {
@@ -318,7 +357,7 @@ public partial class TypeChecker
 
         foreach (var moduleId in _modules.Keys)
         {
-            var (functions, unions, classes) = _moduleSignatures[moduleId];
+            var (functions, unions, classes, attributes) = _moduleSignatures[moduleId];
 
             var module = _modules[moduleId];
 
@@ -416,6 +455,11 @@ public partial class TypeChecker
                         TypeCheckFunctionBody(function);
                     }
                 }
+            }
+
+            foreach (var attribute in attributes)
+            {
+                // todo: when attributes have members, type check them here
             }
         }
 

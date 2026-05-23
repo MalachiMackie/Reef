@@ -63,6 +63,50 @@ public static class ParseTestCases
             ),
             (
                 """
+                class MyClass {
+                    #[some_attribute]
+                    fn my_fn(){}
+                }
+                """,
+                Program("ParseTestCases",
+                    classes: [
+                        Class("MyClass", functions: [
+                            Function("my_fn", block: Block().Block, attributes: [Attribute("some_attribute")])
+                        ])
+                    ])
+            ),
+            (
+                """
+                union MyUnion {
+                    #[some_attribute]
+                    fn my_fn(){}
+                }
+                """,
+                Program("ParseTestCases",
+                    unions: [
+                        Union("MyUnion", functions: [
+                            Function("my_fn", block: Block().Block, attributes: [Attribute("some_attribute")])
+                        ])
+                    ])
+            ),
+            (
+                """
+                fn top_fn() {
+                    #[some_attribute]
+                    fn inner_fn() {}
+                }
+                """,
+                Program("ParseTestCases",
+                    functions: [
+                        Function(
+                            "top_fn",
+                            block: new Block([], [
+                                Function("inner_fn", block: Block().Block, attributes: [Attribute("some_attribute")])
+                            ], []))
+                    ])
+            ),
+            (
+                """
                 #[some_attribute]
                 pub fn some_fn() {}
                 """,

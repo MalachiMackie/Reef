@@ -233,24 +233,30 @@ public static class ExpressionHelpers
         string name,
         bool isPublic = false,
         IReadOnlyList<ClassField>? fields = null,
-        IReadOnlyList<string>? typeParameters = null)
+        IReadOnlyList<string>? typeParameters = null,
+        IReadOnlyList<LangFunction>? functions = null)
     {
         return new ProgramClass(
             isPublic ? new AccessModifier(Token.Pub(SourceSpan.Default)) : null,
             Token.Identifier(name, SourceSpan.Default),
             [.. typeParameters?.Select(x => Token.Identifier(x, SourceSpan.Default)) ?? []],
-            [],
+            functions ?? [],
             fields ?? [],
             null);
     }
 
-    public static ProgramUnion Union(string name, bool isPublic = false, IReadOnlyList<IProgramUnionVariant>? variants = null, IReadOnlyList<string>? typeParameters = null)
+    public static ProgramUnion Union(
+        string name,
+        bool isPublic = false,
+        IReadOnlyList<IProgramUnionVariant>? variants = null,
+        IReadOnlyList<string>? typeParameters = null,
+        IReadOnlyList<LangFunction>? functions = null)
     {
         return new ProgramUnion(
             isPublic ? new AccessModifier(Token.Pub(SourceSpan.Default)) : null,
             Token.Identifier(name, SourceSpan.Default),
             [.. typeParameters?.Select(x => Token.Identifier(x, SourceSpan.Default)) ?? []],
-            [],
+            functions ?? [],
             variants ?? [],
             null);
     }

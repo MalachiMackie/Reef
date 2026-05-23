@@ -107,6 +107,61 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     "main.rf",
                     """
+                    class MyClass {
+                        #[other:::my_attribute]
+                        fn my_fn(){}
+                    }
+                    """
+                },
+                {
+                    "other.rf",
+                    """
+                    pub attribute my_attribute{}
+                    """
+                },
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    union MyUnion {
+                        #[other:::my_attribute]
+                        fn my_fn(){}
+                    }
+                    """
+                },
+                {
+                    "other.rf",
+                    """
+                    pub attribute my_attribute{}
+                    """
+                },
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    fn top_level_fn() {
+                        #[other:::my_attribute]
+                        fn inner_fn() {
+                        }
+                    }
+                    """
+                },
+                {
+                    "other.rf",
+                    """
+                    pub attribute my_attribute{}
+                    """
+                },
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
                     fn some_string_check(val: string): bool {
                         return true;
                     }
@@ -3407,6 +3462,89 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
     {
         return new TheoryData<string, Dictionary<string, (string contents, IReadOnlyList<TypeCheckerError> expectedErrors)>>
         {
+            {
+                "attribute not in scope for class function",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            class MyClass {
+                                #[other:::other_attribute]
+                                fn some_fn(){}
+                            }
+                            """,
+                            [TypeCheckerError.SymbolNotFound(Identifier("other_attribute"))]
+                        )
+                    },
+                    {
+                        "other.rf",
+                        (
+                            """
+                            attribute other_attribute{}
+                            """,
+                            []
+                        )
+                    }
+                }
+
+            },
+            {
+                "attribute not in scope for union function",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            union MyUnion {
+                                #[other:::other_attribute]
+                                fn some_fn(){}
+                            }
+                            """,
+                            [TypeCheckerError.SymbolNotFound(Identifier("other_attribute"))]
+                        )
+                    },
+                    {
+                        "other.rf",
+                        (
+                            """
+                            attribute other_attribute{}
+                            """,
+                            []
+                        )
+                    }
+                }
+            },
+            {
+                "attribute not in scope for nested function",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            fn some_fn() {
+                                #[other:::other_attribute]
+                                fn inner_fn() {
+                                }
+                            }
+                            """,
+                            [TypeCheckerError.SymbolNotFound(Identifier("other_attribute"))]
+                        )
+                    },
+                    {
+                        "other.rf",
+                        (
+                            """
+                            attribute other_attribute{}
+                            """,
+                            []
+                        )
+                    }
+                }
+            },
             {
                 "missing attribute name",
                 new()

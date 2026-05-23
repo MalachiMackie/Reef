@@ -365,7 +365,8 @@ public partial class ProgramAbseil
                 _mainModule.Expressions,
                 ExternName: null,
                 false,
-                IsPublic: true)
+                IsPublic: true,
+                Attributes: [])
         {
             ReturnType = unit,
             OwnerType = null,

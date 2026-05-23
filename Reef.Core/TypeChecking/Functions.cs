@@ -18,6 +18,7 @@ public partial class TypeChecker
         }
 
         var parameters = new OrderedDictionary<string, FunctionSignatureParameter>();
+        var attributes = new List<AttributeReference>();
 
         var name = fn.Name.StringValue;
         var typeParameters = new List<GenericPlaceholder>(fn.TypeParameters.Count);
@@ -31,7 +32,8 @@ public partial class TypeChecker
             fn.Block?.Expressions ?? [],
             ExternName: fn.ExternModifier is { Token.Type: TokenType.Extern } ? fn.Name.StringValue : null,
             fn.ReturnMutabilityModifier is { Type: TokenType.Mut },
-            fn.AccessModifier is { Token.Type: TokenType.Pub })
+            fn.AccessModifier is { Token.Type: TokenType.Pub },
+            attributes)
         {
             ReturnType = null!,
             OwnerType = ownerType
@@ -53,6 +55,21 @@ public partial class TypeChecker
         {
             var mutModifierSourceSpan = fn.MutabilityModifier!.Modifier.SourceSpan;
             AddError(TypeCheckerError.StaticFunctionMarkedAsMutable(name, new SourceRange(mutModifierSourceSpan, mutModifierSourceSpan)));
+        }
+
+        foreach (var attribute in fn.Attributes)
+        {
+            if (SearchForAttribute(
+                    attribute.Identifier.StringValue,
+                    [.. attribute.ModulePath.Select(x => x.StringValue)],
+                    attribute.ModulePathIsGlobal) is { } foundAttribute)
+            {
+                attributes.Add(new AttributeReference(foundAttribute.Id));
+            }
+            else
+            {
+                AddError(TypeCheckerError.SymbolNotFound(attribute.Identifier));
+            }
         }
 
         var foundTypeParameters = new HashSet<string>();
@@ -385,9 +402,7 @@ public partial class TypeChecker
         return instantiatedFunction;
     }
 
-    public record AttributeSignature(DefId Id, StringToken NameToken)
-    {
-    }
+    public record AttributeSignature(DefId Id, StringToken NameToken, bool IsPublic);
 
     public record FunctionSignature(
         DefId Id,
@@ -399,7 +414,8 @@ public partial class TypeChecker
         IReadOnlyList<IExpression> Expressions,
         string? ExternName,
         bool IsMutableReturn,
-        bool IsPublic) : ITypeSignature
+        bool IsPublic,
+        IReadOnlyList<AttributeReference> Attributes) : ITypeSignature
     {
         public DefId? LocalsTypeId { get; set; }
         public DefId? ClosureTypeId { get; set; }

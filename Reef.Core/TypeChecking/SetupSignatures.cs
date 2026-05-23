@@ -5,8 +5,9 @@ namespace Reef.Core.TypeChecking;
 public partial class TypeChecker
 {
     private sealed record ClassInfo(ProgramClass ProgramClass, ClassSignature Signature, List<FunctionSignature> Functions, List<TypeField> Fields);
+    private sealed record AttributeInfo(AttributeDefinition Definition, AttributeSignature Signature);
     private sealed record UnionInfo(ProgramUnion ProgramUnion, UnionSignature Signature, List<FunctionSignature> Functions, List<IUnionVariant> Variants);
-    private sealed record ModuleInfo(ModuleId ModuleId, IReadOnlyList<ClassInfo> Classes, IReadOnlyList<UnionInfo> Unions);
+    private sealed record ModuleInfo(ModuleId ModuleId, IReadOnlyList<ClassInfo> Classes, IReadOnlyList<UnionInfo> Unions, IReadOnlyList<AttributeInfo> Attributes);
 
     private List<ModuleInfo> CreateBareSignatures()
     {
@@ -17,12 +18,13 @@ public partial class TypeChecker
 
             var classes = new List<ClassInfo>();
             var unions = new List<UnionInfo>();
-            moduleInfos.Add(new ModuleInfo(moduleId, classes, unions));
+            var attributes = new List<AttributeInfo>();
+            moduleInfos.Add(new ModuleInfo(moduleId, classes, unions, attributes));
 
             // niche use case for when we're type checking Reef:::Core or other built in modules
             if (!_moduleSignatures.ContainsKey(moduleId))
             {
-                _moduleSignatures[moduleId] = ([], [], []);
+                _moduleSignatures[moduleId] = ([], [], [], []);
             }
 
             foreach (var union in module.Unions)
@@ -47,11 +49,12 @@ public partial class TypeChecker
                     IsPublic = union.AccessModifier is { Token.Type: TokenType.Pub }
                 };
 
-                var (moduleFunctions, moduleUnions, moduleClasses) = _moduleSignatures[CurrentModuleId];
-                if (moduleUnions.Cast<ITypeSignature>()
-                    .Concat(moduleClasses)
-                    .Concat(moduleFunctions)
-                    .Any(x => x.Name == unionSignature.Name))
+                var (moduleFunctions, moduleUnions, moduleClasses, moduleAttributes) = _moduleSignatures[CurrentModuleId];
+                if (moduleUnions.Select(x => x.Name)
+                    .Concat(moduleClasses.Select(x => x.Name))
+                    .Concat(moduleFunctions.Select(x => x.Name))
+                    .Concat(moduleAttributes.Select(x => x.NameToken.StringValue))
+                    .Contains(unionSignature.Name))
                 {
                     AddError(TypeCheckerError.ConflictingTypeName(union.Name));
                 }
@@ -96,11 +99,12 @@ public partial class TypeChecker
                     IsPublic = klass.AccessModifier is { Token.Type: TokenType.Pub }
                 };
 
-                var (moduleFunctions, moduleUnions, moduleClasses) = _moduleSignatures[CurrentModuleId];
-                if (moduleUnions.Cast<ITypeSignature>()
-                    .Concat(moduleClasses)
-                    .Concat(moduleFunctions)
-                    .Any(x => x.Name == classSignature.Name))
+                var (moduleFunctions, moduleUnions, moduleClasses, moduleAttributes) = _moduleSignatures[CurrentModuleId];
+                if (moduleUnions.Select(x => x.Name)
+                    .Concat(moduleClasses.Select(x => x.Name))
+                    .Concat(moduleFunctions.Select(x => x.Name))
+                    .Concat(moduleAttributes.Select(x => x.NameToken.StringValue))
+                    .Contains(classSignature.Name))
                 {
                     AddError(TypeCheckerError.ConflictingTypeName(klass.Name));
                 }
@@ -126,6 +130,33 @@ public partial class TypeChecker
 
                 classes.Add(new ClassInfo(klass, classSignature, functions, fields));
             }
+
+            foreach (var attributeDef in module.Attributes)
+            {
+                var signature = new AttributeSignature(
+                    new DefId(moduleId, $"{moduleId.Value}:::{attributeDef.Identifier.StringValue}"),
+                    attributeDef.Identifier,
+                    IsPublic: attributeDef.AccessModifier is { Token.Type: TokenType.Pub });
+
+                var (moduleFunctions, moduleUnions, moduleClasses, moduleAttributes) = _moduleSignatures[CurrentModuleId];
+                if (moduleUnions.Select(x => x.Name)
+                    .Concat(moduleClasses.Select(x => x.Name))
+                    .Concat(moduleFunctions.Select(x => x.Name))
+                    .Concat(moduleAttributes.Select(x => x.NameToken.StringValue))
+                    .Contains(attributeDef.Identifier.StringValue)
+                )
+                {
+                    AddError(TypeCheckerError.ConflictingTypeName(attributeDef.Identifier));
+                }
+                else
+                {
+                    moduleAttributes.Add(signature);
+                }
+
+                attributeDef.Signature = signature;
+
+                attributes.Add(new AttributeInfo(attributeDef, signature));
+            }
         }
 
         return moduleInfos;
@@ -135,7 +166,7 @@ public partial class TypeChecker
     {
         var moduleInfos = CreateBareSignatures();
 
-        foreach (var (moduleId, classes, unions) in moduleInfos)
+        foreach (var (moduleId, classes, unions, attributes) in moduleInfos)
         {
             using var __ = PushScope(moduleId: moduleId, moduleImports: _modules[moduleId].TopLevelImports);
 
@@ -205,7 +236,8 @@ public partial class TypeChecker
                             Expressions: [],
                             ExternName: $"{unionSignature.Id.FullName}__Create__{variant.Name.StringValue}",
                             IsMutableReturn: true,
-                            IsPublic: true)
+                            IsPublic: true,
+                            Attributes: [])
                         {
                             OwnerType = unionSignature,
                             ReturnType = createFunctionReturnType
@@ -222,7 +254,8 @@ public partial class TypeChecker
                                                     Expressions: [],
                                                     ExternName: $"{unionSignature.Id.FullName}__unboxed__Create__{variant.Name.StringValue}",
                                                     IsMutableReturn: true,
-                                                    IsPublic: true)
+                                                    IsPublic: true,
+                                                    Attributes: [])
                         {
                             OwnerType = unionSignature,
                             ReturnType = unboxedCreateFunctionReturnType

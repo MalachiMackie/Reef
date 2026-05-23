@@ -168,7 +168,8 @@ public partial class TypeChecker
                                         v.BoxedCreateFunction.Expressions,
                                         v.BoxedCreateFunction.ExternName,
                                         v.BoxedCreateFunction.IsMutableReturn,
-                                        v.BoxedCreateFunction.IsPublic
+                                        v.BoxedCreateFunction.IsPublic,
+                                        v.BoxedCreateFunction.Attributes
                                     )
                                     {
                                         OwnerType = v.BoxedCreateFunction.OwnerType,
@@ -193,7 +194,8 @@ public partial class TypeChecker
                                         v.UnboxedCreateFunction.Expressions,
                                         v.UnboxedCreateFunction.ExternName,
                                         v.UnboxedCreateFunction.IsMutableReturn,
-                                        v.UnboxedCreateFunction.IsPublic
+                                        v.UnboxedCreateFunction.IsPublic,
+                                        v.UnboxedCreateFunction.Attributes
                                     )
                                     {
                                         OwnerType = v.UnboxedCreateFunction.OwnerType,
