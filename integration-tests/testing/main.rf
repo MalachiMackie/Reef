@@ -1,0 +1,23 @@
+fn add(a: u32, b: u32): u32 {
+    return a + b;
+}
+
+fn bad_add(a: u32, b: u32): u32 {
+    return a + b;
+}
+
+#[test]
+pub fn add_should_return_sum() {
+    var result = add(1, 2);
+    if (result != 3) {
+        panic();
+    }
+}
+
+#[test]
+pub fn add_should_return_sum_2() {
+    var result = bad_add(1, 2);
+    if (result != 3) {
+        panic();
+    }
+}
