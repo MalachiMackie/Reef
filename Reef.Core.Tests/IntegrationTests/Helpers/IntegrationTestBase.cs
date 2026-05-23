@@ -54,7 +54,9 @@ public class IntegrationTestBase
     {
         var testRunFolder = TestRunFolder(testName, testCaseName, callerFilePath);
         var testLogger = new TestLogger(TestContext.Current.TestOutputHelper ?? throw new UnreachableException());
-        await Compiler.Compile(testRunFolder, true, testLogger, TestContext.Current.CancellationToken);
+        var compileSucceeded = await Compiler.Compile(testRunFolder, true, testLogger, TestContext.Current.CancellationToken);
+
+        Assert.True(compileSucceeded, "Compilation failed, see output for details");
 
         var exeFileName = Path.Join(testRunFolder, "build", $"main.exe");
         if (!File.Exists(exeFileName))

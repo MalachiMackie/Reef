@@ -1,0 +1,14 @@
+fn throws(): string {
+    panic();
+    return "hi";
+}
+
+var a = other_module:::some_fn();
+
+match (catch_unwind(throws)) {
+    result::Ok(var x) => print_string(x),
+    result::Error => {
+        print_string("error thrown 1\n");
+        print_u16(a + 5);
+    }
+}

@@ -1,0 +1,5 @@
+pub fn some_fn(): u16 {
+    print_string("hi from another module\n");
+
+    return 2;
+}

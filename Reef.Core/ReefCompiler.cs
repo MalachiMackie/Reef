@@ -198,7 +198,7 @@ public class ReefCompiler(
         var segments = fileName.Split(Path.DirectorySeparatorChar);
         Debug.Assert(segments.Length > 0);
 
-        var withoutExtension = Path.GetFileNameWithoutExtension(segments[^1]);
+        var withoutExtension = Path.GetFileNameWithoutExtension(segments[^1]).Replace("-", "_");
 
         if (withoutExtension == "main" && segments.Length == 1)
         {

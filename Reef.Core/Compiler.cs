@@ -10,8 +10,8 @@ namespace Reef.Core;
 
 public class Compiler
 {
-    public static async Task Compile(
-        string workingDirectory,
+    public static async Task<bool> Compile(
+        string? workingDirectory,
         bool outputIr,
         ILogger logger,
         CancellationToken ct)
@@ -66,7 +66,7 @@ public class Compiler
 
         if (hadError)
         {
-            return;
+            return false;
         }
 
         var programName = "main";
@@ -93,7 +93,7 @@ public class Compiler
         if (usefulMethodIds.Count == 0)
         {
             logger.LogError("No main method was found");
-            return;
+            return false;
         }
 
         var assembly =
@@ -134,13 +134,17 @@ public class Compiler
         if (nasmError.Length > 0)
             logger.LogError("NasmError: {Error}", nasmError);
 
-
         var nasmOutput = await nasmProcess.StandardOutput.ReadToEndAsync(ct);
 
         if (nasmOutput.Length > 0)
             logger.LogInformation("{NasmOutput}", nasmOutput);
 
         await nasmProcess.WaitForExitAsync(ct);
+
+        if (nasmProcess.ExitCode != 0)
+        {
+            return false;
+        }
 
         // var msvcVersion = "14.40.33807";
         var msvcVersion = "14.41.34120";
@@ -204,5 +208,7 @@ public class Compiler
         await linkProcess.WaitForExitAsync(ct);
 
         logger.LogInformation("Done!");
+
+        return linkProcess.ExitCode == 0;
     }
 }
