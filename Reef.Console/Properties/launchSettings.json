@@ -3,10 +3,8 @@
   "profiles": {
     "Reef.Console": {
       "commandName": "Project",
-      "environmentVariables": {
-        
-      },
-      "commandLineArgs": "../../../Examples/HelloWorld.rf"
+      "environmentVariables": {},
+      "commandLineArgs": "../../../Examples/HelloWorld.rf --log-level error"
     }
   }
 }

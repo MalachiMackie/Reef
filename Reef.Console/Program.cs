@@ -10,19 +10,56 @@ if (args.Length == 0)
     return;
 }
 
+var argsQueue = new Queue<string>(args);
+
 Console.CancelKeyPress += (sender, eventArgs) =>
 {
     cts.Cancel();
     eventArgs.Cancel = true;
 };
 
-switch (args[0].ToLower())
+var command = argsQueue.Dequeue();
+
+string? workingDirectory = null;
+var logLevel = LogLevel.Information;
+
+while (argsQueue.TryDequeue(out var nextArg))
+{
+    if (nextArg.StartsWith("--"))
+    {
+        switch (nextArg.ToLower())
+        {
+            case "--log-level":
+                {
+                    logLevel = Enum.Parse<LogLevel>(argsQueue.Dequeue(), ignoreCase: true);
+                    break;
+                }
+            default:
+                {
+                    throw new InvalidOperationException($"Unknown option: \"{nextArg}\"");
+                }
+        }
+        continue;
+    }
+
+    if (workingDirectory is null)
+    {
+        workingDirectory = nextArg;
+        continue;
+    }
+
+    throw new InvalidOperationException($"Unknown argument/option: \"{nextArg}\"");
+}
+
+var logger = new ConsoleLogger(logLevel);
+
+switch (command.ToLower())
 {
     case "build":
         {
-            if (!await Compiler.Compile(args.Length >= 2 ? args[1] : null, true, ConsoleLogger.Instance, cts.Token))
+            if (!await Compiler.Compile(workingDirectory, true, logger, cts.Token))
             {
-                Console.WriteLine("Compilation failed");
+                logger.LogError("Compilation failed");
                 Environment.ExitCode = 1;
                 return;
             }
@@ -30,13 +67,13 @@ switch (args[0].ToLower())
         }
     case "run":
         {
-            if (!await Compiler.Compile(null, true, ConsoleLogger.Instance, cts.Token))
+            if (!await Compiler.Compile(workingDirectory, true, logger, cts.Token))
             {
-                Console.WriteLine("Compilation failed");
+                logger.LogError("Compilation failed");
                 Environment.ExitCode = 1;
                 return;
             }
-            Console.WriteLine("Running...");
+            logger.LogInformation("Running...");
 
             var exeFileName = Path.Join("./", "build", "main.exe");
 
@@ -57,26 +94,25 @@ switch (args[0].ToLower())
         }
     case "test":
         {
-            break;
+            throw new NotImplementedException();
         }
 }
 
-file class ConsoleLogger : ILogger
+file class ConsoleLogger(LogLevel logLevel) : ILogger
 {
-    public static readonly ConsoleLogger Instance = new();
-
-    private ConsoleLogger()
-    {
-    }
+    private readonly LogLevel _logLevel = logLevel;
 
     public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
     {
-        Console.WriteLine($"[{logLevel}] {formatter(state, exception)}");
+        if (IsEnabled(logLevel))
+        {
+            Console.WriteLine($"[{logLevel}] {formatter(state, exception)}");
+        }
     }
 
     public bool IsEnabled(LogLevel logLevel)
     {
-        return true;
+        return logLevel >= _logLevel;
     }
 
     public IDisposable BeginScope<TState>(TState state)

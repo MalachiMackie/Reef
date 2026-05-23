@@ -8,7 +8,7 @@ if (Test-Path "./build")
     Remove-Item -Recurse "./build"
 }
 
-$output = & 'Reef.Console' run
+$output = & 'Reef.Console' run --log-level error
 $actualOutput = ($output -join "`n").Trim()
 
 Write-Host $actualOutput
@@ -20,12 +20,6 @@ if ($LASTEXITCODE -ne 0)
 }
 
 $expectedOutput = @"
-[Information] Lowering...
-[Information] Generating Assembly...
-[Information] Assembling...
-[Information] Linking...
-[Information] Done!
-Running...
 hi from another module
 error thrown 1
 7

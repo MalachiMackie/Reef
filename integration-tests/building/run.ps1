@@ -8,7 +8,7 @@ if (Test-Path "./build")
     Remove-Item -Recurse "./build"
 }
 
-& 'Reef.Console' build
+& 'Reef.Console' build --log-level error
 
 if ($LASTEXITCODE -ne 0)
 {

@@ -8,7 +8,7 @@ if (Test-Path "./build")
     Remove-Item -Recurse "./build"
 }
 
-$output = & 'Reef.Console' test
+$output = & 'Reef.Console' test --log-level error
 $actualOutput = ($output -join "`n").Trim()
 
 Write-Host $actualOutput
@@ -20,13 +20,6 @@ if ($LASTEXITCODE -ne 0)
 }
 
 $expectedOutput = @"
-[Information] Lowering...
-[Information] Generating Assembly...
-[Information] Assembling...
-[Information] Linking...
-[Information] Done!
-[Information] Testing...
-
 main:::add_should_return_sum - Passed
 main:::add_should_return_sum_2 - Failed
 
