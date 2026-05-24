@@ -3202,7 +3202,7 @@ public sealed class Parser : IDisposable
             AttributeDefinition
         }
 
-        public required IReadOnlyList<IExpression> Expressions { get; init; }
+        public required List<IExpression> Expressions { get; init; }
         public required IReadOnlyList<LangFunction> Functions { get; init; }
         public required IReadOnlyList<ModuleImport> ModuleImports { get; init; }
         public required IReadOnlyList<ProgramClass> Classes { get; init; }

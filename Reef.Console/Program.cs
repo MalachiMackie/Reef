@@ -57,7 +57,7 @@ switch (command.ToLower())
 {
     case "build":
         {
-            if (!await Compiler.Compile(workingDirectory, true, logger, cts.Token))
+            if (!await Compiler.Compile(workingDirectory, outputIr: true, logger, cts.Token))
             {
                 logger.LogError("Compilation failed");
                 Environment.ExitCode = 1;
@@ -67,7 +67,7 @@ switch (command.ToLower())
         }
     case "run":
         {
-            if (!await Compiler.Compile(workingDirectory, true, logger, cts.Token))
+            if (!await Compiler.Compile(workingDirectory, outputIr: true, logger, cts.Token))
             {
                 logger.LogError("Compilation failed");
                 Environment.ExitCode = 1;
@@ -94,7 +94,28 @@ switch (command.ToLower())
         }
     case "test":
         {
-            throw new NotImplementedException();
+            if (!await Compiler.CompileTest(workingDirectory, outputIr: true, logger, cts.Token))
+            {
+                logger.LogError("Compilation failed");
+                Environment.ExitCode = 1;
+                return;
+            }
+
+            var exeFileName = Path.Join("./", "build-test", "main-test.exe");
+
+            var process = new Process
+            {
+                StartInfo = new ProcessStartInfo(exeFileName),
+            };
+
+            cts.Token.Register(process.Kill);
+
+            process.Start();
+
+            await process.WaitForExitAsync();
+
+            Environment.ExitCode = process.ExitCode;
+            break;
         }
 }
 

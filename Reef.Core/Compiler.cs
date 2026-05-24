@@ -3,6 +3,7 @@ using System.IO.Abstractions;
 using System.Text;
 using Microsoft.Extensions.Logging;
 using Reef.Core.Abseil;
+using Reef.Core.Expressions;
 using Reef.Core.LoweredExpressions;
 
 namespace Reef.Core;
@@ -10,6 +11,212 @@ namespace Reef.Core;
 
 public class Compiler
 {
+    public static async Task<bool> CompileTest(
+        string? workingDirectory,
+        bool outputIr,
+        ILogger logger,
+        CancellationToken ct)
+    {
+        if (string.IsNullOrEmpty(workingDirectory))
+        {
+            workingDirectory = "./";
+        }
+        var buildDirectory = Path.Join(workingDirectory, "build-test");
+
+        if (!Directory.Exists(buildDirectory))
+        {
+            Directory.CreateDirectory(buildDirectory);
+        }
+
+        var innerCompiler = new ReefCompiler(new FileSystem(), new ModuleId("main"), logger, workingDirectory);
+
+        var (typeCheckResults, moduleIdToFileName, mainModuleId, importedModules) = await innerCompiler.TypeCheck();
+
+        var hadError = false;
+
+        foreach (var (moduleId, typeCheckResult) in typeCheckResults)
+        {
+            foreach (var error in typeCheckResult.TokenizerErrors)
+            {
+                logger.LogError("{fileName}({Position}): {Error}", moduleIdToFileName[moduleId], error.SourceSpan.Position.ToString() ?? "EOF", error.Message);
+                hadError = true;
+            }
+        }
+
+        foreach (var (moduleId, typeCheckResult) in typeCheckResults)
+        {
+            foreach (var error in typeCheckResult.ParserErrors)
+            {
+                logger.LogError("{fileName}({Position}): {Error}", moduleIdToFileName[moduleId], error.SourceRange?.Start.Position.ToString() ?? "EOF", error.Message);
+                hadError = true;
+            }
+        }
+
+        foreach (var (fileName, typeCheckResult) in typeCheckResults)
+        {
+            foreach (var error in typeCheckResult.TypeCheckerErrors)
+            {
+                logger.LogError(
+                    "{FileName}({Position}): TypeCheckError: {Message}",
+                    fileName,
+                    error.Range.Start.Position,
+                    error.Message);
+                hadError = true;
+            }
+        }
+
+        if (hadError)
+        {
+            return false;
+        }
+
+        var programName = "main-test";
+
+        logger.LogInformation("Lowering...");
+        var allModules = typeCheckResults.Select(x => x.Value.Module.NotNull()).Concat(importedModules).ToDictionary(x => x.ModuleId);
+
+        
+
+        var loweredProgram = ProgramAbseil.Lower(
+            allModules,
+            mainModuleId,
+            generateTestMain: true
+        );
+
+        if (outputIr)
+        {
+            await File.WriteAllTextAsync(
+                Path.Join(buildDirectory, $"{programName}.ir"),
+                PrettyPrinter.PrettyPrintLoweredProgram(loweredProgram, false, false),
+                ct);
+        }
+
+        logger.LogInformation("Generating Assembly...");
+
+        var usefulMethodIds = new TreeShaker(loweredProgram).Shake();
+
+        if (usefulMethodIds.Count == 0)
+        {
+            logger.LogError("No main method was found");
+            return false;
+        }
+
+        var assembly =
+            AssemblyLine.Process(loweredProgram, usefulMethodIds, logger);
+        var asmFile = $"{programName}.nasm";
+        await File.WriteAllTextAsync(Path.Join(buildDirectory, asmFile), assembly, ct);
+
+        var objFile = $"{programName}.obj";
+        // todo: move out to its own process, so Reef.Core doesn't interact with the file system
+        var nasmProcess = new Process
+        {
+            StartInfo = new ProcessStartInfo(
+                @"C:\Programs\nasm-3.00\nasm.exe",
+                [
+                    "-F", "cv8",
+                    "-f", "win64",
+                    "-o", Path.Join(buildDirectory, objFile),
+                    Path.Join(buildDirectory, asmFile),
+                ])
+            {
+                CreateNoWindow = true,
+                RedirectStandardError = true,
+                RedirectStandardOutput = true
+            }
+        };
+
+        logger.LogInformation("Assembling...");
+        nasmProcess.Start();
+
+        ct.Register(() =>
+        {
+            nasmProcess.Kill(true);
+        });
+
+
+        var nasmError = await nasmProcess.StandardError.ReadToEndAsync(ct);
+
+        if (nasmError.Length > 0)
+            logger.LogError("NasmError: {Error}", nasmError);
+
+        var nasmOutput = await nasmProcess.StandardOutput.ReadToEndAsync(ct);
+
+        if (nasmOutput.Length > 0)
+            logger.LogInformation("{NasmOutput}", nasmOutput);
+
+        await nasmProcess.WaitForExitAsync(ct);
+
+        if (nasmProcess.ExitCode != 0)
+        {
+            return false;
+        }
+
+        // var msvcVersion = "14.40.33807";
+        var msvcVersion = "14.41.34120";
+
+
+        // var windowsKitsVersion = "10.0.22621.0";
+        var windowsKitsVersion = "10.0.22000.0";
+
+        logger.LogInformation("Linking...");
+
+        var assemblyDirectory = Path.GetDirectoryName(typeof(Compiler).Assembly.Location).NotNull();
+
+        var runtimeLibraryLocation = Path.Combine(assemblyDirectory, "reef-runtime.lib");
+        var runtimeLibraryPdb = Path.Combine(assemblyDirectory, "reef-runtime.pdb");
+        File.Copy(runtimeLibraryPdb, Path.Combine(buildDirectory, "reef-runtime.pdb"));
+
+        var linkProcess = new Process
+        {
+            StartInfo = new ProcessStartInfo(
+                $@"C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\{msvcVersion}\bin\HostX64\x64\link.exe",
+                [
+                    $"{Path.Join(buildDirectory, objFile)}",
+                    "/nologo",
+                    "/subsystem:console",
+                    $"/out:{Path.Join(buildDirectory, $"{programName}.exe")}",
+                    "/machine:x64",
+                    $"{runtimeLibraryLocation}",
+                    $"C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\{windowsKitsVersion}\\um\\x64\\kernel32.lib",
+                    $"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\{msvcVersion}\\lib\\x64\\legacy_stdio_definitions.lib",
+                    $"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\{msvcVersion}\\lib\\x64\\legacy_stdio_wide_specifiers.lib",
+                    $"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\{msvcVersion}\\lib\\x64\\vcruntimed.lib",
+                    // $"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\{msvcVersion}\\lib\\x64\\vcruntime.lib",
+                    $"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\{msvcVersion}\\lib\\x64\\msvcrtd.lib",
+                    // $"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\{msvcVersion}\\lib\\x64\\msvcrt.lib",
+                    $"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\{msvcVersion}\\lib\\x64\\oldnames.lib",
+                    // $"C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\{windowsKitsVersion}\\ucrt\\x64\\ucrt.lib",
+                    $"C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\{windowsKitsVersion}\\ucrt\\x64\\ucrtd.lib",
+                    $"C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\{windowsKitsVersion}\\um\\x64\\uuid.lib",
+                    "/debug:full",
+                    "/incremental:no"
+                ])
+            {
+                CreateNoWindow = true,
+                RedirectStandardError = true,
+                RedirectStandardOutput = true
+            }
+        };
+
+        linkProcess.Start();
+
+        ct.Register(linkProcess.Kill);
+
+        var linkOutput = await linkProcess.StandardOutput.ReadToEndAsync(ct);
+        var linkError = await linkProcess.StandardError.ReadToEndAsync(ct);
+
+        if (linkOutput.Length > 0)
+            logger.LogInformation("{LinkOutput}", linkOutput);
+        if (linkError.Length > 0)
+            logger.LogError("{LinkError}", linkError);
+
+        await linkProcess.WaitForExitAsync(ct);
+
+        logger.LogInformation("Done!");
+
+        return linkProcess.ExitCode == 0;
+    }
+
     public static async Task<bool> Compile(
         string? workingDirectory,
         bool outputIr,

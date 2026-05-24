@@ -41,10 +41,12 @@ public partial class ProgramAbseil
 
     public static LoweredProgram Lower(
         Dictionary<ModuleId, LangModule> modules,
-        ModuleId mainModuleId)
+        ModuleId mainModuleId,
+        bool generateTestMain = false
+    )
     {
         var abseil = new ProgramAbseil(modules, mainModuleId);
-        return abseil.LowerInner();
+        return abseil.LowerInner(generateTestMain);
     }
 
     private static LoweredExternMethod ExternMethodFromSignature(TypeChecker.FunctionSignature signature)
@@ -310,7 +312,7 @@ public partial class ProgramAbseil
         _mainModule = modules[mainModuleId];
     }
 
-    private LoweredProgram LowerInner()
+    private LoweredProgram LowerInner(bool generateTestMain)
     {
         HashSet<DefId> intrinsicFunctionIds = [];
         foreach (var (moduleId, module) in _modules)
@@ -355,6 +357,8 @@ public partial class ProgramAbseil
         var unitSignature = _modules[DefId.Unit.ModuleId].Classes.Select(x => x.Signature.NotNull()).First(x => x.Id == DefId.Unit);
         var unit = TypeChecker.InstantiatedClass.Create(unitSignature, [], boxed: false);
 
+        var mainExpressions = new List<Expressions.IExpression>(_mainModule.Expressions);
+
         var mainSignature = new TypeChecker.FunctionSignature(
                 DefId.Main(_mainModule.ModuleId),
                 Token.Identifier("_Main", SourceSpan.Default),
@@ -362,7 +366,7 @@ public partial class ProgramAbseil
                 [],
                 IsStatic: true,
                 IsMutable: false,
-                _mainModule.Expressions,
+                mainExpressions,
                 ExternName: null,
                 false,
                 IsPublic: true,
@@ -373,6 +377,421 @@ public partial class ProgramAbseil
             LocalVariables = _mainModule.TopLevelLocalVariables,
             LocalFunctions = _mainModule.TopLevelLocalFunctions
         };
+
+        if (generateTestMain)
+        {
+            var u32Signature = _modules[DefId.UInt32.ModuleId].Classes.First(
+                x => x.Signature.NotNull().Id == DefId.UInt32).Signature.NotNull();
+            var boolSignature = _modules[DefId.Boolean.ModuleId].Classes.First(
+                x => x.Signature.NotNull().Id == DefId.Boolean).Signature.NotNull();
+            var stringSignature = _modules[DefId.String.ModuleId].Classes.First(
+                x => x.Signature.NotNull().Id == DefId.String).Signature.NotNull();
+            var resultSignature = _modules[DefId.Result.ModuleId].Unions.First(
+                x => x.Signature.NotNull().Id == DefId.Result).Signature.NotNull();
+
+            var catchUnwindSignature = _modules[DefId.CatchUnwind.ModuleId].Functions.First(
+                x => x.Signature.NotNull().Id == DefId.CatchUnwind).Signature.NotNull();
+
+            var u32Type = TypeChecker.InstantiatedClass.Create(u32Signature, [], u32Signature.Boxed);
+            var boolType = TypeChecker.InstantiatedClass.Create(boolSignature, [], boolSignature.Boxed);
+            var printStringSignature = _modules[DefId.PrintString.ModuleId].Functions
+                .First(x => x.Signature.NotNull().Id == DefId.PrintString).Signature.NotNull();
+            var printu32Signature = _modules[DefId.PrintU32.ModuleId].Functions
+                .First(x => x.Signature.NotNull().Id == DefId.PrintU32).Signature.NotNull();
+            var functionObject1Signature = _modules[DefId.FunctionObject(1).ModuleId].Classes.First(x =>
+                x.Signature.NotNull().Id == DefId.FunctionObject(1)).Signature.NotNull();
+            var functionObject0Signature = _modules[DefId.FunctionObject(0).ModuleId].Classes.First(x =>
+                x.Signature.NotNull().Id == DefId.FunctionObject(0)).Signature.NotNull();
+            var unitType = TypeChecker.InstantiatedClass.Create(unitSignature, [], unitSignature.Boxed);
+            var stringType = TypeChecker.InstantiatedClass.Create(stringSignature, [], stringSignature.Boxed);
+            var resultUnitUnitType = TypeChecker.InstantiatedUnion.Create(
+                resultSignature, [unitType, unitType], resultSignature.Boxed);
+
+            var functionObjectStringUnit = TypeChecker.InstantiatedClass.Create(
+                functionObject1Signature,
+                [stringType, unitType], functionObject1Signature.Boxed);
+
+            var functionObjectUnit = TypeChecker.InstantiatedClass.Create(
+                functionObject0Signature,
+                [unitType], functionObject0Signature.Boxed);
+
+            var functionObject_functionObjectUnit_resultUnitUnit = TypeChecker.InstantiatedClass.Create(
+                functionObject1Signature,
+                [functionObjectUnit, resultUnitUnitType], functionObject1Signature.Boxed);
+
+            var passedCountVariable = new TypeChecker.LocalVariable(
+                mainSignature,
+                Token.Identifier("passedCount", SourceSpan.Default),
+                Type: u32Type,
+                Instantiated: true,
+                Mutable: true
+            );
+            var failedCountVariable = new TypeChecker.LocalVariable(
+                mainSignature,
+                Token.Identifier("failedCount", SourceSpan.Default),
+                Type: u32Type,
+                Instantiated: true,
+                Mutable: true
+            );
+
+            mainSignature.LocalFunctions.Clear();
+            mainSignature.LocalVariables.Clear();
+            mainSignature.LocalVariables.AddRange(
+                [
+                    passedCountVariable, failedCountVariable
+                ]
+            );
+
+            mainExpressions.Clear();
+
+            Expressions.ValueAccessorExpression StringLiteralExpression(string value)
+            {
+                return new Expressions.ValueAccessorExpression(new Expressions.ValueAccessor(
+                    Expressions.ValueAccessType.Literal,
+                    Token.StringLiteral(value, SourceSpan.Default),
+                    [],
+                    [],
+                    false
+                ))
+                {
+                    ResolvedType = stringType,
+                };
+            }
+
+            Expressions.ValueAccessorExpression U32LiteralExpression(uint value)
+            {
+                return new Expressions.ValueAccessorExpression(new Expressions.ValueAccessor(
+                    Expressions.ValueAccessType.Literal,
+                    Token.IntLiteral((int)value, SourceSpan.Default),
+                    [],
+                    [],
+                    false
+                ))
+                {
+                    ResolvedType = u32Type,
+                };
+            }
+
+            Expressions.ValueAccessorExpression VariableAccessExpression(TypeChecker.LocalVariable variable)
+            {
+                return new Expressions.ValueAccessorExpression(new Expressions.ValueAccessor(
+                    Expressions.ValueAccessType.Variable,
+                    variable.Name,
+                    [],
+                    [],
+                    false
+                ))
+                {
+                    ReferencedVariable = variable,
+                    ResolvedType = variable.Type
+                };
+            }
+
+            var printStringMethodExpression = new Expressions.ValueAccessorExpression(
+                                        new Expressions.ValueAccessor(
+                                            Expressions.ValueAccessType.Variable,
+                                            Token.Identifier("print_string", SourceSpan.Default),
+                                            [], [], false
+                                        ))
+            {
+                ResolvedType = new TypeChecker.FunctionObject(
+                    [new TypeChecker.FunctionParameter(stringType, false)], unitType, false, true),
+                // ResolvedType = functionObjectStringUnit,
+                FunctionInstantiation = new TypeChecker.InstantiatedFunction(null, printStringSignature, [])
+            };
+
+            var printU32MethodExpression = new Expressions.ValueAccessorExpression(
+                                                    new Expressions.ValueAccessor(
+                                                        Expressions.ValueAccessType.Variable,
+                                                        Token.Identifier("print_u32", SourceSpan.Default),
+                                                        [], [], false
+                                                    ))
+            {
+                ResolvedType = new TypeChecker.FunctionObject(
+                                [new TypeChecker.FunctionParameter(u32Type, false)], unitType, false, true),
+                FunctionInstantiation = new TypeChecker.InstantiatedFunction(null, printu32Signature, [])
+            };
+
+            var catch_unwind_instantiated_function = new TypeChecker.InstantiatedFunction(null, catchUnwindSignature, []);
+            catch_unwind_instantiated_function.TypeArguments[0].ResolvedType = unitType;
+
+            var catchUnwindMethodExpression = new Expressions.ValueAccessorExpression(
+                                        new Expressions.ValueAccessor(
+                                            Expressions.ValueAccessType.Variable,
+                                            Token.Identifier("catch_unwind", SourceSpan.Default),
+                                            [], [], false
+                                        ))
+            {
+                ResolvedType = new TypeChecker.FunctionObject(
+                [new TypeChecker.FunctionParameter(
+                    new TypeChecker.FunctionObject([], unitType, false, true), false)], resultUnitUnitType, false, true),
+                // ResolvedType = functionObject_functionObjectUnit_resultUnitUnit,
+                FunctionInstantiation = catch_unwind_instantiated_function
+            };
+
+            var testMethods = _modules.Values.SelectMany(x =>
+                x.Functions.Select(y => y.Signature.NotNull())
+                    .Concat(x.Classes.SelectMany(y => y.Functions).Select(y => y.Signature.NotNull()))
+                    .Concat(x.Unions.SelectMany(y => y.Functions).Select(y => y.Signature.NotNull())))
+                .Where(x => x.Attributes.Any(y => y.AttributeId == DefId.Test))
+                .ToArray();
+
+            var invalidTestMethods = testMethods.Where(x => x.OwnerType is not null && !x.IsStatic).ToArray();
+
+            if (invalidTestMethods.Length > 0)
+            {
+                throw new InvalidOperationException(
+                    $"Test methods cannot be instance functions, only top level or static functions can be test methods: [{string.Join(", ", invalidTestMethods.Select(x => x.Id.FullName))}]");
+            }
+
+            mainExpressions.AddRange([
+                new Expressions.VariableDeclarationExpression(
+                    new Expressions.VariableDeclaration(
+                        passedCountVariable.Name,
+                        new Expressions.MutabilityModifier(Token.Mut(SourceSpan.Default)),
+                        null,
+                        U32LiteralExpression(0)
+                    ){Variable = passedCountVariable},
+                    SourceRange.Default
+                ) {
+                    ResolvedType = unitType,
+                },
+                new Expressions.VariableDeclarationExpression(
+                    new Expressions.VariableDeclaration(
+                        failedCountVariable.Name,
+                        new Expressions.MutabilityModifier(Token.Mut(SourceSpan.Default)),
+                        null,
+                        U32LiteralExpression(0)
+                    ){Variable = failedCountVariable},
+                    SourceRange.Default
+                ) {
+                    ResolvedType = unitType,
+                },
+                ..testMethods.SelectMany(testMethod => new Expressions.IExpression[]
+                    {
+                        new Expressions.MethodCallExpression(
+                            new Expressions.MethodCall(
+                                printStringMethodExpression,
+                                [StringLiteralExpression($"{testMethod.Id.FullName} - ")]
+                            ),
+                            SourceRange.Default
+                        )
+                        {
+                            ResolvedType = unitType
+                        },
+                        new Expressions.IfExpressionExpression(
+                            new Expressions.IfExpression(
+                                // catch_unwind(first_test) matches result::Error
+                                CheckExpression: new Expressions.MatchesExpression(
+                                    new Expressions.MethodCallExpression(
+                                        new Expressions.MethodCall(
+                                            catchUnwindMethodExpression,
+                                            [
+                                                new Expressions.ValueAccessorExpression(new Expressions.ValueAccessor(
+                                                    Expressions.ValueAccessType.Variable,
+                                                    testMethod.NameToken,
+                                                    [],
+                                                    [.. testMethod.Id.FullName.Split(":::", StringSplitOptions.RemoveEmptyEntries)
+                                                        .Select(x => Token.Identifier(x, SourceSpan.Default))
+                                                        // skip method name segment
+                                                        .SkipLast(1)
+                                                    ],
+                                                    true
+                                                )) {
+                                                    FunctionInstantiation =
+                                                        new TypeChecker.InstantiatedFunction(null, testMethod, []),
+                                                    ResolvedType = new TypeChecker.FunctionObject([], unitType, false, true)
+                                                }
+                                            ]
+                                        ),
+                                        SourceRange.Default
+                                    ) {
+                                        ResolvedType = resultUnitUnitType
+                                    },
+                                    new UnionVariantPattern(
+                                        new NamedTypeIdentifier(
+                                            Token.Identifier("result", SourceSpan.Default),
+                                            [],
+                                            null,
+                                            [],
+                                            false,
+                                            SourceRange.Default
+                                        ),
+                                        Token.Identifier("Error", SourceSpan.Default),
+                                        null,
+                                        false,
+                                        SourceRange.Default
+                                    ) {
+                                        IsRedundant = false,
+                                        TypeReference = resultUnitUnitType
+                                    },
+                                    SourceRange.Default
+                                ) {
+                                    ResolvedType = boolType
+                                },
+                                Body: new Expressions.BlockExpression(
+                                    new Expressions.Block(
+                                        [
+                                            new Expressions.BinaryOperatorExpression(new Expressions.BinaryOperator(
+                                                Expressions.BinaryOperatorType.ValueAssignment,
+                                                VariableAccessExpression(failedCountVariable),
+                                                new Expressions.BinaryOperatorExpression(new Expressions.BinaryOperator(
+                                                    Expressions.BinaryOperatorType.Plus,
+                                                    VariableAccessExpression(failedCountVariable),
+                                                    U32LiteralExpression(1),
+                                                    Token.Plus(SourceSpan.Default)
+                                                )) {
+                                                    ResolvedType = u32Type
+                                                },
+                                                Token.Equals(SourceSpan.Default)
+                                            )) {
+                                                ResolvedType = unitType
+                                            },
+                                            new Expressions.MethodCallExpression(
+                                                new Expressions.MethodCall(
+                                                    printStringMethodExpression,
+                                                    [StringLiteralExpression("Failed\n")]
+                                                ),
+                                                SourceRange.Default
+                                            )
+                                            {
+                                                ResolvedType = unitType
+                                            }
+                                        ],
+                                        [], []
+                                    ),
+                                    SourceRange.Default) {
+                                        ResolvedType = unitType
+                                    },
+                                ElseIfs: [],
+                                ElseBody: new Expressions.BlockExpression(
+                                    new Expressions.Block(
+                                        [
+                                            new Expressions.BinaryOperatorExpression(new Expressions.BinaryOperator(
+                                                Expressions.BinaryOperatorType.ValueAssignment,
+                                                VariableAccessExpression(passedCountVariable),
+                                                new Expressions.BinaryOperatorExpression(new Expressions.BinaryOperator(
+                                                    Expressions.BinaryOperatorType.Plus,
+                                                    VariableAccessExpression(passedCountVariable),
+                                                    U32LiteralExpression(1),
+                                                    Token.Plus(SourceSpan.Default)
+                                                )) {
+                                                    ResolvedType = u32Type
+                                                },
+                                                Token.Equals(SourceSpan.Default)
+                                            )) {
+                                                ResolvedType = unitType
+                                            },
+                                            new Expressions.MethodCallExpression(
+                                                new Expressions.MethodCall(
+                                                    printStringMethodExpression,
+                                                    [StringLiteralExpression("Passed\n")]
+                                                ),
+                                                SourceRange.Default
+                                            )
+                                            {
+                                                ResolvedType = unitType
+                                            }
+                                        ],
+                                        [], []
+                                    ),
+                                    SourceRange.Default) {
+                                        ResolvedType = unitType
+                                    }
+                            ),
+                            SourceRange.Default
+                        )
+                }),
+                new Expressions.MethodCallExpression(
+                    new Expressions.MethodCall(
+                        printStringMethodExpression,
+                        [StringLiteralExpression("\nSummary:\nTotal: ")]
+                    ),
+                    SourceRange.Default
+                )
+                {
+                    ResolvedType = unitType
+                },
+                new Expressions.MethodCallExpression(
+                    new Expressions.MethodCall(
+                        printU32MethodExpression,
+                        [
+                            new Expressions.BinaryOperatorExpression(new Expressions.BinaryOperator(
+                                Expressions.BinaryOperatorType.Plus,
+                                VariableAccessExpression(passedCountVariable),
+                                VariableAccessExpression(failedCountVariable),
+                                Token.Plus(SourceSpan.Default)
+                            )) {
+                                ResolvedType = u32Type
+                            }
+                        ]
+                    ),
+                    SourceRange.Default
+                )
+                {
+                    ResolvedType = unitType
+                },
+                new Expressions.MethodCallExpression(
+                    new Expressions.MethodCall(
+                        printStringMethodExpression,
+                        [StringLiteralExpression(", Passed: ")]
+                    ),
+                    SourceRange.Default
+                )
+                {
+                    ResolvedType = unitType
+                },
+                new Expressions.MethodCallExpression(
+                    new Expressions.MethodCall(
+                        printU32MethodExpression,
+                        [VariableAccessExpression(passedCountVariable)]
+                    ),
+                    SourceRange.Default
+                )
+                {
+                    ResolvedType = unitType
+                },
+                new Expressions.MethodCallExpression(
+                    new Expressions.MethodCall(
+                        printStringMethodExpression,
+                        [StringLiteralExpression(", Failed: ")]
+                    ),
+                    SourceRange.Default
+                )
+                {
+                    ResolvedType = unitType
+                },
+                new Expressions.MethodCallExpression(
+                    new Expressions.MethodCall(
+                        printU32MethodExpression,
+                        [VariableAccessExpression(failedCountVariable)]
+                    ),
+                    SourceRange.Default
+                )
+                {
+                    ResolvedType = unitType
+                },
+            ]);
+        }
+
+        /*
+
+                var mut passedCount = 0;
+                var mut failedCount = 0;
+
+                print_string("my:::test_id - ");
+                if (catch_unwind(first_test) matches result::Error) {
+                    failedCount = failedCount + 1;
+                    print_string("Failed\n");
+                }
+                else {
+                    passedCount = passedCount + 1;
+                    print_string("Passed\n");
+                }
+
+                */
+
+
         foreach (var local in _mainModule.TopLevelLocalVariables)
         {
             local.ContainingFunction = mainSignature;

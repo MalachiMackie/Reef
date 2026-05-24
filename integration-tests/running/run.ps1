@@ -3,6 +3,8 @@ function NormalizeLineEndings([string]$text)
     return ($text -replace "`r`n", "`n").Trim()
 }
 
+& 'dotnet' build ../..
+
 if (Test-Path "./build")
 {
     Remove-Item -Recurse "./build"

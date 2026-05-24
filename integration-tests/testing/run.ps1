@@ -3,9 +3,11 @@ function NormalizeLineEndings([string]$text)
     return ($text -replace "`r`n", "`n").Trim()
 }
 
-if (Test-Path "./build")
+& 'dotnet' build ../..
+
+if (Test-Path "./build-test")
 {
-    Remove-Item -Recurse "./build"
+    Remove-Item -Recurse "./build-test"
 }
 
 $output = & 'Reef.Console' test --log-level error

@@ -23,11 +23,13 @@ public record DefId(ModuleId ModuleId, string FullName)
     public static DefId MethodParameter { get; } = new(ReflectionModuleId, $"{ReflectionModuleId}:::MethodParameter");
     public static DefId VariablePlace { get; } = new(ReflectionModuleId, $"{ReflectionModuleId}:::VariablePlace");
 
+    public static DefId Test { get; } = new(CoreLibModuleId, $"{CoreLibModuleId}:::test");
     public static DefId BoxedValue { get; } = new(CoreLibModuleId, $"{CoreLibModuleId}:::BoxedValue");
     public static DefId ObjectHeader { get; } = new(CoreLibModuleId, $"{CoreLibModuleId}:::ObjectHeader");
 
     public static DefId AsBytes { get; } = new(CoreLibModuleId, $"{CoreLibModuleId}:::as_bytes");
     public static DefId FromBytes { get; } = new(CoreLibModuleId, $"{CoreLibModuleId}:::from_bytes");
+    public static DefId CatchUnwind { get; } = new(CoreLibModuleId, $"{CoreLibModuleId}:::catch_unwind");
     public static DefId CatchUnwindIntrinsic { get; } = new(CoreLibModuleId, $"{CoreLibModuleId}:::catch_unwind_intrinsic");
     public static DefId Unbox { get; } = new(CoreLibModuleId, $"{CoreLibModuleId}:::unbox");
     public static DefId Box { get; } = new(CoreLibModuleId, $"{CoreLibModuleId}:::box");

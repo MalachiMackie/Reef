@@ -311,3 +311,5 @@ pub fn catch_unwind<TResult>(callee: Fn(): TResult): result::<TResult, ()> {
 
     return error(());
 }
+
+pub attribute test{}

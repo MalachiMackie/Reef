@@ -88,7 +88,7 @@ public static class ExpressionHelpers
     {
         return new LangModule(
             new ModuleId(moduleId),
-            expressions ?? [],
+            [.. expressions ?? []],
             functions ?? [],
             classes ?? [],
             unions ?? [],

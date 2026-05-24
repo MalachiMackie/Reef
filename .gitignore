@@ -39,3 +39,4 @@ Desktop.ini
 **/Examples/build/
 **/IntegrationTests/**/TestRuns/**
 integration-tests/**/build
+integration-tests/**/build-test

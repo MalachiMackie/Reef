@@ -6,7 +6,8 @@ namespace Reef.Core;
 
 public record LangModule(
     ModuleId ModuleId,
-    IReadOnlyList<IExpression> Expressions,
+    // mutable for now so main can be overwritten when running `rf test`
+    List<IExpression> Expressions,
     IReadOnlyList<LangFunction> Functions,
     IReadOnlyCollection<ProgramClass> Classes,
     IReadOnlyCollection<ProgramUnion> Unions,
