@@ -67,6 +67,60 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
         return new()
         {
             {
+                "grab value",
+                """
+                var a = {
+                    print_string("hi");
+                    grab true;
+                };
+
+                if ({grab false;}) {
+                    print_string("bye");
+                }
+
+                """,
+                LoweredProgram(ModuleId, methods: [
+                    Method(new DefId(ModuleId, $"{ModuleId}:::_Main"),
+                        "_Main",
+                        [
+                            new BasicBlock(
+                                BB0,
+                                [],
+                                new MethodCall(
+                                    new LoweredFunctionReference(DefId.PrintString, []),
+                                    [new StringConstant("hi")],
+                                    Local1,
+                                    BB1)
+                            ),
+                            new BasicBlock(
+                                BB1,
+                                [new Assign(Local0, new Use(new BoolConstant(true)))],
+                                new GoTo(BB2)
+                            ),
+                            new BasicBlock(
+                                BB2,
+                                [new Assign(Local2, new Use(new BoolConstant(false)))],
+                                new SwitchInt(new Copy(Local2), new(){ { 0, BB4 } }, BB3)),
+                            new BasicBlock(
+                                BB3,
+                                [],
+                                new MethodCall(
+                                    new LoweredFunctionReference(DefId.PrintString, []),
+                                    [new StringConstant("bye")],
+                                    Local3,
+                                    BB4)),
+                            new BasicBlock(BB4, [], new Return())
+                        ],
+                        Unit,
+                        locals: [
+                            new MethodLocal("_local0", "a", BooleanT),
+                            new MethodLocal("_local1", null, Unit),
+                            new MethodLocal("_local2", null, BooleanT),
+                            new MethodLocal("_local3", null, Unit),
+                        ])
+                ])
+            },
+            {
                 "negate value",
                 """
                 var a = 1;

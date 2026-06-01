@@ -114,6 +114,18 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
     {
         IEnumerable<Dictionary<string, string>> sources =
         [
+            new(){
+                {
+                    "main.rf",
+                    """
+                    var a: u32 = {
+                        print_string("hello world!");
+                        grab 2;
+                    };
+
+                    """
+                }
+            },
             new()
             {
                 {
@@ -3474,6 +3486,21 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
     {
         return new TheoryData<string, Dictionary<string, (string contents, IReadOnlyList<TypeCheckerError> expectedErrors)>>
         {
+            {
+                "incorrect grab expression type",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            var a: string = {grab true;};
+                            """,
+                            [TypeCheckerError.MismatchedTypes(SourceRange.Default, String, Boolean)]
+                        )
+                    }
+                }
+            },
             {
                 "attribute not in scope for class function",
                 new()
