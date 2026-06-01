@@ -85,7 +85,7 @@ public class ClosureTests : IntegrationTestBase
             var get_value: Fn(u64): u64;
 
             if ({{(check ? "true" : "false")}}) {
-                get_value = plus_1
+                get_value = plus_1;
             }
             else {
                 get_value = plus_2;
@@ -121,7 +121,7 @@ public class ClosureTests : IntegrationTestBase
             var get_value: Fn(u64): u64;
 
             if ({{(check ? "true" : "false")}}) {
-                get_value = plus_1
+                get_value = plus_1;
             }
             else {
                 get_value = plus_2;

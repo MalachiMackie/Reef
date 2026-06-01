@@ -1,6 +1,6 @@
 ﻿pub fn DoSomething(a: int): result::<int, string> {
     var mut b: int = 2;
-    
+
     if (a > b) {
         return ok(a);
     }
@@ -17,7 +17,7 @@
     MyClass::StaticMethod();
 
     PrivateFn::<string>();
-    
+
     if (false) {
         // lowercase error keyword
         return error("something wrong");
@@ -33,7 +33,7 @@ fn PrivateFn<T>() {
 pub fn SomethingElse(a: int): result::<int, string> {
     var b = DoSomething(a)?;
     var mut c = 2;
-    
+
     return result::<int, string>::Ok(b);
 }
 
@@ -44,7 +44,7 @@ pub class MyClass {
     pub static fn StaticMethod() {
 
     }
-    
+
     field FieldA: string,
     mut field FieldB: string,
     pub mut field FieldC: string,
@@ -70,19 +70,19 @@ pub union MyUnion {
     A,
     B { field MyField: string, },
     C(string),
-    
+
     fn SomeMethod() {
         var foo = match (this) {
             MyUnion::A => "",
             MyUnion::B { MyField } => MyField,
             MyUnion::C(var value) => value
         };
-        
+
         var bar = match (this) {
             MyUnion::A => 1,
             MyUnion::B => 2,
             MyUnion::C => 3
-        }
+        };
     }
 }
 
@@ -91,7 +91,7 @@ fn AnotherMethod(param: MyUnion) {
     }
     else if (param matches MyUnion::B { MyField }) {
     }
-    
+
     var a = match (param) {
         MyUnion::A => 1,
         MyUnion::B { MyField } => 2,

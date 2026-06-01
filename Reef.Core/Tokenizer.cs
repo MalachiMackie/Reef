@@ -409,7 +409,6 @@ public class Tokenizer
                 source[2..^2].ToString(), new SourceSpan(position, (ushort)source.Length)),
             TokenType.Underscore when source is "_" =>
                 Token.Underscore(new SourceSpan(position, (ushort)source.Length)),
-            TokenType.None => throw new UnreachableException(),
             _ => null
         };
 
@@ -636,7 +635,6 @@ public class Tokenizer
             TokenType.SingleLineComment => source.StartsWith("//") && !source.EndsWith('\r'),
             TokenType.MultiLineComment => source.StartsWith("/*") &&
                                           (source.EndsWith("*/") || !source.Contains("*/", StringComparison.Ordinal)),
-            TokenType.None => throw new UnreachableException(),
             _ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
         };
 

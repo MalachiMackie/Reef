@@ -2,7 +2,6 @@
 
 public enum TokenType
 {
-    None,
     Identifier,
     If,
     LeftParenthesis,

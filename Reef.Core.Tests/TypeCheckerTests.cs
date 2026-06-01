@@ -14,6 +14,18 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
     private static readonly ModuleId ModuleId = new("main");
 
+    [Fact(Skip = "fake test to write all the test source code to a file so we can stress test the tree-sitter grammar")]
+    public async Task WriteAllSourceToFile()
+    {
+        var sources = SuccessfulExpressionTestCases().SelectMany(x => x.Data.Values)
+            .Concat(FailedExpressionTestCases().SelectMany(x => x.Data.Item2.Values.Select(y => y.contents)));
+
+        await File.WriteAllTextAsync(
+            "c:\\code\\projects\\tree-sitter-reef\\tree-sitter-stress-test.rf",
+            string.Join("\n", sources),
+            TestContext.Current.CancellationToken);
+    }
+
     [Theory]
     [MemberData(nameof(SuccessfulExpressionTestCases))]
     public async Task Should_SuccessfullyTypeCheckExpressions(Dictionary<string, string> sourceFiles)
@@ -2978,7 +2990,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
             {
                 {
                     "main.rf",
-                    "if (true) {var a = 2} else if (true) {var a = 3} else if (true) {var a = 4} else {var a = 5}"
+                    "if (true) {var a = 2;} else if (true) {var a = 3;} else if (true) {var a = 4;} else {var a = 5;}"
                 }
             },
             new() { { "main.rf", "if (true) var a = 2" } },
@@ -5364,7 +5376,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                     {
                         "main.rf", ("""
                                    fn SomeFn(){}
-                                   fn OtherFn(): i64{return 1}
+                                   fn OtherFn(): i64{return 1;}
                                    var mut a = SomeFn;
                                    a = OtherFn;
                                    """, [
@@ -7472,7 +7484,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     {
                         "main.rf", ("""
-                                   if (true) {} else if (true) {var a: string = 1}
+                                   if (true) {} else if (true) {var a: string = 1;}
                                    """, [MismatchedTypes(String, UnspecifiedSizedIntType)])
                     }
                 }
@@ -7484,7 +7496,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     {
                         "main.rf", ("""
-                                   if (true) {} else if (true) {} else {var a: string = 1}
+                                   if (true) {} else if (true) {} else {var a: string = 1;}
                                    """, [MismatchedTypes(String, UnspecifiedSizedIntType)])
                     }
                 }
@@ -7496,7 +7508,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     {
                         "main.rf", ("""
-                                   if (true) {} else if (true) {} else if (true) {var a: string = 1}
+                                   if (true) {} else if (true) {} else if (true) {var a: string = 1;}
                                    """, [MismatchedTypes(String, UnspecifiedSizedIntType)])
                     }
                 }
@@ -8566,7 +8578,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                     MyUnion::A => 1,
                     MyUnion::B => 2,
                     MyUnion::C => 3
-                }
+                };
             }
         }
 

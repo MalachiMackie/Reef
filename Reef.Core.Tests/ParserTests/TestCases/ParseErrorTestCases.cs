@@ -205,18 +205,24 @@ public static class ParseErrorTestCases
                 [ParserError.ExpectedType(Token.Semicolon(SourceSpan.Default))]
             ),
             (
-                "var a: int unboxed",
+                "var a: int unboxed;",
                 Program("ParseErrorTestCases", [
                     VariableDeclaration("a", type: IntType())
                 ]),
-                [ParserError.ExpectedTokenOrExpression(null, TokenType.Pub, TokenType.Class, TokenType.Static, TokenType.Union, TokenType.Boxed, TokenType.Extern, TokenType.Attribute)]
+                [
+                    ParserError.ExpectedToken(Token.Unboxed(SourceSpan.Default), TokenType.Semicolon),
+                    ParserError.ExpectedType(Token.Semicolon(SourceSpan.Default))
+                ]
             ),
             (
-                "var a: int boxed",
+                "var a: int boxed;",
                 Program("ParseErrorTestCases", [
                     VariableDeclaration("a", type: IntType())
                 ]),
-                [ParserError.ExpectedTokenOrExpression(null, TokenType.Pub, TokenType.Class, TokenType.Static, TokenType.Union, TokenType.Unboxed, TokenType.Extern, TokenType.Attribute)]
+                [
+                    ParserError.ExpectedToken(Token.Boxed(SourceSpan.Default), TokenType.Semicolon),
+                    ParserError.ExpectedType(Token.Semicolon(SourceSpan.Default))
+                ]
             ),
             (
                 "var a: int = ;",
@@ -294,14 +300,13 @@ public static class ParseErrorTestCases
                 ]
             ),
             (
-                "? a;",
+                "?; a;",
                 Program("ParseErrorTestCases", [
                     FallOut(null),
                     VariableAccessor("a")
                 ]),
                 [
                     ParserError.ExpectedExpression(Token.QuestionMark(SourceSpan.Default)),
-                    ParserError.ExpectedToken(Identifier("a"), TokenType.Semicolon)
                 ]
             ),
             (
@@ -370,7 +375,7 @@ public static class ParseErrorTestCases
                 ]
             ),
             (
-                "a b",
+                "a b;",
                 Program("ParseErrorTestCases", [
                     VariableAccessor("a"),
                     VariableAccessor("b")
@@ -380,7 +385,7 @@ public static class ParseErrorTestCases
                 ]
             ),
             (
-                "a b; c; d e",
+                "a b; c; d e;",
                 Program("ParseErrorTestCases", [
                     VariableAccessor("a"),
                     VariableAccessor("b"),
@@ -1031,18 +1036,22 @@ public static class ParseErrorTestCases
                 ]
             ),
             (
-                "(1)::<",
+                "(1)::<;",
                 Program("ParseErrorTestCases", [Tuple(Literal(1))]),
                 [
+                    ParserError.ExpectedToken(Token.Turbofish(SourceSpan.Default), TokenType.Semicolon),
                     ParserError.ExpectedTokenOrExpression(
                         Token.Turbofish(SourceSpan.Default),
                         TokenType.Pub, TokenType.Fn, TokenType.Class, TokenType.Static, TokenType.Union, TokenType.Use, TokenType.Unboxed, TokenType.Boxed, TokenType.Extern, TokenType.Attribute)
                 ]
             ),
             (
-                "1::<",
+                "1::<;",
                 Program("ParseErrorTestCases", [Literal(1)]),
-                [ParserError.ExpectedTokenOrExpression(Token.Turbofish(SourceSpan.Default), TokenType.Pub, TokenType.Fn, TokenType.Class, TokenType.Static, TokenType.Union, TokenType.Use, TokenType.Boxed, TokenType.Unboxed, TokenType.Extern, TokenType.Attribute)]
+                [
+                    ParserError.ExpectedToken(Token.Turbofish(SourceSpan.Default), TokenType.Semicolon),
+                    ParserError.ExpectedTokenOrExpression(Token.Turbofish(SourceSpan.Default), TokenType.Pub, TokenType.Fn, TokenType.Class, TokenType.Static, TokenType.Union, TokenType.Use, TokenType.Boxed, TokenType.Unboxed, TokenType.Extern, TokenType.Attribute)
+                ]
             ),
             (
                 "var a = SomeFn::<string>;",

@@ -331,8 +331,8 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                  "if else",
                  """
                  var mut a = 0;
-                 if (true) {a = 1}
-                 else {a = 2}
+                 if (true) {a = 1;}
+                 else {a = 2;}
                  """,
                  LoweredProgram(ModuleId,
                      methods: [
@@ -641,7 +641,7 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                     if (a == 5) {
                         continue;
                     }
-                    print_string("hi")
+                    print_string("hi");
                  }
                  """,
                  LoweredProgram(ModuleId,

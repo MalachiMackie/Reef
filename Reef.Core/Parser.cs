@@ -317,7 +317,6 @@ public sealed class Parser : IDisposable
             };
         }
 
-        IExpression? tailCallExpression = null;
         Token? foundClosingToken = null;
 
         var expressions = new List<IExpression>();
@@ -533,12 +532,6 @@ public sealed class Parser : IDisposable
 
             expressions.Add(expression);
 
-            if (tailCallExpression is not null)
-            {
-                _errors.Add(ParserError.ExpectedToken(beforeExpression, TokenType.Semicolon));
-                tailCallExpression = null;
-            }
-
             if (!_hasNext)
             {
                 if (closingToken.HasValue)
@@ -559,14 +552,14 @@ public sealed class Parser : IDisposable
             }
             else
             {
-                tailCallExpression =
-                    expression.ExpressionType is not (
+                if (expression.ExpressionType is not (
                         ExpressionType.IfExpression
                         or ExpressionType.Block
                         or ExpressionType.While
-                        or ExpressionType.Match)
-                        ? expression
-                        : null;
+                        or ExpressionType.Match))
+                {
+                    _errors.Add(ParserError.ExpectedToken(Current, TokenType.Semicolon));
+                }
             }
 
         }
