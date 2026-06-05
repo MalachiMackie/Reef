@@ -291,7 +291,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                     fn some_fn(): option::<string> {
                         return option::Some("hi");
                     }
-                    var a = some_fn() matches option::Some(var value) && true && some_string_check(value)
+                    var a = some_fn() matches option::Some(var value) && true && some_string_check(value);
                     """
                 }
             },
@@ -942,7 +942,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                                class FirstClass{ pub mut field FirstClassField: string }
                                class MyClass{pub mut field MyField: FirstClass}
                                var mut firstClass = new FirstClass{FirstClassField = ""};
-                               var secondClass = new MyClass{MyField = firstClass}
+                               var secondClass = new MyClass{MyField = firstClass};
                                """
                 }
             },
@@ -1413,8 +1413,8 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                                """
                 }
             },
-            new() { { "main.rf", "var a: bool = true && true" } },
-            new() { { "main.rf", "var a: bool = true || true" } },
+            new() { { "main.rf", "var a: bool = true && true;" } },
+            new() { { "main.rf", "var a: bool = true || true;" } },
             new()
             {
                 {
@@ -2351,7 +2351,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                                """
                 }
             },
-            new() { { "main.rf", "var a: string = todo!" } },
+            new() { { "main.rf", "var a: string = todo!;" } },
             new()
             {
                 {
@@ -2938,11 +2938,11 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                                """
                 }
             },
-            new() { { "main.rf", "var a = 2" } },
-            new() { { "main.rf", "var a: i64 = 2" } },
-            new() { { "main.rf", "var b: string = \"somestring\"" } },
-            new() { { "main.rf", "var a = 2; var b: i64 = a" } },
-            new() { { "main.rf", "fn MyFn(): i64 { return 1; }" } },
+            new() { { "main.rf", "var a = 2;" } },
+            new() { { "main.rf", "var a: i64 = 2;" } },
+            new() { { "main.rf", "var b: string = \"somestring\";" } },
+            new() { { "main.rf", "var a = 2; var b: i64 = a;" } },
+            new() { { "main.rf", "fn MyFn(): i64 { return 1; };" } },
             new()
             {
                 {
@@ -3006,7 +3006,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 }
             },
             new() { { "main.rf", "if (true) var a = 2" } },
-            new() { { "main.rf", "var a: result::<i64, string>" } },
+            new() { { "main.rf", "var a: result::<i64, string>;" } },
             new()
             {
                 {
@@ -3495,6 +3495,21 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                         (
                             """
                             var a: string = {grab true;};
+                            """,
+                            [TypeCheckerError.MismatchedTypes(SourceRange.Default, String, Boolean)]
+                        )
+                    }
+                }
+            },
+            {
+                "grab is not last expression in block",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            var a: string = {grab true; print_string("hi");};
                             """,
                             [TypeCheckerError.MismatchedTypes(SourceRange.Default, String, Boolean)]
                         )
@@ -4049,7 +4064,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                                    class FirstClass{ pub mut field FirstClassField: string }
                                    class MyClass{pub mut field MyField: FirstClass}
                                    var firstClass = new FirstClass{FirstClassField = ""};
-                                   var secondClass = new MyClass{MyField = firstClass}
+                                   var secondClass = new MyClass{MyField = firstClass};
                                    """, [TypeCheckerError.NonMutableAssignment("firstClass", SourceRange.Default)])
                     }
                 }
@@ -4870,7 +4885,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     {
                         "main.rf", ("""
-                                   var a = 1 || true
+                                   var a = 1 || true;
                                    """, [TypeCheckerError.MismatchedTypes(SourceRange.Default, Boolean, UnspecifiedSizedIntType)])
                     }
                 }
@@ -4882,7 +4897,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     {
                         "main.rf", ("""
-                                   var a = true || 1
+                                   var a = true || 1;
                                    """, [TypeCheckerError.MismatchedTypes(SourceRange.Default, Boolean, UnspecifiedSizedIntType)])
                     }
                 }
@@ -4894,7 +4909,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     {
                         "main.rf", ("""
-                                   var a = 1 && true
+                                   var a = 1 && true;
                                    """, [TypeCheckerError.MismatchedTypes(SourceRange.Default, Boolean, UnspecifiedSizedIntType)])
                     }
                 }
@@ -4906,7 +4921,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     {
                         "main.rf", ("""
-                                   var a = true && 1
+                                   var a = true && 1;
                                    """, [TypeCheckerError.MismatchedTypes(SourceRange.Default, Boolean, UnspecifiedSizedIntType)])
                     }
                 }
@@ -6084,7 +6099,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                                    var b = match (a) {
                                        MyUnion::A => 1,
                                        MyUnion::B => "" // mismatched arm expression types
-                                   }
+                                   };
                                    """, [MismatchedTypes(UnspecifiedSizedIntType, String)])
                     }
                 }
@@ -6404,7 +6419,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     {
                         "main.rf", ("""
-                                   var a = !1
+                                   var a = !1;
                                    """, [MismatchedTypes(Boolean, UnspecifiedSizedIntType)])
                     }
                 }
@@ -7099,7 +7114,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     {
                         "main.rf", ("""
-                                   var a: string = 2
+                                   var a: string = 2;
                                    """, [MismatchedTypes(String, UnspecifiedSizedIntType)])
                     }
                 }
@@ -7111,7 +7126,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     {
                         "main.rf", ("""
-                                   var a: i64 = "somestring"
+                                   var a: i64 = "somestring";
                                    """, [MismatchedTypes(Int64, String)])
                     }
                 }
@@ -7279,7 +7294,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     {
                         "main.rf", ("""
-                                   var a = 2; var b: string = a
+                                   var a = 2; var b: string = a;
                                    """, [MismatchedTypes(String, UnspecifiedSizedIntType)])
                     }
                 }
@@ -7291,7 +7306,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     {
                         "main.rf", ("""
-                                   var a: i64; var b = a
+                                   var a: i64; var b = a;
                                    """, [TypeCheckerError.AccessUninitializedVariable(Identifier("a"))])
                     }
                 }
@@ -7547,7 +7562,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     {
                         "main.rf", ("""
-                                   var a: result::<>
+                                   var a: result::<>;
                                    """, [
                                    TypeCheckerError.UnresolvedInferredGenericType(
                                    VariableDeclaration("a", type: NamedTypeIdentifier("result")), "TValue"),
@@ -7564,7 +7579,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     {
                         "main.rf", ("""
-                                   var a: result
+                                   var a: result;
                                    """, [
                                    TypeCheckerError.UnresolvedInferredGenericType(
                                    VariableDeclaration("a", type: NamedTypeIdentifier("result")), "TValue"),
@@ -7581,7 +7596,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     {
                         "main.rf", ("""
-                                   var a = ok(1)
+                                   var a = ok(1);
                                    """, [
                                    TypeCheckerError.UnresolvedInferredGenericType(
                                    VariableDeclaration("a",
@@ -7597,7 +7612,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     {
                         "main.rf", ("""
-                                   var a: result::<string>
+                                   var a: result::<string>;
                                    """, [TypeCheckerError.IncorrectNumberOfTypeArguments(SourceRange.Default, 1, 2)])
                     }
                 }
@@ -7609,7 +7624,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     {
                         "main.rf", ("""
-                                   union MyUnion{A} var a = MyUnion::<string>::A
+                                   union MyUnion{A} var a = MyUnion::<string>::A;
                                    """, [TypeCheckerError.IncorrectNumberOfTypeArguments(SourceRange.Default, 1, 0)])
                     }
                 }
@@ -7621,7 +7636,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     {
                         "main.rf", ("""
-                                   class MyClass{} var a = new MyClass::<string>{}
+                                   class MyClass{} var a = new MyClass::<string>{};
                                    """, [TypeCheckerError.IncorrectNumberOfTypeArguments(SourceRange.Default, 1, 0)])
                     }
                 }
@@ -7633,7 +7648,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     {
                         "main.rf", ("""
-                                   class MyClass<T, T2>{} var a = new MyClass::<string>{}
+                                   class MyClass<T, T2>{} var a = new MyClass::<string>{};
                                    """, [TypeCheckerError.IncorrectNumberOfTypeArguments(SourceRange.Default, 1, 2)])
                     }
                 }
@@ -7644,7 +7659,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 new()
                 {
                     {
-                        "main.rf", ("""var a: result::<string, string, string>""", [TypeCheckerError.IncorrectNumberOfTypeArguments(SourceRange.Default, 3, 2)])
+                        "main.rf", ("""var a: result::<string, string, string>;""", [TypeCheckerError.IncorrectNumberOfTypeArguments(SourceRange.Default, 3, 2)])
                     }
                 }
 
@@ -8011,7 +8026,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     {
                         "main.rf", ("""
-                                   var a: i64 = 1 < 2
+                                   var a: i64 = 1 < 2;
                                    """, [MismatchedTypes(Int64, Boolean)])
                     }
                 }
@@ -8036,7 +8051,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     {
                         "main.rf", ("""
-                                   var a = 2 > true
+                                   var a = 2 > true;
                                    """, [MismatchedTypes(UnspecifiedSizedIntType, Boolean)])
                     }
                 }
@@ -8048,7 +8063,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     {
                         "main.rf", ("""
-                                   var a: i64 = 2 > 2
+                                   var a: i64 = 2 > 2;
                                    """, [MismatchedTypes(Int64, Boolean)])
                     }
                 }
@@ -8073,7 +8088,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     {
                         "main.rf", ("""
-                                   var a = 2 + true
+                                   var a = 2 + true;
                                    """, [MismatchedTypes(UnspecifiedSizedIntType, Boolean)])
                     }
                 }
@@ -8085,7 +8100,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     {
                         "main.rf", ("""
-                                   var a: bool = 2 + 2
+                                   var a: bool = 2 + 2;
                                    """, [MismatchedTypes(Boolean, UnspecifiedSizedIntType)])
                     }
                 }
@@ -8110,7 +8125,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     {
                         "main.rf", ("""
-                                   var a = 2 - true
+                                   var a = 2 - true;
                                    """, [MismatchedTypes(UnspecifiedSizedIntType, Boolean)])
                     }
                 }
@@ -8122,7 +8137,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     {
                         "main.rf", ("""
-                                   var a: bool = 2 - 2
+                                   var a: bool = 2 - 2;
                                    """, [MismatchedTypes(Boolean, UnspecifiedSizedIntType)])
                     }
                 }
@@ -8147,7 +8162,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     {
                         "main.rf", ("""
-                                   var a = 2 * true
+                                   var a = 2 * true;
                                    """, [MismatchedTypes(UnspecifiedSizedIntType, Boolean)])
                     }
                 }
@@ -8159,7 +8174,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     {
                         "main.rf", ("""
-                                   var a: bool = 2 * 2
+                                   var a: bool = 2 * 2;
                                    """, [MismatchedTypes(Boolean, UnspecifiedSizedIntType)])
                     }
                 }
@@ -8184,7 +8199,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     {
                         "main.rf", ("""
-                                   var a = 2 / true
+                                   var a = 2 / true;
                                    """, [MismatchedTypes(UnspecifiedSizedIntType, Boolean)])
                     }
                 }
@@ -8196,7 +8211,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     {
                         "main.rf", ("""
-                                   var a: bool = 2 / 2
+                                   var a: bool = 2 / 2;
                                    """, [MismatchedTypes(Boolean, UnspecifiedSizedIntType)])
                     }
                 }
@@ -8233,7 +8248,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     {
                         "main.rf", ("""
-                                   var a = 2 == true
+                                   var a = 2 == true;
                                    """, [MismatchedTypes(UnspecifiedSizedIntType, Boolean)])
                     }
                 }
@@ -8245,7 +8260,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     {
                         "main.rf", ("""
-                                   var a = 2 != true
+                                   var a = 2 != true;
                                    """, [MismatchedTypes(UnspecifiedSizedIntType, Boolean)])
                     }
                 }
@@ -8257,7 +8272,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     {
                         "main.rf", ("""
-                                   var a: i64 = 2 == 2
+                                   var a: i64 = 2 == 2;
                                    """, [MismatchedTypes(Int64, Boolean)])
                     }
                 }
@@ -8269,7 +8284,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     {
                         "main.rf", ("""
-                                   var a: i64 = 2 != 2
+                                   var a: i64 = 2 != 2;
                                    """, [MismatchedTypes(Int64, Boolean)])
                     }
                 }
@@ -8282,7 +8297,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     {
                         "main.rf", ("""
-                                   var mut a = 2; a = true
+                                   var mut a = 2; a = true;
                                    """, [MismatchedTypes(UnspecifiedSizedIntType, Boolean)])
                     }
                 }
@@ -8294,7 +8309,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     {
                         "main.rf", ("""
-                                   true = false
+                                   true = false;
                                    """, [
                                    TypeCheckerError.ExpressionNotAssignable(Literal(true))
                                    ])
@@ -8507,7 +8522,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                     {
                         "main.rf", ("""
                                    class MyClass {}
-                                   unboxed MyClass
+                                   unboxed MyClass;
                                    """, [
                                    TypeCheckerError.TypeIsNotExpression(SourceRange.Default,
                                    NamedTypeIdentifier("MyClass", boxedSpecifier: Token.Unboxed(SourceSpan.Default)))

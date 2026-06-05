@@ -120,7 +120,7 @@ public record ParserError
         return new ParserError(
             ParserErrorType.ExpectedPatternOrToken,
             receivedToken?.SourceSpan.ToRange(),
-            $"Expcted expression or one of tokens: [{string.Join(", ", tokens.Order())}], but found {receivedToken?.ToString() ?? "EOF"}");
+            $"Expcted pattern or one of tokens: [{string.Join(", ", tokens.Order())}], but found {receivedToken?.ToString() ?? "EOF"}");
     }
 
     public static ParserError UnexpectedAttribute(LangAttribute attribute)

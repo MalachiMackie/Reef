@@ -28,7 +28,7 @@ public class ArrayTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
         {
             {
                 "empty array",
-                "var a: [string; 0] = []",
+                "var a: [string; 0] = [];",
                 LoweredProgram(ModuleId,
                     methods: [
                         Method(new DefId(ModuleId, $"{ModuleId}:::_Main"),
@@ -68,7 +68,7 @@ public class ArrayTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
             },
             {
                 "collection expression with literals",
-                "var a = [1, 4, 8]",
+                "var a = [1, 4, 8];",
                 LoweredProgram(
                     ModuleId,
                     [
@@ -115,7 +115,7 @@ public class ArrayTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
             },
             {
                 "unboxed collection expression with literals",
-                "var a = [unboxed; 1, 4, 8]",
+                "var a = [unboxed; 1, 4, 8];",
                 LoweredProgram(
                     ModuleId,
                     [

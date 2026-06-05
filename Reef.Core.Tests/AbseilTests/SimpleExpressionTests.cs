@@ -52,6 +52,9 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
     public async Task SimpleExpressionAbseilTest(string description, string source, LoweredProgram expectedProgram)
     {
         description.Should().NotBeEmpty();
+
+        TestOutput.WriteLine(source);
+
         var program = await CreateProgram(ModuleId, source);
         var loweredProgram = Lower(program, ModuleId);
 
@@ -155,7 +158,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
             },
             {
                 "box number",
-                "var a: boxed i32 = box(1)",
+                "var a: boxed i32 = box(1);",
                 LoweredProgram(ModuleId, methods: [
                     Method(new DefId(ModuleId, $"{ModuleId}:::_Main"),
                         "_Main",
@@ -212,7 +215,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
             },
             {
                 "unbox number",
-                "var a: i32 = unbox(box(1))",
+                "var a: i32 = unbox(box(1));",
                 LoweredProgram(ModuleId, methods: [
                     Method(new DefId(ModuleId, $"{ModuleId}:::_Main"),
                         "_Main",
@@ -554,7 +557,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
             },
             {
                 "bool or",
-                "var a = false || false",
+                "var a = false || false;",
                 LoweredProgram(ModuleId,
                     methods: [
                         Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
@@ -600,7 +603,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
             },
             {
                 "bool and",
-                "var a = false && false",
+                "var a = false && false;",
                 LoweredProgram(ModuleId,
                     methods: [
                         Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
@@ -646,7 +649,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
             },
             {
                 "bool not",
-                "var a = !true",
+                "var a = !true;",
                 LoweredProgram(ModuleId,
                     methods: [
                         Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
@@ -671,7 +674,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
             },
             {
                 "chain operations",
-                "var a = 1 + 2 + 3",
+                "var a = 1 + 2 + 3;",
                 LoweredProgram(ModuleId, methods: [
                     Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                         [
@@ -700,7 +703,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
             },
             {
                 "dead expression",
-                "1",
+                "1;",
                 LoweredProgram(ModuleId, methods: [
                     Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                         [

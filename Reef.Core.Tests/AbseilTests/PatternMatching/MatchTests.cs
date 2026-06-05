@@ -11,6 +11,8 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
     public async Task MatchAbseilTest(string description, string source, LoweredProgram expectedProgram)
     {
         description.Should().NotBeEmpty();
+        TestOutput.WriteLine(source);
+
         var program = await CreateProgram(ModuleId, source);
         var loweredProgram = Lower(program, ModuleId);
 
@@ -36,7 +38,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                       unboxed MyClass { MyField: unboxed MyUnion::B, SecondField: unboxed MyUnion::B } => 3,
                       unboxed MyClass { MyField: unboxed MyUnion::C, SecondField: unboxed MyUnion::A } => 4,
                       _ => 5
-                  }
+                  };
                   """;
         var expectedProgram = LoweredProgram(ModuleId,
             types: [
@@ -533,7 +535,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                      MyUnion::X(OtherUnion::A) => 1,
                      MyUnion::X => 2,
                      MyUnion::Y => 3
-                 }
+                 };
                  """,
                  LoweredProgram(ModuleId,
                      types: [
@@ -845,7 +847,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                      MyUnion::X(OtherUnion::A, OtherUnion::B) => 2,
                      MyUnion::X(OtherUnion::B, OtherUnion::A) => 3,
                      MyUnion::X(OtherUnion::B, OtherUnion::B) => 4,
-                 }
+                 };
                  """,
                  LoweredProgram(ModuleId,
                      types: [
@@ -1159,7 +1161,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                  """
                  var a = match (1) {
                      i64 => 2
-                 }
+                 };
                  """,
                  LoweredProgram(ModuleId,
                      methods: [
@@ -1185,7 +1187,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                  fn GetI64(): i64 { return 1; }
                  var a = match (GetI64()) {
                      i64 => 2
-                 }
+                 };
                  """,
                  LoweredProgram(ModuleId,
                      methods: [
@@ -1233,7 +1235,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                  var b = match (a) {
                      MyClass{MyField: MyUnion::A} => 1,
                      MyClass{MyField: MyUnion::B} var something => 2,
-                 }
+                 };
                  """,
                  LoweredProgram(ModuleId,
                      types: [
@@ -1330,7 +1332,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                  var b = match (a) {
                      MyClass{MyField: MyUnion::A} => 1,
                      _ => 2
-                 }
+                 };
                  """,
                  LoweredProgram(ModuleId,
                      types: [
@@ -1430,7 +1432,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                      MyClass { MyField: MyUnion::B, SecondField: MyUnion::A } => 2,
                      MyClass { MyField: MyUnion::C, SecondField: MyUnion::A } => 3,
                      _ => 4
-                 }
+                 };
                  """,
                  LoweredProgram(ModuleId,
                      types: [
@@ -1630,7 +1632,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                      MyClass { MyField: MyUnion::B, SecondField: MyUnion::B } => 3,
                      MyClass { MyField: MyUnion::C, SecondField: MyUnion::A } => 4,
                      _ => 5
-                 }
+                 };
                  """,
                  LoweredProgram(ModuleId,
                      types: [
@@ -1832,7 +1834,7 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                       unboxed MyClass { MyField: unboxed MyUnion::B, SecondField: unboxed MyUnion::B } => 3,
                       unboxed MyClass { MyField: unboxed MyUnion::C, SecondField: unboxed MyUnion::A } => 4,
                       _ => 5
-                  }
+                  };
                   """,
                   LoweredProgram(ModuleId,
                       types: [

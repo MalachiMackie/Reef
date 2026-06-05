@@ -13,7 +13,7 @@ public class VariableTests : IntegrationTestBase
     [Fact]
     public async Task PrintStringVariable()
     {
-        await SetupTest("var a = \"My Test\";print_string(a)");
+        await SetupTest("var a = \"My Test\";print_string(a);");
         var result = await Run();
 
         result.ExitCode.Should().Be(0);

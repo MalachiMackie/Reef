@@ -8,7 +8,7 @@ public class StringTests : IntegrationTestBase
     [Fact]
     public async Task PrintStringConstant()
     {
-        await SetupTest("""print_string("Hello World!")""");
+        await SetupTest("""print_string("Hello World!");""");
 
         var result = await Run();
 
@@ -20,7 +20,7 @@ public class StringTests : IntegrationTestBase
     [Fact]
     public async Task PrintMultipleStringConstants()
     {
-        await SetupTest("""print_string("Hello ");print_string("World!!")""");
+        await SetupTest("""print_string("Hello ");print_string("World!!");""");
 
         var result = await Run();
 
@@ -31,7 +31,7 @@ public class StringTests : IntegrationTestBase
     [Fact]
     public async Task NewLineStringConstants()
     {
-        await SetupTest("""print_string("hello\nworld!")""");
+        await SetupTest("""print_string("hello\nworld!");""");
 
         var result = await Run();
         result.ExitCode.Should().Be(0);
@@ -41,7 +41,7 @@ public class StringTests : IntegrationTestBase
     [Fact]
     public async Task PrintEmptyString()
     {
-        await SetupTest("print_string(\"hi\");print_string(\"\");print_string(\"bye\")");
+        await SetupTest("print_string(\"hi\");print_string(\"\");print_string(\"bye\");");
 
         var result = await Run();
 
@@ -52,7 +52,7 @@ public class StringTests : IntegrationTestBase
     [Fact]
     public async Task PrintStringConsistingOnlyOfEscapedCharacter()
     {
-        await SetupTest("print_string(\"\\n\")");
+        await SetupTest("print_string(\"\\n\");");
 
         var result = await Run();
 
@@ -63,7 +63,7 @@ public class StringTests : IntegrationTestBase
     [Fact]
     public async Task PrintStringStartingWithEscapedCharacter()
     {
-        await SetupTest("print_string(\"\\nsomething\")");
+        await SetupTest("print_string(\"\\nsomething\");");
 
         var result = await Run();
 
@@ -74,7 +74,7 @@ public class StringTests : IntegrationTestBase
     [Fact]
     public async Task PrintStringEndingWithEscapedCharacter()
     {
-        await SetupTest("print_string(\"something\\n\")");
+        await SetupTest("print_string(\"something\\n\");");
 
         var result = await Run();
 
@@ -85,7 +85,7 @@ public class StringTests : IntegrationTestBase
     [Fact]
     public async Task MultipleEscapedCharacters()
     {
-        await SetupTest("print_string(\"foo\\nbar\\nbaz\")");
+        await SetupTest("print_string(\"foo\\nbar\\nbaz\");");
 
         var result = await Run();
         result.ExitCode.Should().Be(0);
@@ -95,7 +95,7 @@ public class StringTests : IntegrationTestBase
     [Fact]
     public async Task ConsecutiveEscapedCharacters()
     {
-        await SetupTest("print_string(\"foo\\n\\nbar\")");
+        await SetupTest("print_string(\"foo\\n\\nbar\");");
 
         var result = await Run();
         result.ExitCode.Should().Be(0);

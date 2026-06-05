@@ -324,7 +324,7 @@ public static class ParseTestCases
                     moduleImports: [ModuleImport(ModulePathSegment("someModule", useAll: true), true)])
             ),
             (
-                "var a = new someModule:::MyClass{}",
+                "var a = new someModule:::MyClass{};",
                 Program("ParseTestCases",
                     [
                         VariableDeclaration(
@@ -334,7 +334,7 @@ public static class ParseTestCases
                     ])
             ),
             (
-                "var a = :::someModule:::SomeClass::StaticField",
+                "var a = :::someModule:::SomeClass::StaticField;",
                 Program("ParseTestCases",
                     [
                         VariableDeclaration("a",
@@ -344,7 +344,7 @@ public static class ParseTestCases
                     ])
             ),
             (
-                "var a = someModule:::SomeClass::StaticField",
+                "var a = someModule:::SomeClass::StaticField;",
                 Program("ParseTestCases",
                     [
                         VariableDeclaration("a",
@@ -365,7 +365,7 @@ public static class ParseTestCases
                     ])
             ),
             (
-                "var a = b[0]; hi()",
+                "var a = b[0]; hi();",
                 Program("ParseTestCases",
                     [
                         VariableDeclaration(
@@ -375,7 +375,7 @@ public static class ParseTestCases
                     ])
             ),
             (
-                "var a = b[0]",
+                "var a = b[0];",
                 Program("ParseTestCases",
                     [
                         VariableDeclaration(
@@ -420,7 +420,7 @@ public static class ParseTestCases
                     ])
             ),
             (
-                "var a = []",
+                "var a = [];",
                 Program("ParseTestCases",
                     [
                         VariableDeclaration(
@@ -429,7 +429,7 @@ public static class ParseTestCases
                     ])
             ),
             (
-                "var a = [unboxed; 1]",
+                "var a = [unboxed; 1];",
                 Program("ParseTestCases",
                     [
                         VariableDeclaration(
@@ -438,7 +438,7 @@ public static class ParseTestCases
                     ])
             ),
             (
-                "var a = [1, 2]",
+                "var a = [1, 2];",
                 Program("ParseTestCases",
                     [
                         VariableDeclaration(
@@ -447,7 +447,7 @@ public static class ParseTestCases
                     ])
             ),
             (
-                "var a = [1, 2,]",
+                "var a = [1, 2,];",
                 Program("ParseTestCases",
                     [
                         VariableDeclaration(
@@ -456,7 +456,7 @@ public static class ParseTestCases
                     ])
             ),
             (
-                "var a = [1; 15]",
+                "var a = [1; 15];",
                 Program("ParseTestCases",
                     [
                         VariableDeclaration(
@@ -465,14 +465,14 @@ public static class ParseTestCases
                     ])
             ),
             (
-                "break",
+                "break;",
                 Program("ParseTestCases",
                     [
                         Break(),
                     ])
             ),
             (
-                "continue",
+                "continue;",
                 Program("ParseTestCases",
                     [
                         Continue(),
@@ -486,7 +486,7 @@ public static class ParseTestCases
                     ])
             ),
             (
-                "-1",
+                "-1;",
                 Program("ParseTestCases",
                     [
                         Literal(-1)
@@ -981,7 +981,7 @@ public static class ParseTestCases
                 new MethodCallExpression(new MethodCall(
                     VariableAccessor("ok"), []), SourceRange.Default)
             ])),
-            ("ok().b()", Program("ParseTestCases", [
+            ("ok().b();", Program("ParseTestCases", [
                 new MethodCallExpression(new MethodCall(
                     new MemberAccessExpression(new MemberAccess(
                         new MethodCallExpression(new MethodCall(
@@ -1384,7 +1384,7 @@ public static class ParseTestCases
             ),
             (
                 """
-                boxed int::something
+                boxed int::something;
                 """,
                 Program("ParseTestCases",
                     [new StaticMemberAccessExpression(
@@ -1401,7 +1401,7 @@ public static class ParseTestCases
             ),
             (
                 """
-                unboxed int::something
+                unboxed int::something;
                 """,
                 Program("ParseTestCases",
                     [new StaticMemberAccessExpression(

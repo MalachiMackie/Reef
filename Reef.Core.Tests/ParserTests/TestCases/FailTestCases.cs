@@ -2,7 +2,7 @@
 
 public static class FailTestCases
 {
-    public static TheoryData<string, IEnumerable<Token>> TestCases()
+    public static TheoryData<string, Token[]> TestCases()
     {
         IEnumerable<string> strings =
         [
@@ -111,6 +111,6 @@ public static class FailTestCases
             "(a b)",
         ];
 
-        return [.. strings.Select(x => (x, (IEnumerable<Token>)Tokenizer.Tokenize(x).Tokens))];
+        return [.. strings.Select(x => (x, Tokenizer.Tokenize(x).Tokens.ToArray()))];
     }
 }

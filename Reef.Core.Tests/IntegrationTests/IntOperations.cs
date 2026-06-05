@@ -20,7 +20,7 @@ public class IntOperations : IntegrationTestBase
     [MemberData(nameof(IntTypes))]
     public async Task PrintPositiveInts(string typeSpecifier)
     {
-        await SetupTest($"print_{typeSpecifier}(3)", typeSpecifier);
+        await SetupTest($"print_{typeSpecifier}(3);", typeSpecifier);
 
         var result = await Run(typeSpecifier);
         result.ExitCode.Should().Be(0);
@@ -35,7 +35,7 @@ public class IntOperations : IntegrationTestBase
     [InlineData("i8")]
     public async Task PrintNegativeInts(string typeSpecifier)
     {
-        await SetupTest($"print_{typeSpecifier}(0 - 4)", typeSpecifier);
+        await SetupTest($"print_{typeSpecifier}(0 - 4);", typeSpecifier);
 
         var result = await Run(typeSpecifier);
         result.ExitCode.Should().Be(0);

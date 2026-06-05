@@ -538,11 +538,19 @@ public sealed class Parser : IDisposable
                 {
                     _errors.Add(ParserError.ExpectedToken(null, TokenType.Semicolon, closingToken.Value));
                 }
+                else if (expression.ExpressionType is not (
+                        ExpressionType.IfExpression
+                        or ExpressionType.Block
+                        or ExpressionType.While
+                        or ExpressionType.Match))
+                {
+                    _errors.Add(ParserError.ExpectedToken(null, TokenType.Semicolon));
+                }
 
                 break;
             }
 
-            if (Current.Type == TokenType.Semicolon)
+            if (_hasNext && Current.Type == TokenType.Semicolon)
             {
                 // drop semicolon
                 if (!MoveNext() && closingToken.HasValue)
@@ -2711,7 +2719,7 @@ public sealed class Parser : IDisposable
         IExpression? DefaultCase()
         {
             _errors.Add(ParserError.ExpectedToken(Current, TokenType.LeftBrace, TokenType.DoubleColon));
-            return null;
+            return new ObjectInitializerExpression(new ObjectInitializer(type, []), type.SourceRange with { Start = newToken.SourceSpan });
         }
     }
 

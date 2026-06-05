@@ -50,19 +50,18 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
     public void SingleTest()
     {
 
-        var source =
-            "fn some_fn() where T: boxed{}";
+        var source = "new A;";
+        var expectedProgram = Program("ParseTestCases", [ObjectInitializer(NamedTypeIdentifier("A"))]);
 
-        var expectedProgram = Program("ParseTestCases",
-            functions: [Function("some_fn", parameters: [], block: Block().Block, constraints: [new BoxedConstraint(NamedTypeIdentifier("T"))])]);
-
-        IEnumerable<ParserError> expectedErrors = [];
+        IEnumerable<ParserError> expectedErrors = [
+            ParserError.ExpectedToken(Token.Semicolon(SourceSpan.Default), TokenType.LeftBrace, TokenType.DoubleColon)
+        ];
 
         var tokens = Tokenizer.Tokenize(source);
 
         tokens.Errors.Should().BeEmpty();
 
-        var result = Parser.Parse(new ModuleId("ParseTestCases"), tokens.Tokens).NotNull();
+        var result = Parser.Parse(expectedProgram.ModuleId, tokens.Tokens).NotNull();
 
         testOutputHelper.WriteLine("Expected {0}, found {1}", expectedProgram, result.ParsedModule);
 
@@ -98,7 +97,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
         }
     }
 
-    [Theory]
+    [Theory(Timeout = 3000)]
     [MemberData(nameof(TestCases.ParseErrorTestCases.TestCases), MemberType = typeof(TestCases.ParseErrorTestCases))]
     public void ParseErrorTests(string source, LangModule expectedProgram, IEnumerable<ParserError> expectedErrors)
     {
@@ -106,9 +105,9 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
 
         tokens.Errors.Should().BeEmpty();
 
-        var output = Parser.Parse(new ModuleId("ParseErrorTestCases"), tokens.Tokens);
-
         testOutputHelper.WriteLine(source);
+
+        var output = Parser.Parse(new ModuleId("ParseErrorTestCases"), tokens.Tokens);
 
         output.Errors.Should().BeEquivalentTo(
             expectedErrors,
