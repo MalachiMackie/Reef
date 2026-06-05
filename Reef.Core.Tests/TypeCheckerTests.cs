@@ -3509,9 +3509,41 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                         "main.rf",
                         (
                             """
-                            var a: string = {grab true; print_string("hi");};
+                            var a: string = {grab "hi"; print_string("hi");};
                             """,
-                            [TypeCheckerError.MismatchedTypes(SourceRange.Default, String, Boolean)]
+                            [TypeCheckerError.GrabNotLastInBlock(SourceRange.Default)]
+                        )
+                    }
+                }
+            },
+            {
+                "grab is not in block - top level expression",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            grab true;
+                            """,
+                            [TypeCheckerError.GrabNotInBlock(SourceRange.Default)]
+                        )
+                    }
+                }
+            },
+            {
+                "grab is not in block - function",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            fn some_fn() {
+                                grab true;
+                            }
+                            """,
+                            [TypeCheckerError.GrabNotInBlock(SourceRange.Default)]
                         )
                     }
                 }

@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using Reef.Core.Expressions;
 
 namespace Reef.Core.TypeChecking;
 
@@ -81,7 +82,8 @@ public partial class TypeChecker
         DefId? defId = null,
         ModuleId? moduleId = null,
         IReadOnlyList<FunctionSignature>? functionSignatures = null,
-        IReadOnlyList<ModuleImport>? moduleImports = null)
+        IReadOnlyList<ModuleImport>? moduleImports = null,
+        Block? block = null)
     {
         var currentScope = _typeCheckingScopes.Peek();
 
@@ -94,7 +96,8 @@ public partial class TypeChecker
             [.. currentScope.GenericPlaceholders, .. genericPlaceholders ?? []],
             defId ?? currentScope.CurrentDefId,
             moduleId ?? currentScope.ModuleId,
-            moduleImports ?? []));
+            moduleImports ?? [],
+            block));
 
         return new ScopeDisposable(PopScope);
     }
@@ -110,9 +113,11 @@ public partial class TypeChecker
         HashSet<GenericPlaceholder> GenericPlaceholders,
         DefId? CurrentDefId,
         ModuleId? ModuleId,
-        IReadOnlyList<ModuleImport> ModuleImports)
+        IReadOnlyList<ModuleImport> ModuleImports,
+        Block? Block)
     {
         private Dictionary<string, IVariable> CurrentScopeVariables { get; } = new();
+        public GrabExpression? GrabExpression { get; set; }
 
         public IVariable GetVariable(string name)
         {

@@ -439,6 +439,19 @@ public record UnionClassVariantInitializer(
     public uint? VariantIndex { get; set; }
 }
 
+public record GrabExpression(IExpression? Value, SourceRange SourceRange) : IExpression
+{
+    public ExpressionType ExpressionType => ExpressionType.Grab;
+    public TypeChecker.ITypeReference? ResolvedType { get; set; }
+    public bool Diverges { get; } = Value is { Diverges: true };
+    public bool ValueUseful { get; set; }
+
+    public override string ToString()
+    {
+        return $"grab {Value}";
+    }
+}
+
 public record ObjectInitializerExpression(ObjectInitializer ObjectInitializer, SourceRange SourceRange) : IExpression
 {
     public ExpressionType ExpressionType => ExpressionType.ObjectInitializer;
@@ -673,6 +686,7 @@ public enum UnaryOperatorType
 public enum ExpressionType
 {
     None,
+    Grab,
     ValueAccess,
     UnaryOperator,
     BinaryOperator,

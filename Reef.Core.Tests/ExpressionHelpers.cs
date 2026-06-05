@@ -214,6 +214,11 @@ public static class ExpressionHelpers
             value);
     }
 
+    public static GrabExpression Grab(IExpression? value = null)
+    {
+        return new GrabExpression(value, SourceRange.Default);
+    }
+
     public static ValueAccessorExpression VariableAccessor(
         string name,
         IReadOnlyList<string>? modulePath = null,

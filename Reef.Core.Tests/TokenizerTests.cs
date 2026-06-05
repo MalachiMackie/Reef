@@ -95,6 +95,7 @@ public class TokenizerTests
             ["use", new[] { Token.Use(new SourceSpan(new SourcePosition(0, 0, 0), 3)) }],
             ["match", new[] { Token.Match(new SourceSpan(new SourcePosition(0, 0, 0), 5)) }],
             ["while", new[] { Token.While(new SourceSpan(new SourcePosition(0, 0, 0), 5)) }],
+            ["grab", new[] { Token.Grab(new SourceSpan(new SourcePosition(0, 0, 0), 4)) }],
             ["where", new[] { Token.Where(new SourceSpan(new SourcePosition(0, 0, 0), 5)) }],
             ["break", new[] { Token.Break(new SourceSpan(new SourcePosition(0, 0, 0), 5)) }],
             ["continue", new[] { Token.Continue(new SourceSpan(new SourcePosition(0, 0, 0), 8)) }],

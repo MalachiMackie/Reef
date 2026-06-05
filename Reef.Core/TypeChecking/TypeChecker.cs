@@ -340,7 +340,8 @@ public partial class TypeChecker
                             )
                         ],
                         UseAll: false))
-            ]));
+            ],
+            null));
 
         SetupSignatures();
 
@@ -506,10 +507,29 @@ public partial class TypeChecker
         }
     }
 
-    private InstantiatedClass TypeCheckBlock(
+    private InstantiatedClass TypeCheckGrab(GrabExpression grabExpression)
+    {
+        if (grabExpression.Value is not null)
+        {
+            TypeCheckExpression(grabExpression.Value);
+        }
+
+        var scope = _typeCheckingScopes.Peek();
+
+        if (scope.Block is null)
+        {
+            AddError(TypeCheckerError.GrabNotInBlock(grabExpression.SourceRange));
+        }
+
+        scope.GrabExpression = grabExpression;
+
+        return Never();
+    }
+
+    private ITypeReference TypeCheckBlock(
         Block block)
     {
-        using var _ = PushScope(moduleImports: block.ScopedImports);
+        using var _ = PushScope(moduleImports: block.ScopedImports, block: block);
 
         foreach (var import in block.ScopedImports)
         {
@@ -540,12 +560,21 @@ public partial class TypeChecker
             TypeCheckExpression(expression);
         }
 
-        if (block.Expressions.Count > 0 && block.Expressions[^1].Diverges)
+        if (block.Expressions.Any(x => x.Diverges))
         {
             return Never();
         }
 
-        // todo: tail expressions
+        if (_typeCheckingScopes.Peek().GrabExpression is { } grab)
+        {
+            if (block.Expressions[^1] is not GrabExpression)
+            {
+                AddError(TypeCheckerError.GrabNotLastInBlock(grab.SourceRange));
+            }
+
+            return grab.Value?.ResolvedType ?? Unit();
+        }
+
         return Unit();
     }
 

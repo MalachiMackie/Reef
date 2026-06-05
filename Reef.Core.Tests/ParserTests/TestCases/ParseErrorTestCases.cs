@@ -9,6 +9,14 @@ public static class ParseErrorTestCases
         IEnumerable<(string, LangModule, IEnumerable<ParserError>)> data =
         [
             (
+                "grab",
+                Program("ParseErrorTestCases", expressions: [Grab()]),
+                [
+                    ParserError.ExpectedExpression(null),
+                    ParserError.ExpectedToken(null, TokenType.Semicolon)
+                ]
+            ),
+            (
                 "attribute",
                 Program("ParseErrorTestCases"),
                 [ParserError.ExpectedToken(null, TokenType.Identifier)]

@@ -1780,6 +1780,7 @@ public sealed class Parser : IDisposable
             TokenType.If => GetIfExpression(),
             TokenType.While => GetWhile(),
             TokenType.Break => GetBreak(),
+            TokenType.Grab => GetGrab(),
             TokenType.Continue => GetContinue(),
             TokenType.LeftParenthesis => GetParenthesizedExpression(previousExpression),
             TokenType.Return => GetMethodReturn(),
@@ -2721,6 +2722,21 @@ public sealed class Parser : IDisposable
             _errors.Add(ParserError.ExpectedToken(Current, TokenType.LeftBrace, TokenType.DoubleColon));
             return new ObjectInitializerExpression(new ObjectInitializer(type, []), type.SourceRange with { Start = newToken.SourceSpan });
         }
+    }
+
+    private GrabExpression? GetGrab()
+    {
+        var start = Current.SourceSpan;
+        var end = Current.SourceSpan;
+
+        IExpression? value = null;
+
+        if (ExpectNextExpression(out value))
+        {
+            end = value.SourceRange.End;
+        }
+
+        return new GrabExpression(value, new SourceRange(start, end));
     }
 
     private UnionClassVariantInitializerExpression? GetUnionClassVariantInitializer(

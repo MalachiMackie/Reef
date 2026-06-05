@@ -3,6 +3,7 @@
 public enum TokenType
 {
     Identifier,
+    Grab,
     If,
     LeftParenthesis,
     RightParenthesis,

@@ -153,6 +153,9 @@ public class TypeTwoTypeChecker(bool throwOnError, Dictionary<ModuleId, (List<Ty
             case VariableDeclarationExpression variableDeclarationExpression:
                 CheckVariableDeclaration(variableDeclarationExpression);
                 break;
+            case GrabExpression grabExpression:
+                CheckGrab(grabExpression);
+                break;
             case ValueAccessorExpression valueAccessorExpression:
                 CheckValueAccessor(valueAccessorExpression);
                 break;
@@ -211,7 +214,7 @@ public class TypeTwoTypeChecker(bool throwOnError, Dictionary<ModuleId, (List<Ty
             case BreakExpression:
                 break;
             default:
-                throw new NotImplementedException($"{expression.ExpressionType}");
+                throw new NotImplementedException($"{expression.GetType()}");
         }
     }
 
@@ -496,6 +499,14 @@ public class TypeTwoTypeChecker(bool throwOnError, Dictionary<ModuleId, (List<Ty
         if (methodReturnExpression.MethodReturn.Expression is not null)
         {
             CheckExpression(methodReturnExpression.MethodReturn.Expression);
+        }
+    }
+
+    private void CheckGrab(GrabExpression grab)
+    {
+        if (grab.Value is not null)
+        {
+            CheckExpression(grab.Value);
         }
     }
 

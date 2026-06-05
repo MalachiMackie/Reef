@@ -19,6 +19,7 @@ public partial class TypeChecker
             MethodReturnExpression methodReturnExpression => TypeCheckMethodReturn(methodReturnExpression),
             MethodCallExpression methodCallExpression => TypeCheckMethodCall(methodCallExpression),
             BlockExpression blockExpression => TypeCheckBlock(blockExpression.Block),
+            GrabExpression grabExpression => TypeCheckGrab(grabExpression),
             IfExpressionExpression ifExpressionExpression => TypeCheckIfExpression(ifExpressionExpression.IfExpression),
             BinaryOperatorExpression binaryOperatorExpression => TypeCheckBinaryOperatorExpression(
                 binaryOperatorExpression),

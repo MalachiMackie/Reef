@@ -10,6 +10,11 @@ public static class ParseTestCases
         return [.. new (string Source, LangModule ExpectedProgram)[]
         {
             (
+                "grab x;",
+                Program("ParseTestCases",
+                    expressions: [Grab(VariableAccessor("x"))])
+            ),
+            (
                 """
                 attribute my_attribute{}
                 """,

@@ -338,6 +338,7 @@ public class Tokenizer
             TokenType.Where when source is "where" => Token.Where(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Unboxed when source is "unboxed" => Token.Unboxed(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Extern when source is "extern" => Token.Extern(new SourceSpan(position, (ushort)source.Length)),
+            TokenType.Grab when source is "grab" => Token.Grab(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Boxed when source is "boxed" => Token.Boxed(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Attribute when source is "attribute" => Token.Attribute(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Hash when source is "#" => Token.Hash(new SourceSpan(position, (ushort)source.Length)),
@@ -536,6 +537,9 @@ public class Tokenizer
                 tokens[i++] = TokenType.Continue;
                 tokens[i++] = TokenType.Class;
                 break;
+            case 'g':
+                tokens[i++] = TokenType.Grab;
+                break;
             case '0' or '1' or '2' or '3' or '4' or '5' or '6' or '7' or '8' or '9':
                 tokens[i++] = TokenType.IntLiteral;
                 break;
@@ -587,6 +591,7 @@ public class Tokenizer
             TokenType.Underscore => Matches(source, "_"),
             TokenType.Bang => Matches(source, "!"),
             TokenType.Semicolon => Matches(source, ";"),
+            TokenType.Grab => Matches(source, "grab"),
             TokenType.LeftBrace => Matches(source, "{"),
             TokenType.LeftSquareBracket => Matches(source, "["),
             TokenType.RightSquareBracket => Matches(source, "]"),

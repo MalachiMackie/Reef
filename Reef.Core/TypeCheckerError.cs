@@ -462,6 +462,24 @@ public record TypeCheckerError
             $"Type Argument {typeParamName} must be boxed"
         );
     }
+
+    public static TypeCheckerError GrabNotInBlock(SourceRange sourceRange)
+    {
+        return new(
+            TypeCheckerErrorType.GrabNotInBlock,
+            sourceRange,
+            $"Grab expression must be inside a block"
+        );
+    }
+
+    public static TypeCheckerError GrabNotLastInBlock(SourceRange sourceRange)
+    {
+        return new(
+            TypeCheckerErrorType.GrabNotLastInBlock,
+            sourceRange,
+            $"Grab expression must be the last expression in a block"
+        );
+    }
 }
 
 public enum TypeCheckerErrorType
@@ -528,5 +546,7 @@ public enum TypeCheckerErrorType
     NonExternFunctionDoesNotDefineBody,
     NonTypeParameterConstrained,
     UnsupportedFalloutReturnType,
-    TypeArgumentMustBeBoxed
+    TypeArgumentMustBeBoxed,
+    GrabNotLastInBlock,
+    GrabNotInBlock
 }
