@@ -37,6 +37,7 @@ public partial class ProgramAbseil
             BinaryOperatorExpression binaryOperatorExpression => LowerBinaryExpression(
                 binaryOperatorExpression, destination),
             BlockExpression blockExpression => LowerBlock(blockExpression, destination),
+            GrabExpression grabExpression => LowerGrab(grabExpression, destination),
             WhileExpression whileExpression => LowerWhile(whileExpression),
             BreakExpression => LowerBreak(),
             ContinueExpression => LowerContinue(),
@@ -2193,23 +2194,27 @@ public partial class ProgramAbseil
         }
     }
 
+    private IExpressionResult LowerGrab(GrabExpression grabExpression, IPlace? destination)
+    {
+        return LowerExpression(grabExpression.Value.NotNull(), destination);
+    }
+
     private IExpressionResult LowerBlock(BlockExpression blockExpression, IPlace? destination)
     {
         IExpressionResult? result = null;
         foreach (var innerExpression in blockExpression.Block.Expressions)
         {
-            result = LowerExpression(innerExpression, destination: null);
+            IPlace? localDestination = null;
+            if (innerExpression is GrabExpression)
+            {
+                localDestination = destination;
+            }
+
+            result = LowerExpression(innerExpression, destination: localDestination);
         }
 
         // if no result, then it must just be a unit constant
         result ??= new OperandResult(new UnitConstant());
-
-        if (destination is not null)
-        {
-            _basicBlockStatements.Add(new Assign(
-                destination,
-                new Use(result.ToOperand())));
-        }
 
         return result;
     }
