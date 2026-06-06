@@ -75,7 +75,7 @@ public class Compiler
         logger.LogInformation("Lowering...");
         var allModules = typeCheckResults.Select(x => x.Value.Module.NotNull()).Concat(importedModules).ToDictionary(x => x.ModuleId);
 
-        
+
 
         var loweredProgram = ProgramAbseil.Lower(
             allModules,
@@ -366,7 +366,7 @@ public class Compiler
 
         var runtimeLibraryLocation = Path.Combine(assemblyDirectory, "reef-runtime.lib");
         var runtimeLibraryPdb = Path.Combine(assemblyDirectory, "reef-runtime.pdb");
-        File.Copy(runtimeLibraryPdb, Path.Combine(buildDirectory, "reef-runtime.pdb"));
+        File.Copy(runtimeLibraryPdb, Path.Combine(buildDirectory, "reef-runtime.pdb"), overwrite: true);
 
         var linkProcess = new Process
         {

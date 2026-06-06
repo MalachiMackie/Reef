@@ -1,24 +1,17 @@
 pub class SourcePosition {
-    pub field lineNumber: u16,
-    pub field linePosition: u16,
-    pub field start: u32,
+    pub field start: u64,
+    pub field line_number: u32,
+    pub field line_position: u16,
 }
 
-pub class SourceSpan {
-    pub field position: SourcePosition,
-    pub field length: u32,
+pub union IntLiteral {
+    PosOrZero(u64),
+    Neg(u64),
 }
 
-pub class Token {
-    pub field type: TokenType,
-    pub field span: SourceSpan,
-}
-
-pub union TokenType {
-    None,
+pub union Token {
     Identifier(string),
-    IntLiteral(i64),
-    StringLiteral(string),
+    Grab,
     If,
     LeftParenthesis,
     RightParenthesis,
@@ -38,6 +31,8 @@ pub union TokenType {
     DoubleEquals,
     NotEquals,
     Else,
+    IntLiteral(IntLiteral),
+    StringLiteral(string),
     QuestionMark,
     Return,
     True,
@@ -50,10 +45,11 @@ pub union TokenType {
     Mut,
     Turbofish,
     DoubleColon,
+    TripleColon,
     New,
     Static,
-    SingleLineComment,
-    MultiLineComment,
+    SingleLineComment(string),
+    MultiLineComment(string),
     Union,
     Match,
     While,
@@ -67,5 +63,12 @@ pub union TokenType {
     DoubleAmpersand,
     DoubleBar,
     Unboxed,
-    Boxed
+    Boxed,
+    RightSquareBracket,
+    LeftSquareBracket,
+    Use,
+    Extern,
+    Where,
+    Hash,
+    Attribute,
 }

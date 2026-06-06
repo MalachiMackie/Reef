@@ -37,8 +37,8 @@ public interface IConstructor
                 return [];
             case VariantConstructor variantConstructor:
                 {
-                    var union = typeReference as TypeChecker.InstantiatedUnion
-                                ?? throw new InvalidOperationException("Expected union");
+                    var union = typeReference.ConcreteType().Type as TypeChecker.InstantiatedUnion
+                                ?? throw new InvalidOperationException($"Expected union, found {typeReference.GetType()}");
 
                     var variant = union.Variants[(int)variantConstructor.VariantIndex];
 
