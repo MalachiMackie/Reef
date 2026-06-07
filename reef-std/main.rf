@@ -284,6 +284,24 @@ extern fn as_bytes<TValue>(value: TValue): [u8]
 extern fn from_bytes<TValue>(bytes: [u8]): mut TValue
     where TValue: boxed;
 
+extern fn unsafe_allocate_array_bytes(item_size_bytes: u64, length: u64): [u8];
+
+// intrinsic
+pub extern fn sizeof<T>(): u64;
+
+// todo: should be able to do: `var filled_array = [value; length];`
+pub fn fill_dynamic_array<TValue>(length: u64, mut value: TValue): mut [TValue] {
+    var mut array = from_bytes::<[TValue]>(unsafe_allocate_array_bytes(sizeof::<TValue>(), length));
+    var mut i = 0;
+    while (i < length)
+    {
+        array[i] = value;
+        i = i + 1;
+    }
+
+    return array;
+}
+
 class CatchUnwindData<TReturn> {
     pub field callee_fn: Fn(): TReturn,
     pub mut field return_value: option::<TReturn>,

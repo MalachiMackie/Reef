@@ -595,6 +595,10 @@ void* allocate(uint64_t size) {
     return ptr;
 }
 
+uint8_t* unsafe_allocate_array_bytes(uint64_t item_size, uint64_t length) {
+    return allocate(item_size * length);
+}
+
 StringBoxedValue *allocate_new_string(uint64_t length) {
     assert(length > 0);
 

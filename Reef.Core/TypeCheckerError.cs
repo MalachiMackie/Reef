@@ -480,6 +480,15 @@ public record TypeCheckerError
             $"Grab expression must be the last expression in a block"
         );
     }
+
+    public static TypeCheckerError NonIndexableType(SourceRange sourceRange)
+    {
+        return new(
+            TypeCheckerErrorType.NonIndexableType,
+            sourceRange,
+            "Non indexable expression"
+        );
+    }
 }
 
 public enum TypeCheckerErrorType
@@ -548,5 +557,7 @@ public enum TypeCheckerErrorType
     UnsupportedFalloutReturnType,
     TypeArgumentMustBeBoxed,
     GrabNotLastInBlock,
-    GrabNotInBlock
+    GrabNotInBlock,
+    NonIndexableType
+
 }

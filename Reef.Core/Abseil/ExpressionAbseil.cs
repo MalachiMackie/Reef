@@ -114,7 +114,7 @@ public partial class ProgramAbseil
                     index.ToOperand(),
                     arrayType.Length is not null
                         ? new UIntConstant(arrayType.Length.Value, 8)
-                        : (IOperand)new Use(new Copy(new Field(collectionPlace, "Length", ClassVariantName))),
+                        : new Copy(new Field(collectionPlace, "Length", ClassVariantName)),
                     BinaryOperationKind.LessThan)));
 
         var nextBasicBlockId = new BasicBlockId($"bb{_basicBlocks.Count}");
@@ -1885,6 +1885,31 @@ public partial class ProgramAbseil
 
     private IExpressionResult LowerMethodCall(MethodCallExpression e, IPlace? destination)
     {
+        var instantiatedFunction = e.MethodCall.Method switch
+        {
+            MemberAccessExpression { MemberAccess.InstantiatedFunction: var fn } => fn,
+            StaticMemberAccessExpression { StaticMemberAccess.InstantiatedFunction: var fn } => fn,
+            ValueAccessorExpression { FunctionInstantiation: var fn } => fn,
+            _ => null
+        };
+
+        // replace calls to sizeof to getting the size of the type
+        if (instantiatedFunction is { FunctionId: var fnId } && fnId == DefId.Sizeof)
+        {
+            Debug.Assert(instantiatedFunction.TypeArguments.Count == 1);
+            var typeArgument = GetTypeReference(instantiatedFunction.TypeArguments[0]);
+            var value = new SizeOf(typeArgument);
+
+            if (destination is not null)
+            {
+                _basicBlockStatements.Add(new Assign(
+                    destination,
+                    new Use(value)));
+            }
+
+            return new OperandResult(value);
+        }
+
         var returnType = GetTypeReference(e.ResolvedType.NotNull());
         if (destination is null)
         {
@@ -1894,14 +1919,6 @@ public partial class ProgramAbseil
 
             destination = new Local(localName);
         }
-
-        var instantiatedFunction = e.MethodCall.Method switch
-        {
-            MemberAccessExpression { MemberAccess.InstantiatedFunction: var fn } => fn,
-            StaticMemberAccessExpression { StaticMemberAccess.InstantiatedFunction: var fn } => fn,
-            ValueAccessorExpression { FunctionInstantiation: var fn } => fn,
-            _ => null
-        };
 
         IReadOnlyList<IOperand> originalArguments = [.. e.MethodCall.ArgumentList.Select(x => LowerExpression(x, destination: null).ToOperand())];
 
@@ -2324,6 +2341,7 @@ public partial class ProgramAbseil
             { ValueAccessor: { AccessType: ValueAccessType.Literal, Token.Type: TokenType.True } } => new OperandResult(new BoolConstant(true)),
             { ValueAccessor: { AccessType: ValueAccessType.Literal, Token.Type: TokenType.False } } => new OperandResult(new BoolConstant(false)),
             { ValueAccessor.AccessType: ValueAccessType.Variable, ReferencedVariable: { } variable } => VariableAccess(variable),
+            { ValueAccessor: { AccessType: ValueAccessType.Variable, Token.Type: TokenType.Todo } } => TodoCase(),
             _ => throw new UnreachableException($"{e}")
         };
 
@@ -2333,6 +2351,26 @@ public partial class ProgramAbseil
         }
 
         return operand;
+
+        IExpressionResult TodoCase()
+        {
+            if (destination is null)
+            {
+                var localName = $"_local{_locals.Count}";
+                var local = new MethodLocal(localName, null, new LoweredConcreteTypeReference(DefId.Unit, []));
+                _locals.Add(local);
+
+                destination = new Local(localName);
+            }
+
+            var functionReference = GetFunctionReference(DefId.Panic, [], []);
+
+            var nextBasicBlockId = new BasicBlockId("after");
+            _basicBlocks[^1].Terminator = new MethodCall(functionReference, [], destination, nextBasicBlockId);
+            nextBasicBlockId.Id = GetNextEmptyBasicBlock().Id;
+
+            return new PlaceResult(destination);
+        }
 
         IExpressionResult FunctionAccess(
                 TypeChecker.InstantiatedFunction innerFn,

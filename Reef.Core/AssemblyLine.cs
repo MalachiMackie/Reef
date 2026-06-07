@@ -50,10 +50,16 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
 
     private static ILoweredTypeReference InstantiateTypeReference(
         ILoweredTypeReference typeReference,
-        IReadOnlyDictionary<LoweredGenericPlaceholder, ILoweredTypeReference> typeArguments)
+        IReadOnlyDictionary<LoweredGenericPlaceholder, ILoweredTypeReference> typeArguments,
+        int depth = 0)
     {
+        if (depth > 100)
+        {
+            throw new InvalidOperationException($"Stuck in a loop! {typeReference.FullyQualifiedName}");
+        }
+
         ILoweredTypeReference Inner(ILoweredTypeReference innerTypeReference)
-            => InstantiateTypeReference(innerTypeReference, typeArguments);
+            => InstantiateTypeReference(innerTypeReference, typeArguments, depth + 1);
 
         switch (typeReference)
         {
@@ -113,9 +119,9 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         var dataType = _dataTypes[id];
         Debug.Assert(dataType.TypeParameters.Count == typeArguments.Count);
 
-        var typeArgumentsDictionary = dataType.TypeParameters.Zip(typeArguments)
-            .Select(x => KeyValuePair.Create(x.First, x.Second))
-            .Concat(currentTypeArguments)
+        var typeArgumentsDictionary = currentTypeArguments.Concat(
+            dataType.TypeParameters.Zip(typeArguments)
+                .Select(x => KeyValuePair.Create(x.First, x.Second)))
             .DistinctBy(x => x.Key)
             .ToDictionary(x => x.Key, x => x.Value);
 

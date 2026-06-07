@@ -169,7 +169,7 @@ public partial class TypeChecker
 
     public interface ITypeReference
     {
-        (ITypeReference Type, DefId Id) ConcreteType()
+        (ITypeReference Type, DefId? Id) ConcreteType()
         {
             return this switch
             {
@@ -177,6 +177,7 @@ public partial class TypeChecker
                     ?? throw new InvalidOperationException("No resolved type"),
                 InstantiatedClass instantiatedClass => (instantiatedClass, instantiatedClass.Signature.Id),
                 InstantiatedUnion instantiatedUnion => (instantiatedUnion, instantiatedUnion.Signature.Id),
+                UnknownType => (this, null),
                 _ => throw new UnreachableException()
             };
         }

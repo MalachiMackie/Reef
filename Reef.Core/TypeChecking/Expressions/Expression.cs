@@ -59,7 +59,17 @@ public partial class TypeChecker
         {
             type = generic.ResolvedType;
         }
-        var arrayType = (type as ArrayType).NotNull();
+        if (type is UnknownType)
+        {
+            return UnknownType.Instance;
+        }
+
+        if (type is not ArrayType arrayType)
+        {
+            AddError(TypeCheckerError.NonIndexableType(e.Collection.SourceRange));
+            return UnknownType.Instance;
+        }
+
         if (e.Index is { } indexExpression)
         {
             var indexType = TypeCheckExpression(indexExpression);
@@ -295,6 +305,11 @@ public partial class TypeChecker
                 }
             case MethodCallExpression methodCall:
                 {
+                    if (methodCall.MethodCall.Method.ResolvedType is UnknownType)
+                    {
+                        return true;
+                    }
+
                     var methodType = (methodCall.MethodCall.Method.ResolvedType as IFunction).NotNull();
 
                     var result = methodType.MutableReturn;

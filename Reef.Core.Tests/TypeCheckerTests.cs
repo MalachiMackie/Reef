@@ -3487,6 +3487,22 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
         return new TheoryData<string, Dictionary<string, (string contents, IReadOnlyList<TypeCheckerError> expectedErrors)>>
         {
             {
+                "index non array type",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            var a = 2;
+                            var b = a[0];
+                            """,
+                            [TypeCheckerError.NonIndexableType(SourceRange.Default)]
+                        )
+                    }
+                }
+            },
+            {
                 "incorrect grab expression type",
                 new()
                 {

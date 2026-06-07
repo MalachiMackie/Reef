@@ -351,6 +351,7 @@ public partial class TypeChecker
                         functionObject.MutableReturn,
                         functionObject.IsBoxed
                     ),
+                    UnknownType => type,
                     _ => throw new InvalidOperationException(type.GetType().ToString())
                 };
             }

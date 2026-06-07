@@ -16,8 +16,13 @@ public partial class TypeChecker
                 break;
             case UnionVariantPattern variantPattern:
                 {
-                    var patternUnionType = GetTypeReference(variantPattern.Type);
+                    var patternUnionType = GetTypeReference(variantPattern.Type).ConcreteType().Type;
                     variantPattern.TypeReference = patternUnionType;
+
+                    if (patternUnionType is UnknownType)
+                    {
+                        break;
+                    }
 
                     if (patternUnionType is not InstantiatedUnion union)
                     {

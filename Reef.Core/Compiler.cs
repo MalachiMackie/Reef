@@ -164,7 +164,7 @@ public class Compiler
 
         var runtimeLibraryLocation = Path.Combine(assemblyDirectory, "reef-runtime.lib");
         var runtimeLibraryPdb = Path.Combine(assemblyDirectory, "reef-runtime.pdb");
-        File.Copy(runtimeLibraryPdb, Path.Combine(buildDirectory, "reef-runtime.pdb"));
+        File.Copy(runtimeLibraryPdb, Path.Combine(buildDirectory, "reef-runtime.pdb"), overwrite: true);
 
         var linkProcess = new Process
         {
