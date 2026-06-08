@@ -164,11 +164,11 @@ public record TypeCheckerError
             $"missing fields from class pattern {string.Join(", ", fieldNames.Select(x => $"'{x}'"))} for class {className}");
     }
 
-    public static TypeCheckerError PrivateFieldReferenced(StringToken fieldNameReference)
+    public static TypeCheckerError PrivateMemberReferenced(StringToken memberNameReference)
     {
-        return new(TypeCheckerErrorType.PrivateFieldReferenced,
-            new SourceRange(fieldNameReference.SourceSpan,
-                fieldNameReference.SourceSpan), $"Cannot access private field {fieldNameReference.StringValue}");
+        return new(TypeCheckerErrorType.PrivateMemberReferenced,
+            new SourceRange(memberNameReference.SourceSpan,
+                memberNameReference.SourceSpan), $"Cannot access private member {memberNameReference.StringValue}");
     }
 
     public static TypeCheckerError UnionClassVariantInitializerNotClassVariant(StringToken variantNameToken)
@@ -489,6 +489,16 @@ public record TypeCheckerError
             "Non indexable expression"
         );
     }
+
+    public static TypeCheckerError UninitializableType(string typeName, SourceRange sourceRange)
+    {
+        return new(
+            TypeCheckerErrorType.UninitializableType,
+            sourceRange,
+            $"Type \"{typeName}\" cannot be created through an object initializer as it contains private members"
+        );
+    }
+
 }
 
 public enum TypeCheckerErrorType
@@ -509,7 +519,7 @@ public enum TypeCheckerErrorType
     NonClassUsedInClassPattern,
     MissingFieldsInUnionClassVariantPattern,
     MissingFieldsInClassPattern,
-    PrivateFieldReferenced,
+    PrivateMemberReferenced,
     UnionClassVariantInitializerNotClassVariant,
     DuplicateVariantName,
     ConflictingTypeName,
@@ -558,6 +568,6 @@ public enum TypeCheckerErrorType
     TypeArgumentMustBeBoxed,
     GrabNotLastInBlock,
     GrabNotInBlock,
-    NonIndexableType
-
+    NonIndexableType,
+    UninitializableType
 }

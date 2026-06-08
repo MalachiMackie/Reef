@@ -88,9 +88,12 @@ public class PlaceContext
 {
     public required TypeChecker.ITypeReference Type { get; set; }
 
-    public WitnessPattern WildFromCtor(IConstructor ctor)
+    public WitnessPattern WildFromCtor(
+        IConstructor ctor,
+        Func<TypeChecker.InstantiatedClass, IEnumerable<TypeChecker.TypeField>> getClassFields,
+        Func<TypeChecker.InstantiatedUnion, IEnumerable<TypeChecker.IUnionVariant>> getUnionVariants)
     {
-        return WitnessPattern.WildFromCtor(ctor, Type);
+        return WitnessPattern.WildFromCtor(ctor, Type, getClassFields, getUnionVariants);
     }
 }
 
@@ -275,9 +278,12 @@ public class PlaceInfo
         return (splitCtors, missingCtors);
     }
 
-    public IReadOnlyList<PlaceInfo> Specialize(IConstructor ctor)
+    public IReadOnlyList<PlaceInfo> Specialize(
+        IConstructor ctor,
+        Func<TypeChecker.InstantiatedClass, IEnumerable<TypeChecker.TypeField>> getClassFields,
+        Func<TypeChecker.InstantiatedUnion, IEnumerable<TypeChecker.IUnionVariant>> getUnionVariants)
     {
-        var ctorSubTypes = IConstructor.CtorSubTypes(ctor, Type);
+        var ctorSubTypes = IConstructor.CtorSubTypes(ctor, Type, getClassFields, getUnionVariants);
         var ctorSubValidity = Validity.Specialize(ctor);
 
         return ctorSubTypes.Select(x => new PlaceInfo
@@ -349,9 +355,14 @@ public class Matrix
         return matrix;
     }
 
-    public Matrix SpecializeConstructor(PlaceContext pcx, IConstructor ctor, bool ctorIsRelevant)
+    public Matrix SpecializeConstructor(
+        PlaceContext pcx,
+        IConstructor ctor,
+        bool ctorIsRelevant,
+        Func<TypeChecker.InstantiatedClass, IEnumerable<TypeChecker.TypeField>> getClassFields,
+        Func<TypeChecker.InstantiatedUnion, IEnumerable<TypeChecker.IUnionVariant>> getUnionVariants)
     {
-        var subfieldPlaceInfo = PlaceInfo[0].Specialize(ctor);
+        var subfieldPlaceInfo = PlaceInfo[0].Specialize(ctor, getClassFields, getUnionVariants);
         var arity = subfieldPlaceInfo.Count();
         var specializedPlaceInfo = subfieldPlaceInfo.Concat(PlaceInfo.Skip(1)).ToArray();
         var matrix = new Matrix([], specializedPlaceInfo, WildcardRowIsRelevant && ctorIsRelevant);
@@ -441,7 +452,12 @@ public record WitnessMatrix(List<WitnessStack> Stacks)
         return Stacks.Select(x => x.SinglePattern()).ToArray();
     }
 
-    public WitnessMatrix ApplyConstructor(PlaceContext pcx, IReadOnlyList<IConstructor> missingCtors, IConstructor ctor)
+    public WitnessMatrix ApplyConstructor(
+        PlaceContext pcx,
+        IReadOnlyList<IConstructor> missingCtors,
+        IConstructor ctor,
+        Func<TypeChecker.InstantiatedClass, IEnumerable<TypeChecker.TypeField>> getClassFields,
+        Func<TypeChecker.InstantiatedUnion, IEnumerable<TypeChecker.IUnionVariant>> getUnionVariants)
     {
         if (Stacks.Count == 0/* || ctor is OrConstructor*/)
         {
@@ -453,7 +469,7 @@ public record WitnessMatrix(List<WitnessStack> Stacks)
             var ret = Empty;
             foreach (var missingCtor in missingCtors)
             {
-                var pattern = pcx.WildFromCtor(missingCtor);
+                var pattern = pcx.WildFromCtor(missingCtor, getClassFields, getUnionVariants);
                 var witMatrix = new WitnessMatrix([.. Stacks]);
                 witMatrix.PushPattern(pattern);
                 ret.Add(witMatrix);
@@ -493,7 +509,9 @@ public static class MatchUsefulnessAnalyzer
         TypeChecker.ITypeReference scrutineeType,
         PlaceValidity scrutValidity,
         uint complexityLimit,
-        TypeChecker.ITypeReference neverType)
+        TypeChecker.ITypeReference neverType,
+        Func<TypeChecker.InstantiatedClass, IEnumerable<TypeChecker.TypeField>> getClassFields,
+        Func<TypeChecker.InstantiatedUnion, IEnumerable<TypeChecker.IUnionVariant>> getUnionVariants)
     {
         var cx = new UsefulnessContext
         {
@@ -502,11 +520,11 @@ public static class MatchUsefulnessAnalyzer
             ComplexityLevel = 0
         };
 
-        var arms = matchArms.Select(y => new PatternMatchArm(LowerPattern(y.Pattern, neverType), HasGuard: false))
+        var arms = matchArms.Select(y => new PatternMatchArm(LowerPattern(y.Pattern, neverType, getUnionVariants), HasGuard: false))
             .ToArray();
 
         var matrix = Matrix.Create(arms, scrutineeType, scrutValidity);
-        var nonExhaustivenessWitness = ComputeExhaustivenessAndUsefulness(cx, matrix)
+        var nonExhaustivenessWitness = ComputeExhaustivenessAndUsefulness(cx, matrix, getClassFields, getUnionVariants)
             .SingleColumn();
 
         var armUsefulness = arms.Select(arm =>
@@ -548,7 +566,11 @@ public static class MatchUsefulnessAnalyzer
         };
     }
 
-    private static WitnessMatrix ComputeExhaustivenessAndUsefulness(UsefulnessContext cx, Matrix matrix)
+    private static WitnessMatrix ComputeExhaustivenessAndUsefulness(
+        UsefulnessContext cx,
+        Matrix matrix,
+        Func<TypeChecker.InstantiatedClass, IEnumerable<TypeChecker.TypeField>> getClassFields,
+        Func<TypeChecker.InstantiatedUnion, IEnumerable<TypeChecker.IUnionVariant>> getUnionVariants)
     {
         if (matrix.Rows.Any(x => x.Count != matrix.ColumnCount))
         {
@@ -588,10 +610,15 @@ public static class MatchUsefulnessAnalyzer
         foreach (var ctor in splitCtors)
         {
             var ctorIsRelevant = ctor is MissingConstructor || missingCtors.Count == 0;
-            var specMatrix = matrix.SpecializeConstructor(pcx, ctor, ctorIsRelevant);
-            var witnesses = ComputeExhaustivenessAndUsefulness(cx, specMatrix);
+            var specMatrix = matrix.SpecializeConstructor(
+                pcx,
+                ctor,
+                ctorIsRelevant,
+                getClassFields,
+                getUnionVariants);
+            var witnesses = ComputeExhaustivenessAndUsefulness(cx, specMatrix, getClassFields, getUnionVariants);
 
-            witnesses = witnesses.ApplyConstructor(pcx, missingCtors, ctor);
+            witnesses = witnesses.ApplyConstructor(pcx, missingCtors, ctor, getClassFields, getUnionVariants);
             ret.Add(witnesses);
 
             matrix.Unspecialize(specMatrix);
@@ -618,7 +645,10 @@ public static class MatchUsefulnessAnalyzer
         return ret;
     }
 
-    public static DeconstructedPattern LowerPattern(IPattern pattern, TypeChecker.ITypeReference neverType)
+    public static DeconstructedPattern LowerPattern(
+        IPattern pattern,
+        TypeChecker.ITypeReference neverType,
+        Func<TypeChecker.InstantiatedUnion, IEnumerable<TypeChecker.IUnionVariant>> getUnionVariants)
     {
         IConstructor constructor;
         uint arity;
@@ -640,7 +670,7 @@ public static class MatchUsefulnessAnalyzer
                 {
                     var unionType = type as TypeChecker.InstantiatedUnion
                                     ?? throw new InvalidOperationException("Expected union type");
-                    var (index, variant) = unionType.Variants
+                    var (index, variant) = getUnionVariants(unionType)
                         .Index()
                         .FirstOrDefault(x => x.Item.Name == variantName);
                     constructor = new VariantConstructor((uint)index);
@@ -657,7 +687,7 @@ public static class MatchUsefulnessAnalyzer
                                     Pattern = LowerPattern(new DiscardPattern(SourceRange.Default)
                                     {
                                         TypeReference = neverType
-                                    }, neverType)
+                                    }, neverType, getUnionVariants)
                                 })
                                 .ToArray(),
                         TypeChecker.TupleUnionVariant tupleUnionVariant =>
@@ -666,7 +696,10 @@ public static class MatchUsefulnessAnalyzer
                                 .Select(x => new IndexedPattern()
                                 {
                                     Index = (uint)x.Index,
-                                    Pattern = LowerPattern(new DiscardPattern(SourceRange.Default) { TypeReference = neverType }, neverType)
+                                    Pattern = LowerPattern(
+                                        new DiscardPattern(SourceRange.Default) { TypeReference = neverType },
+                                        neverType,
+                                        getUnionVariants)
                                 })
                                 .ToArray(),
                         TypeChecker.UnitUnionVariant => [],
@@ -684,7 +717,7 @@ public static class MatchUsefulnessAnalyzer
                 {
                     var unionType = type as TypeChecker.InstantiatedUnion
                                     ?? throw new InvalidOperationException("Expected union type");
-                    var index = unionType.Variants
+                    var index = getUnionVariants(unionType)
                         .Index()
                         .FirstOrDefault(x => x.Item.Name == variantName).Index;
                     constructor = new VariantConstructor((uint)index);
@@ -693,7 +726,7 @@ public static class MatchUsefulnessAnalyzer
                         .Select(x => new IndexedPattern
                         {
                             Index = (uint)x.Index,
-                            Pattern = LowerPattern(x.Item, neverType)
+                            Pattern = LowerPattern(x.Item, neverType, getUnionVariants)
                         })
                         .ToArray();
                     arity = (uint)fields.Count;
@@ -708,7 +741,7 @@ public static class MatchUsefulnessAnalyzer
                 {
                     var unionType = type as TypeChecker.InstantiatedUnion
                                     ?? throw new InvalidOperationException("Expected union type");
-                    var (index, variant) = unionType.Variants
+                    var (index, variant) = getUnionVariants(unionType)
                         .Index()
                         .FirstOrDefault(x => x.Item.Name == variantName);
                     if (variant is not TypeChecker.ClassUnionVariant classUnionVariant)
@@ -726,7 +759,7 @@ public static class MatchUsefulnessAnalyzer
                             // we treat each field as if it's discarded
                             Pattern = LowerPattern(
                                 fieldPatterns.FirstOrDefault(y => y.FieldName.StringValue == x.Item.Name)?.Pattern
-                                ?? new DiscardPattern(SourceRange.Default) { TypeReference = neverType }, neverType)
+                                ?? new DiscardPattern(SourceRange.Default) { TypeReference = neverType }, neverType, getUnionVariants)
                         })
                         .ToArray();
 
@@ -744,14 +777,14 @@ public static class MatchUsefulnessAnalyzer
             case ClassPattern { FieldPatterns: { } fieldPatterns }:
                 {
                     constructor = new ClassConstructor();
-                    fields = (type as TypeChecker.InstantiatedClass)?.Fields
+                    fields = (type as TypeChecker.InstantiatedClass)?.Signature.Fields
                         .Index()
                         .Select(x => new IndexedPattern
                         {
                             Index = (uint)x.Index,
                             Pattern = LowerPattern(
                                 fieldPatterns.FirstOrDefault(y => y.FieldName.StringValue == x.Item.Name)?.Pattern
-                                    ?? new DiscardPattern(SourceRange.Default) { TypeReference = neverType }, neverType)
+                                    ?? new DiscardPattern(SourceRange.Default) { TypeReference = neverType }, neverType, getUnionVariants)
                         }).ToArray()
                         ?? throw new InvalidOperationException("Expected class");
                     arity = (uint)fields.Count;

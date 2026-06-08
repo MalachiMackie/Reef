@@ -14,7 +14,7 @@ public partial class TypeChecker
         }
 
         var (variantIndex, variant) =
-            instantiatedUnion.Variants.Index().FirstOrDefault(x => x.Item.Name == initializer.VariantIdentifier.StringValue);
+            GetUnionVariants(instantiatedUnion).Index().FirstOrDefault(x => x.Item.Name == initializer.VariantIdentifier.StringValue);
 
         if (variant is null)
         {
@@ -73,7 +73,7 @@ public partial class TypeChecker
 
         if (foundType is UnknownType)
         {
-            // if we don't know what type this is, type check the field initializers anyway 
+            // if we don't know what type this is, type check the field initializers anyway
             foreach (var fieldInitializer in objectInitializer.FieldInitializers.Where(x => x.Value is not null))
             {
                 TypeCheckExpression(fieldInitializer.Value!);
@@ -88,12 +88,11 @@ public partial class TypeChecker
         }
 
         var initializedFields = new HashSet<string>();
-        var fields = instantiatedClass.Fields.ToDictionary(x => x.Name);
-        var insideClass = CurrentTypeSignature is ClassSignature currentClassSignature
-                          && instantiatedClass.MatchesSignature(currentClassSignature);
+        var instanceFields = GetClassFields(instantiatedClass).Where(x => !x.IsStatic).ToDictionary(x => x.Name);
+        var canAccessPrivateFields = CanAccessPrivateMembers(instantiatedClass.Signature);
 
-        var publicInstanceFields = instantiatedClass.Fields
-            .Where(x => !x.IsStatic && (x.IsPublic || insideClass))
+        var accessibleInstanceFields = GetClassFields(instantiatedClass)
+            .Where(x => !x.IsStatic && x.IsPublic || canAccessPrivateFields)
             .Select(x => x.Name)
             .ToHashSet();
 
@@ -105,7 +104,7 @@ public partial class TypeChecker
                 TypeCheckExpression(fieldInitializer.Value);
             }
 
-            if (!fields.TryGetValue(fieldInitializer.FieldName.StringValue, out var field))
+            if (!instanceFields.TryGetValue(fieldInitializer.FieldName.StringValue, out var field))
             {
                 AddError(TypeCheckerError.UnknownField(fieldInitializer.FieldName, $"class {objectInitializer.Type.Identifier.StringValue}"));
                 continue;
@@ -113,9 +112,9 @@ public partial class TypeChecker
 
             fieldInitializer.TypeField = field;
 
-            if (!publicInstanceFields.Contains(fieldInitializer.FieldName.StringValue))
+            if (!CanAccessPrivateMembers(instantiatedClass.Signature) && !accessibleInstanceFields.Contains(fieldInitializer.FieldName.StringValue))
             {
-                AddError(TypeCheckerError.PrivateFieldReferenced(fieldInitializer.FieldName));
+                AddError(TypeCheckerError.PrivateMemberReferenced(fieldInitializer.FieldName));
             }
             // only set field as initialized if it is public
             else if (!initializedFields.Add(fieldInitializer.FieldName.StringValue))
@@ -131,11 +130,15 @@ public partial class TypeChecker
             ExpectExpressionType(field.Type, fieldInitializer.Value);
         }
 
-        if (initializedFields.Count != publicInstanceFields.Count)
+        if (!canAccessPrivateFields && instanceFields.Count != accessibleInstanceFields.Count)
+        {
+            AddError(TypeCheckerError.UninitializableType(instantiatedClass.Signature.Name, objectInitializerExpression.SourceRange));
+        }
+        else if (initializedFields.Count != accessibleInstanceFields.Count)
         {
             AddError(TypeCheckerError.FieldsLeftUnassignedInClassInitializer(
                 objectInitializerExpression,
-                publicInstanceFields.Where(x => !initializedFields.Contains(x))));
+                accessibleInstanceFields.Where(x => !initializedFields.Contains(x))));
         }
 
         return foundType;

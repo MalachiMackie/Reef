@@ -33,7 +33,7 @@ public partial class TypeChecker
 
                     if (variantPattern.VariantName is not null)
                     {
-                        if (union.Variants.All(x => x.Name != variantPattern.VariantName.StringValue))
+                        if (union.Signature.Variants.All(x => x.Name != variantPattern.VariantName.StringValue))
                         {
                             AddError(TypeCheckerError.UnknownTypeMember(variantPattern.VariantName, union.Name));
                             break;
@@ -81,7 +81,8 @@ public partial class TypeChecker
                         throw new InvalidOperationException("Duplicate fields found");
                     }
 
-                    var remainingFields = classType.Fields.Where(x => x.IsPublic)
+                    var remainingFields = GetClassFields(classType)
+                        .Where(x => x.IsPublic || CanAccessPrivateMembers(classType.Signature))
                         .Select(x => x.Name)
                         .ToHashSet();
 
@@ -90,7 +91,13 @@ public partial class TypeChecker
                         remainingFields.Remove(fieldPattern.FieldName.StringValue);
                         if (TryGetClassField(classType, fieldPattern.FieldName) is not { } field)
                         {
+                            AddError(TypeCheckerError.UnknownTypeMember(fieldPattern.FieldName, classType.Signature.Name));
                             continue;
+                        }
+
+                        if (!field.IsPublic && !CanAccessPrivateMembers(classType.Signature))
+                        {
+                            AddError(TypeCheckerError.PrivateMemberReferenced(fieldPattern.FieldName));
                         }
 
                         if (field.IsStatic)
@@ -161,7 +168,7 @@ public partial class TypeChecker
                         throw new InvalidOperationException($"{patternType} is not a union");
                     }
 
-                    var variant = union.Variants.FirstOrDefault(x => x.Name == classVariantPattern.VariantName.StringValue)
+                    var variant = GetUnionVariant(union, classVariantPattern.VariantName.StringValue)
                                   ?? throw new InvalidOperationException(
                                       $"No variant found named {classVariantPattern.VariantName.StringValue}");
 
@@ -244,10 +251,9 @@ public partial class TypeChecker
                         throw new InvalidOperationException($"{valueTypeReference} is not a union");
                     }
 
-                    var variant = unionType.Variants.FirstOrDefault(x =>
-                                      x.Name == unionTupleVariantPattern.VariantName.StringValue)
-                                  ?? throw new InvalidOperationException(
-                                      $"No union variant found with name {unionTupleVariantPattern.VariantName.StringValue}");
+                    var variant = GetUnionVariant(unionType, unionTupleVariantPattern.VariantName.StringValue)
+                        ?? throw new InvalidOperationException(
+                                                          $"No union variant found with name {unionTupleVariantPattern.VariantName.StringValue}");
 
                     if (variant is not TupleUnionVariant tupleUnionVariant)
                     {

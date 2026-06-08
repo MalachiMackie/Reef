@@ -25,12 +25,16 @@ public partial class TypeChecker
 
         switch (type)
         {
-            case InstantiatedClass { Fields: var fields } instantiatedClass:
+            case InstantiatedClass instantiatedClass:
                 {
-                    var field = fields.FirstOrDefault(x => x.Name == memberName);
-                    if (field is not null)
+                    if (TryGetClassField(instantiatedClass, staticMemberAccess.MemberName!) is { } field)
                     {
                         staticMemberAccess.MemberType = MemberType.Field;
+
+                        if (!field.IsPublic && !CanAccessPrivateMembers(instantiatedClass.Signature))
+                        {
+                            AddError(TypeCheckerError.PrivateMemberReferenced(staticMemberAccess.MemberName!));
+                        }
 
                         if (staticMemberAccess.TypeArguments is not null)
                         {
@@ -70,7 +74,7 @@ public partial class TypeChecker
                 }
             case InstantiatedUnion instantiatedUnion:
                 {
-                    var variant = instantiatedUnion.Variants.FirstOrDefault(x => x.Name == memberName);
+                    var variant = GetUnionVariant(instantiatedUnion, memberName);
                     if (variant is not null)
                     {
                         staticMemberAccess.MemberType = MemberType.Variant;

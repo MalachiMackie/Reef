@@ -67,7 +67,7 @@ public partial class TypeChecker
 
             if (isParameterMutable)
             {
-                ExpectAssignableExpression(argumentExpression);
+                ExpectMutableExpression(argumentExpression);
             }
         }
 

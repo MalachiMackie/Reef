@@ -66,7 +66,7 @@ public partial class TypeChecker
         memberAccessExpression.MemberAccess.OwnerType = classType;
 
         var typeArguments = (typeArgumentsIdentifiers ?? [])
-            .Select<ITypeIdentifier, (ITypeReference, SourceRange SourceRange)>(x => (GetTypeReference(x), x.SourceRange)).ToArray();
+            .Select(x => (GetTypeReference(x), x.SourceRange)).ToArray();
 
         if (!TryInstantiateClassFunction(
                 classType,
@@ -82,7 +82,13 @@ public partial class TypeChecker
 
             if (TryGetClassField(classType, stringToken) is not { } field)
             {
+                AddError(TypeCheckerError.UnknownTypeMember(stringToken, classType.Signature.Name));
                 return UnknownType.Instance;
+            }
+
+            if (!field.IsPublic && !CanAccessPrivateMembers(classType.Signature))
+            {
+                AddError(TypeCheckerError.PrivateMemberReferenced(stringToken));
             }
 
             if (field.IsStatic)
@@ -106,7 +112,7 @@ public partial class TypeChecker
 
         if (function.IsMutable)
         {
-            ExpectAssignableExpression(ownerExpression);
+            ExpectMutableExpression(ownerExpression);
         }
 
         return new FunctionObject(
@@ -125,7 +131,7 @@ public partial class TypeChecker
         memberAccessExpression.MemberAccess.OwnerType = unionType;
 
         var typeArguments = (typeArgumentsIdentifiers ?? [])
-            .Select<ITypeIdentifier, (ITypeReference, SourceRange SourceRange)>(x => (GetTypeReference(x), x.SourceRange)).ToArray();
+            .Select(x => (GetTypeReference(x), x.SourceRange)).ToArray();
 
         if (!TryInstantiateUnionFunction(
                 unionType,
@@ -150,7 +156,7 @@ public partial class TypeChecker
 
         if (function.IsMutable)
         {
-            ExpectAssignableExpression(ownerExpression);
+            ExpectMutableExpression(ownerExpression);
         }
 
         memberAccessExpression.MemberAccess.MemberType = MemberType.Function;

@@ -26,7 +26,7 @@ public partial class TypeChecker
 
             if (anyMutableVariables)
             {
-                ExpectAssignableExpression(matchExpression.Value);
+                ExpectMutableExpression(matchExpression.Value);
             }
 
             if (arm.Expression is not null)

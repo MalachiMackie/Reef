@@ -500,7 +500,7 @@ public partial class TypeChecker
             var moduleErrors = _errors[fileName];
             if (moduleErrors.Count == 0)
             {
-                moduleErrors.AddRange(TypeTwoTypeChecker.TypeTwoTypeCheck(_moduleSignatures, module, _throwOnError));
+                moduleErrors.AddRange(TypeTwoTypeChecker.TypeTwoTypeCheck(_moduleSignatures, module, GetClassFields, GetUnionVariants, _throwOnError));
             }
 
             module.TypeChecked = true;
@@ -578,24 +578,67 @@ public partial class TypeChecker
         return Unit();
     }
 
-    private TypeField? TryGetClassField(InstantiatedClass classType, StringToken fieldName)
+    private IEnumerable<TypeField> GetClassFields(InstantiatedClass classType)
     {
-        var field = classType.Fields.FirstOrDefault(x => x.Name == fieldName.StringValue);
+        return classType.Signature.Fields
+            .Select(field => new TypeField()
+            {
+                IsMutable = field.IsMutable,
+                IsPublic = field.IsPublic,
+                IsStatic = field.IsStatic,
+                Name = field.Name,
+                StaticInitializer = field.StaticInitializer,
+                Type = InstantiateTypeReference(field.Type, classType.TypeArguments)
+            });
+    }
+
+    private bool CanAccessPrivateMembers(ITypeSignature signature)
+    {
+        return CurrentTypeSignature?.Id == signature.Id;
+    }
+
+    private static TypeField? TryGetClassField(InstantiatedClass classType, StringToken fieldName, bool reportError = true)
+    {
+        var field = classType.Signature.Fields.FirstOrDefault(x => x.Name == fieldName.StringValue);
 
         if (field is null)
         {
-            AddError(TypeCheckerError.UnknownTypeMember(fieldName, classType.Signature.Name));
             return null;
         }
 
-        if ((CurrentTypeSignature is not ClassSignature currentClassSignature
-             || !classType.MatchesSignature(currentClassSignature))
-            && !field.IsPublic)
+        return new TypeField()
         {
-            AddError(TypeCheckerError.PrivateFieldReferenced(fieldName));
-        }
+            IsMutable = field.IsMutable,
+            IsPublic = field.IsPublic,
+            IsStatic = field.IsStatic,
+            Name = field.Name,
+            StaticInitializer = field.StaticInitializer,
+            Type = InstantiateTypeReference(field.Type, classType.TypeArguments)
+        };
+    }
 
-        return field;
+    private static ITypeReference InstantiateTypeReference(ITypeReference typeReference, IReadOnlyList<GenericTypeReference> typeArguments)
+    {
+        return typeReference switch
+        {
+            GenericTypeReference { ResolvedType: null } genericTypeReference => typeArguments.FirstOrDefault(y =>
+                y.OwnerType.Id == genericTypeReference.OwnerType.Id && y.GenericName == genericTypeReference.GenericName) ?? genericTypeReference,
+            GenericTypeReference { ResolvedType: { } resolvedType } => InstantiateTypeReference(resolvedType, typeArguments),
+            GenericPlaceholder placeholder =>
+                (ITypeReference?)typeArguments.FirstOrDefault(y => y.OwnerType.Id == placeholder.OwnerType.Id && y.GenericName == placeholder.GenericName) ?? placeholder,
+            InstantiatedUnion union => union.CloneWithTypeFilter(x => InstantiateTypeReference(x, typeArguments)),
+            InstantiatedClass klass => klass.CloneWithTypeFilter(x => InstantiateTypeReference(x, typeArguments)),
+            ArrayType { Length: not null } arrayType => new ArrayType(InstantiateTypeReference(arrayType.ElementType, typeArguments), arrayType.Boxed, arrayType.Length.Value),
+            ArrayType { Length: null } arrayType => new ArrayType(InstantiateTypeReference(arrayType.ElementType, typeArguments)),
+            FunctionObject functionObject => new FunctionObject(
+                [.. functionObject.Parameters.Select(x => new FunctionParameter(InstantiateTypeReference(x.Type, typeArguments), x.Mutable))],
+                InstantiateTypeReference(functionObject.ReturnType, typeArguments),
+                functionObject.MutableReturn,
+                functionObject.IsBoxed
+            ),
+            UnknownType => typeReference,
+            _ => throw new InvalidOperationException(typeReference.GetType().ToString())
+        };
     }
 
     private InstantiatedClass TypeCheckVariableDeclaration(

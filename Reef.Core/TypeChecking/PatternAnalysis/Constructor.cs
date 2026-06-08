@@ -22,7 +22,10 @@ public interface IConstructor
     }
 
     public static IEnumerable<(TypeChecker.ITypeReference, PrivateUninhabitedField)> CtorSubTypes(
-        IConstructor ctor, TypeChecker.ITypeReference typeReference)
+        IConstructor ctor,
+        TypeChecker.ITypeReference typeReference,
+        Func<TypeChecker.InstantiatedClass, IEnumerable<TypeChecker.TypeField>> getClassFields,
+        Func<TypeChecker.InstantiatedUnion, IEnumerable<TypeChecker.IUnionVariant>> getUnionVariants)
     {
         switch (ctor)
         {
@@ -40,7 +43,7 @@ public interface IConstructor
                     var union = typeReference.ConcreteType().Type as TypeChecker.InstantiatedUnion
                                 ?? throw new InvalidOperationException($"Expected union, found {typeReference.GetType()}");
 
-                    var variant = union.Variants[(int)variantConstructor.VariantIndex];
+                    var variant = getUnionVariants(union).ToArray()[(int)variantConstructor.VariantIndex];
 
                     var subTypes = variant switch
                     {
@@ -56,7 +59,8 @@ public interface IConstructor
                 {
                     var @class = typeReference as TypeChecker.InstantiatedClass
                         ?? throw new InvalidOperationException("Expected class");
-                    return @class.Fields.Select(x =>
+
+                    return getClassFields(@class).Select(x =>
                     {
                         // todo: need to figure out if we can access this field
                         // var isVisible = true;
@@ -77,12 +81,12 @@ public interface IConstructor
 
         if (type is TypeChecker.InstantiatedUnion union)
         {
-            if (union.Variants.Count == 0)
+            if (union.Signature.Variants.Count == 0)
             {
                 return new NoConstructorsConstructorSet();
             }
 
-            var variants = new VariantVisibility[union.Variants.Count];
+            var variants = new VariantVisibility[union.Signature.Variants.Count];
             Array.Fill(variants, VariantVisibility.Visible);
 
             return new VariantsConstructorSet(variants, NonExhaustive: false);

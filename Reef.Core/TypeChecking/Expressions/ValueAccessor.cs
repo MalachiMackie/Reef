@@ -34,7 +34,7 @@ public partial class TypeChecker
             var signature = GetUnionSignature(DefId.Result);
             var instantiatedUnion = InstantiateUnion(signature, [], boxed ? Token.Boxed(SourceSpan.Default) : Token.Unboxed(SourceSpan.Default), SourceRange.Default);
 
-            var okVariant = instantiatedUnion.Variants.FirstOrDefault(x => x.Name == variantName)
+            var okVariant = GetUnionVariant(instantiatedUnion, variantName)
                             ?? throw new UnreachableException($"{variantName} is a built in variant of Result");
 
             if (okVariant is not TupleUnionVariant { BoxedCreateFunction: var createFunction, UnboxedCreateFunction: var unboxedCreateFunction })

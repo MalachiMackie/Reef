@@ -80,20 +80,25 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
     public async Task SingleTest()
     {
         var sourceFiles = new Dictionary<string, (string, IReadOnlyList<TypeCheckerError> expectedErrors)>()
-        {
-            {
-                "main.rf",
-                ("""
-                fn some_fn(): option::<string> {
-                    return option::Some("hi");
-                }
+                            {
+                                {
+                                    "main.rf", ("""
+                                                class MyClass {
+                                                    pub field MyField: string,
+                                                    field OtherField: bool,
 
-                if (true && some_fn() matches option::Some(var value)) {
-                    print_string(value);
-                }
-                """, [])
-            }
-        };
+                                                    pub static fn Create(): MyClass {
+                                                        return new MyClass {
+                                                            MyField = "",
+                                                            OtherField = true
+                                                        };
+                                                    }
+                                                }
+                                                var a = MyClass::Create();
+                                                var b: bool = a matches MyClass { MyField: string, OtherField: _ };
+                                                """, [TypeCheckerError.PrivateMemberReferenced(Identifier("OtherField"))])
+                                }
+                            };
 
         foreach (var (path, (contents, _)) in sourceFiles)
         {
@@ -114,6 +119,44 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
     {
         IEnumerable<Dictionary<string, string>> sources =
         [
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    union MyUnion {
+                        A(string)
+                    }
+                    var a = MyUnion::A("");
+                    if (a matches MyUnion::A(var str)) {
+                        str = "hi";
+                    }
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    var a = 1;
+                    fn MyFn() {
+                        a = 2;
+                    }
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    fn MyFn(param: string) {
+                        param = "";
+                    }
+                    """
+                }
+            },
             new(){
                 {
                     "main.rf",
@@ -943,6 +986,15 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                                class MyClass{pub mut field MyField: FirstClass}
                                var mut firstClass = new FirstClass{FirstClassField = ""};
                                var secondClass = new MyClass{MyField = firstClass};
+                               """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf", """
+                               var a = 1;
+                               a = 2;
                                """
                 }
             },
@@ -3062,7 +3114,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
             {
                 {
                     "main.rf", """
-                               class MyClass { static field someField: i64 = 3, }
+                               class MyClass { pub static field someField: i64 = 3, }
                                var a: i64 = MyClass::someField;
                                """
                 }
@@ -3089,7 +3141,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
             {
                 {
                     "main.rf", """
-                               class MyClass<T> { static field someField: i64 = 1, }
+                               class MyClass<T> { pub static field someField: i64 = 1, }
                                var a = MyClass::<string>::someField;
                                """
                 }
@@ -3486,6 +3538,30 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
     {
         return new TheoryData<string, Dictionary<string, (string contents, IReadOnlyList<TypeCheckerError> expectedErrors)>>
         {
+            {
+                "",
+                new()
+                {
+                    {
+                    "main.rf", ("""
+                                class MyClass { static field someField: i64 = 1, }
+                                var a = MyClass::someField;
+                                """, [TypeCheckerError.PrivateMemberReferenced(Identifier("someField"))])
+                    }
+                }
+            },
+            {
+                "",
+                new()
+                {
+                    {
+                    "main.rf", ("""
+                                class MyClass { field someField: i64, }
+                                var a = new MyClass{};
+                                """, [TypeCheckerError.UninitializableType("MyClass", SourceRange.Default)])
+                    }
+                }
+            },
             {
                 "index non array type",
                 new()
@@ -4894,19 +4970,21 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-            "mutating non mutable pattern variable",
+                "mutating non mutable pattern variable",
                 new()
                 {
                     {
                         "main.rf", ("""
-                                   union MyUnion {
-                                       A(string)
-                                   }
-                                   var a = MyUnion::A("");
-                                   if (a matches MyUnion::A(var str)) {
-                                       str = "hi";
-                                   }
-                                   """, [TypeCheckerError.NonMutableAssignment("str", SourceRange.Default)])
+                                    class MyClass {pub mut field my_field: string }
+
+                                    union MyUnion {
+                                        A(MyClass)
+                                    }
+                                    var a = MyUnion::A(new MyClass{my_field = "hi"});
+                                    if (a matches MyUnion::A(var value)) {
+                                        value.my_field = "hi";
+                                    }
+                                    """, [TypeCheckerError.NonMutableMemberOwnerAssignment(VariableAccessor("value"))])
                     }
                 }
 
@@ -4989,21 +5067,6 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                                        }
                                    }
                                    """, [TypeCheckerError.SymbolNotFound(Identifier("MyField_"))])
-                    }
-                }
-
-            },
-            {
-            "closure mutates non mutable variable",
-                new()
-                {
-                    {
-                        "main.rf", ("""
-                                   var a = 1;
-                                   fn MyFn() {
-                                       a = 2;
-                                   }
-                                   """, [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)])
                     }
                 }
 
@@ -6633,7 +6696,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                                    }
                                    var a = MyClass::Create();
                                    var b: bool = a matches MyClass { MyField: string, OtherField: _ };
-                                   """, [TypeCheckerError.PrivateFieldReferenced(Identifier("OtherField"))])
+                                   """, [TypeCheckerError.PrivateMemberReferenced(Identifier("OtherField"))])
                     }
                 }
 
@@ -6664,7 +6727,10 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
                                    // MyField is not accessible
                                    var a = new MyClass { MyField = "" };
-                                   """, [TypeCheckerError.PrivateFieldReferenced(Identifier("MyField"))])
+                                   """, [
+                                       TypeCheckerError.PrivateMemberReferenced(Identifier("MyField")),
+                                       TypeCheckerError.UninitializableType("MyClass", SourceRange.Default)
+                                   ])
                     }
                 }
 
@@ -6701,22 +6767,6 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                                        }
                                    }
                                    """, [TypeCheckerError.SymbolNotFound(Identifier("MyField"))])
-                    }
-                }
-
-            },
-            {
-            "non mutable variable assigned twice",
-                new()
-                {
-                    {
-                        "main.rf", ("""
-                                   var a: string;
-                                   // initial assignment succeeds
-                                   a = "";
-                                   // second assignment fails because it's not mutable
-                                   a = ";";
-                                   """, [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)])
                     }
                 }
 
@@ -6759,20 +6809,6 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             },
             {
-            "non mutable variable assigned",
-                new()
-                {
-                    {
-                        "main.rf", ("""
-                                   var a = "";
-                                   // a is not marked as mutable
-                                   a = "";
-                                   """, [TypeCheckerError.NonMutableAssignment("a", SourceRange.Default)])
-                    }
-                }
-
-            },
-            {
             "non mutable static field assigned through static member access",
                 new()
                 {
@@ -6808,22 +6844,6 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                                    """, [TypeCheckerError.NonMutableMemberOwnerAssignment(VariableAccessor("param"))])
                     }
                 }
-
-            },
-            {
-            "not mutable param assigned",
-                new()
-                {
-                    {
-                        "main.rf", ("""
-                                   fn MyFn(param: string) {
-                                      // param is not marked as mutable
-                                      param = "";
-                                   }
-                                   """, [TypeCheckerError.NonMutableAssignment("param", SourceRange.Default)])
-                    }
-                }
-
             },
             {
             "non mutable variable passed to mutable function parameter",

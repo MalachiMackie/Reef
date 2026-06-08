@@ -60,14 +60,18 @@ public class WitnessPattern
     public required IReadOnlyList<WitnessPattern> Fields { get; set; }
     public required TypeChecker.ITypeReference Type { get; set; }
 
-    public static WitnessPattern WildFromCtor(IConstructor ctor, TypeChecker.ITypeReference type)
+    public static WitnessPattern WildFromCtor(
+        IConstructor ctor,
+        TypeChecker.ITypeReference type,
+        Func<TypeChecker.InstantiatedClass, IEnumerable<TypeChecker.TypeField>> getClassFields,
+        Func<TypeChecker.InstantiatedUnion, IEnumerable<TypeChecker.IUnionVariant>> getUnionVariants)
     {
         if (ctor is WildcardConstructor)
         {
             return Wildcard(type);
         }
 
-        var fields = IConstructor.CtorSubTypes(ctor, type)
+        var fields = IConstructor.CtorSubTypes(ctor, type, getClassFields, getUnionVariants)
             .Where(tuple => !tuple.Item2.Value)
             .Select(tuple => Wildcard(tuple.Item1))
             .ToList();

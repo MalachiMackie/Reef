@@ -271,7 +271,7 @@ public partial class TypeChecker
                         ownerType = generic.ResolvedType ?? throw new NotImplementedException();
                     }
 
-                    if (ownerType is not InstantiatedClass { Fields: var fields })
+                    if (ownerType is not InstantiatedClass { Signature.Fields: var fields })
                     {
                         if (report)
                             AddError(TypeCheckerError.ExpressionNotAssignable(memberAccess));
@@ -338,7 +338,7 @@ public partial class TypeChecker
                         return true;
                     }
 
-                    if (ownerType is not InstantiatedClass { Fields: var fields })
+                    if (ownerType is not InstantiatedClass { Signature.Fields: var fields })
                     {
                         if (report)
                             AddError(TypeCheckerError.ExpressionNotAssignable(staticMemberAccess));
@@ -436,28 +436,34 @@ public partial class TypeChecker
                 {
                     if (!TryGetScopedVariable(valueToken, out var variable))
                     {
-                        return false;
-                    }
-                    if (variable is LocalVariable { Instantiated: false }
-                        or LocalVariable { Mutable: true }
-                        or FieldVariable { Mutable: true }
-                        or FunctionSignatureParameter { Mutable: true })
-                    {
                         return true;
                     }
 
-                    if (report)
+                    if (variable is ThisVariable)
                     {
-                        AddError(TypeCheckerError.NonMutableAssignment(variable.Name.StringValue,
-                            new SourceRange(valueToken.SourceSpan, valueToken.SourceSpan)));
+                        if (report)
+                        {
+                            AddError(TypeCheckerError.NonMutableAssignment(valueToken.StringValue, new SourceRange(valueToken.SourceSpan, valueToken.SourceSpan)));
+                        }
+                        return false;
                     }
-                    return false;
+
+                    if (variable is FieldVariable { Mutable: false })
+                    {
+                        if (report)
+                        {
+                            AddError(TypeCheckerError.NonMutableAssignment(variable.Name.StringValue, new SourceRange(valueToken.SourceSpan, valueToken.SourceSpan)));
+                        }
+                        return false;
+                    }
+
+                    return true;
                 }
             case MemberAccessExpression memberAccess:
                 {
                     if (memberAccess.MemberAccess.MemberName is null)
                     {
-                        return false;
+                        return true;
                     }
 
                     var owner = memberAccess.MemberAccess.Owner;
@@ -470,7 +476,7 @@ public partial class TypeChecker
                         ownerType = generic.ResolvedType ?? throw new NotImplementedException();
                     }
 
-                    if (ownerType is not InstantiatedClass { Fields: var fields })
+                    if (ownerType is not InstantiatedClass { Signature.Fields: var fields })
                     {
                         if (report)
                             AddError(TypeCheckerError.ExpressionNotAssignable(memberAccess));
@@ -511,7 +517,7 @@ public partial class TypeChecker
                         return false;
                     }
 
-                    if (ownerType is not InstantiatedClass { Fields: var fields })
+                    if (ownerType is not InstantiatedClass { Signature.Fields: var fields })
                     {
                         if (report)
                             AddError(TypeCheckerError.ExpressionNotAssignable(staticMemberAccess));

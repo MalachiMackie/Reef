@@ -21,9 +21,6 @@ public partial class TypeChecker
         public required string Name { get; init; }
         public required DefId Id { get; init; }
         public required bool IsPublic { get; init; }
-
-        private static readonly ConcurrentDictionary<int, ClassSignature> CachedFunctionClasses = [];
-
     }
 
     private static InstantiatedClass InstantiateClass(ClassSignature signature, Token? boxedSpecifier)
@@ -198,14 +195,6 @@ public partial class TypeChecker
             var instantiatedClass = new InstantiatedClass(
                 Signature,
                 instantiatedTypeArguments,
-                [.. Fields.Select(x => new TypeField {
-                    IsMutable = x.IsMutable,
-                    IsPublic = x.IsPublic,
-                    IsStatic = x.IsStatic,
-                    Name = x.Name,
-                    StaticInitializer = x.StaticInitializer,
-                    Type = typeFilter(x.Type)
-                })],
                 Boxed);
 
             instantiatedTypeArguments.AddRange(Signature.TypeParameters.Zip(TypeArguments)
@@ -223,69 +212,30 @@ public partial class TypeChecker
         private InstantiatedClass(
             ClassSignature signature,
             IReadOnlyList<GenericTypeReference> typeArguments,
-            IReadOnlyList<TypeField> fields,
             bool boxed)
         {
             Signature = signature;
             TypeArguments = typeArguments;
-            Fields = fields;
             Boxed = boxed;
         }
 
         public static InstantiatedClass Create(ClassSignature signature, IReadOnlyList<ITypeReference> typeArguments, bool boxed)
         {
-            var fields = new List<TypeField>();
-
             var typeArgumentReferences = new List<GenericTypeReference>(typeArguments.Count);
-            var instantiatedClass = new InstantiatedClass(signature, typeArgumentReferences, fields, boxed);
+            var instantiatedClass = new InstantiatedClass(signature, typeArgumentReferences, boxed);
 
             typeArgumentReferences.AddRange(
                 signature.TypeParameters.Select((t, i) => t.Instantiate(instantiatedClass, typeArguments.Count > i ? typeArguments[i] : null)));
-            fields.AddRange(signature.Fields.Select(x => x with { Type = HandleType(x.Type) }));
 
             return instantiatedClass;
-
-            ITypeReference HandleType(ITypeReference type)
-            {
-                try
-                {
-                    return type switch
-                    {
-                        GenericTypeReference { ResolvedType: null } genericTypeReference => typeArgumentReferences.FirstOrDefault(y =>
-                            y.GenericName == genericTypeReference.GenericName) ?? genericTypeReference,
-                        GenericTypeReference { ResolvedType: { } resolvedType } => HandleType(resolvedType),
-                        GenericPlaceholder placeholder =>
-                            (ITypeReference?)typeArgumentReferences.FirstOrDefault(y => y.GenericName == placeholder.GenericName) ?? placeholder,
-                        InstantiatedUnion union => union.CloneWithTypeFilter(HandleType),
-                        InstantiatedClass klass => klass.CloneWithTypeFilter(HandleType),
-                        ArrayType { Length: not null } arrayType => new ArrayType(HandleType(arrayType.ElementType), arrayType.Boxed, arrayType.Length.Value),
-                        ArrayType { Length: null } arrayType => new ArrayType(HandleType(arrayType.ElementType)),
-                        FunctionObject functionObject => new FunctionObject(
-                            [.. functionObject.Parameters.Select(x => new FunctionParameter(HandleType(x.Type), x.Mutable))],
-                            HandleType(functionObject.ReturnType),
-                            functionObject.MutableReturn,
-                            functionObject.IsBoxed
-                        ),
-                        UnknownType => type,
-                        _ => throw new InvalidOperationException(type.GetType().ToString())
-                    };
-                }
-                catch (Exception e)
-                {
-                    _ = e;
-                    throw;
-                }
-            }
         }
 
-        public static InstantiatedClass UInt64 => new(ClassSignature.UInt64.Value, [], [], boxed: ClassSignature.UInt64.Value.Boxed);
+        public static InstantiatedClass UInt64 => new(ClassSignature.UInt64.Value, [], boxed: ClassSignature.UInt64.Value.Boxed);
 
         public bool Boxed { get; }
 
         public IReadOnlyList<GenericTypeReference> TypeArguments { get; }
         public ClassSignature Signature { get; }
-
-        public IReadOnlyList<TypeField> Fields { get; }
 
         public bool IsSameSignature(InstantiatedClass other)
         {

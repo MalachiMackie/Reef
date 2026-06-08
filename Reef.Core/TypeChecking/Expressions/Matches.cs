@@ -19,7 +19,7 @@ public partial class TypeChecker
 
         if (matchesExpression.DeclaredVariables.Any<TypeChecking.TypeChecker.LocalVariable>(x => x.Mutable))
         {
-            ExpectAssignableExpression(matchesExpression.ValueExpression);
+            ExpectMutableExpression(matchesExpression.ValueExpression);
         }
 
         return Boolean();
