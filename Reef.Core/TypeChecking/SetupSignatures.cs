@@ -342,6 +342,7 @@ public partial class TypeChecker
                         };
                     }
                 }
+                unionSignature.Initialized = true;
             }
 
             foreach (var (klass, classSignature, functions, fields) in classes)
@@ -383,6 +384,7 @@ public partial class TypeChecker
 
                     fields.Add(typeField);
                 }
+                classSignature.Initialized = true;
             }
         }
 

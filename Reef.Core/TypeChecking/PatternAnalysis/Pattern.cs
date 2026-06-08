@@ -62,16 +62,14 @@ public class WitnessPattern
 
     public static WitnessPattern WildFromCtor(
         IConstructor ctor,
-        TypeChecker.ITypeReference type,
-        Func<TypeChecker.InstantiatedClass, IEnumerable<TypeChecker.TypeField>> getClassFields,
-        Func<TypeChecker.InstantiatedUnion, IEnumerable<TypeChecker.IUnionVariant>> getUnionVariants)
+        TypeChecker.ITypeReference type)
     {
         if (ctor is WildcardConstructor)
         {
             return Wildcard(type);
         }
 
-        var fields = IConstructor.CtorSubTypes(ctor, type, getClassFields, getUnionVariants)
+        var fields = IConstructor.CtorSubTypes(ctor, type)
             .Where(tuple => !tuple.Item2.Value)
             .Select(tuple => Wildcard(tuple.Item1))
             .ToList();

@@ -23,9 +23,7 @@ public interface IConstructor
 
     public static IEnumerable<(TypeChecker.ITypeReference, PrivateUninhabitedField)> CtorSubTypes(
         IConstructor ctor,
-        TypeChecker.ITypeReference typeReference,
-        Func<TypeChecker.InstantiatedClass, IEnumerable<TypeChecker.TypeField>> getClassFields,
-        Func<TypeChecker.InstantiatedUnion, IEnumerable<TypeChecker.IUnionVariant>> getUnionVariants)
+        TypeChecker.ITypeReference typeReference)
     {
         switch (ctor)
         {
@@ -43,7 +41,7 @@ public interface IConstructor
                     var union = typeReference.ConcreteType().Type as TypeChecker.InstantiatedUnion
                                 ?? throw new InvalidOperationException($"Expected union, found {typeReference.GetType()}");
 
-                    var variant = getUnionVariants(union).ToArray()[(int)variantConstructor.VariantIndex];
+                    var variant = union.GetVariants()[(int)variantConstructor.VariantIndex];
 
                     var subTypes = variant switch
                     {
@@ -60,7 +58,7 @@ public interface IConstructor
                     var @class = typeReference as TypeChecker.InstantiatedClass
                         ?? throw new InvalidOperationException("Expected class");
 
-                    return getClassFields(@class).Select(x =>
+                    return @class.GetFields().Select(x =>
                     {
                         // todo: need to figure out if we can access this field
                         // var isVisible = true;

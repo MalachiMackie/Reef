@@ -1,5 +1,3 @@
-using System.Collections.Concurrent;
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
 
@@ -16,11 +14,20 @@ public partial class TypeChecker
 
         public required bool Boxed { get; init; }
         public required IReadOnlyList<GenericPlaceholder> TypeParameters { get; init; }
-        public required IReadOnlyList<TypeField> Fields { get; init; }
-        public required IReadOnlyList<FunctionSignature> Functions { get; init; }
+        public required IReadOnlyList<TypeField> Fields
+        {
+            get => Initialized ? field : throw new InvalidOperationException("Signature is not initialized");
+            init;
+        }
+        public required IReadOnlyList<FunctionSignature> Functions
+        {
+            get => Initialized ? field : throw new InvalidOperationException("Signature is not initialized");
+            init;
+        }
         public required string Name { get; init; }
         public required DefId Id { get; init; }
         public required bool IsPublic { get; init; }
+        public bool Initialized { get; set; }
     }
 
     private static InstantiatedClass InstantiateClass(ClassSignature signature, Token? boxedSpecifier)
@@ -236,6 +243,22 @@ public partial class TypeChecker
 
         public IReadOnlyList<GenericTypeReference> TypeArguments { get; }
         public ClassSignature Signature { get; }
+
+        private IReadOnlyList<TypeField>? _fields;
+        public IReadOnlyList<TypeField> GetFields()
+        {
+            _fields ??= [.. Signature.Fields
+                            .Select(field => new TypeField()
+                            {
+                                IsMutable = field.IsMutable,
+                                IsPublic = field.IsPublic,
+                                IsStatic = field.IsStatic,
+                                Name = field.Name,
+                                StaticInitializer = field.StaticInitializer,
+                                Type = InstantiateTypeReference(field.Type, TypeArguments, [])
+                            })];
+            return _fields;
+        }
 
         public bool IsSameSignature(InstantiatedClass other)
         {

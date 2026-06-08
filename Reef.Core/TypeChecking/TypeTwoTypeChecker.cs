@@ -7,15 +7,11 @@ namespace Reef.Core.TypeChecking;
 // todo: this should probably be able to be a visitor
 public class TypeTwoTypeChecker(
     bool throwOnError,
-    Dictionary<ModuleId, (List<TypeChecker.FunctionSignature>, List<TypeChecker.UnionSignature>, List<TypeChecker.ClassSignature>, List<TypeChecker.AttributeSignature>)> moduleSignatures,
-    Func<TypeChecker.InstantiatedClass, IEnumerable<TypeChecker.TypeField>> getClassFields,
-    Func<TypeChecker.InstantiatedUnion, IEnumerable<TypeChecker.IUnionVariant>> getUnionVariants)
+    Dictionary<ModuleId, (List<TypeChecker.FunctionSignature>, List<TypeChecker.UnionSignature>, List<TypeChecker.ClassSignature>, List<TypeChecker.AttributeSignature>)> moduleSignatures)
 {
     private readonly List<TypeCheckerError> _errors = [];
     private readonly Stack<Dictionary<TypeChecker.LocalVariable, bool>> _localVariablesInitialized = [];
     private readonly Dictionary<ModuleId, (List<TypeChecker.FunctionSignature> Functions, List<TypeChecker.UnionSignature> Unions, List<TypeChecker.ClassSignature> Classes, List<TypeChecker.AttributeSignature> Attributes)> _moduleSignatures = moduleSignatures;
-    private readonly Func<TypeChecker.InstantiatedClass, IEnumerable<TypeChecker.TypeField>> GetClassFields = getClassFields;
-    private readonly Func<TypeChecker.InstantiatedUnion, IEnumerable<TypeChecker.IUnionVariant>> GetUnionVariants = getUnionVariants;
 
     private void AddError(TypeCheckerError error)
     {
@@ -43,11 +39,9 @@ public class TypeTwoTypeChecker(
     public static IReadOnlyList<TypeCheckerError> TypeTwoTypeCheck(
         Dictionary<ModuleId, (List<TypeChecker.FunctionSignature>, List<TypeChecker.UnionSignature>, List<TypeChecker.ClassSignature>, List<TypeChecker.AttributeSignature>)> moduleSignatures,
         LangModule program,
-        Func<TypeChecker.InstantiatedClass, IEnumerable<TypeChecker.TypeField>> getClassFields,
-        Func<TypeChecker.InstantiatedUnion, IEnumerable<TypeChecker.IUnionVariant>> getUnionVariants,
         bool throwOnError = false)
     {
-        var checker = new TypeTwoTypeChecker(throwOnError, moduleSignatures, getClassFields, getUnionVariants);
+        var checker = new TypeTwoTypeChecker(throwOnError, moduleSignatures);
         checker.InnerTypeTwoTypeCheck(program);
 
         return checker._errors;
@@ -303,9 +297,7 @@ public class TypeTwoTypeChecker(
             PlaceValidity.ValidOnly,
             // random guess
             complexityLimit: 15,
-            neverType,
-            GetClassFields,
-            GetUnionVariants);
+            neverType);
 
         foreach (var (arm, usefulness) in usefulnessReport.ArmUsefulness)
         {

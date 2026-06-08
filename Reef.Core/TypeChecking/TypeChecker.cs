@@ -500,7 +500,7 @@ public partial class TypeChecker
             var moduleErrors = _errors[fileName];
             if (moduleErrors.Count == 0)
             {
-                moduleErrors.AddRange(TypeTwoTypeChecker.TypeTwoTypeCheck(_moduleSignatures, module, GetClassFields, GetUnionVariants, _throwOnError));
+                moduleErrors.AddRange(TypeTwoTypeChecker.TypeTwoTypeCheck(_moduleSignatures, module, _throwOnError));
             }
 
             module.TypeChecked = true;
@@ -578,43 +578,9 @@ public partial class TypeChecker
         return Unit();
     }
 
-    private IEnumerable<TypeField> GetClassFields(InstantiatedClass classType)
-    {
-        return classType.Signature.Fields
-            .Select(field => new TypeField()
-            {
-                IsMutable = field.IsMutable,
-                IsPublic = field.IsPublic,
-                IsStatic = field.IsStatic,
-                Name = field.Name,
-                StaticInitializer = field.StaticInitializer,
-                Type = InstantiateTypeReference(field.Type, classType.TypeArguments, [])
-            });
-    }
-
     private bool CanAccessPrivateMembers(ITypeSignature signature)
     {
         return CurrentTypeSignature?.Id == signature.Id;
-    }
-
-    private static TypeField? TryGetClassField(InstantiatedClass classType, StringToken fieldName, bool reportError = true)
-    {
-        var field = classType.Signature.Fields.FirstOrDefault(x => x.Name == fieldName.StringValue);
-
-        if (field is null)
-        {
-            return null;
-        }
-
-        return new TypeField()
-        {
-            IsMutable = field.IsMutable,
-            IsPublic = field.IsPublic,
-            IsStatic = field.IsStatic,
-            Name = field.Name,
-            StaticInitializer = field.StaticInitializer,
-            Type = InstantiateTypeReference(field.Type, classType.TypeArguments, [])
-        };
     }
 
     private static ITypeReference InstantiateTypeReference(

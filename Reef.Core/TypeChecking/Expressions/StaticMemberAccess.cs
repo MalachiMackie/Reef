@@ -27,7 +27,7 @@ public partial class TypeChecker
         {
             case InstantiatedClass instantiatedClass:
                 {
-                    if (TryGetClassField(instantiatedClass, staticMemberAccess.MemberName!) is { } field)
+                    if (instantiatedClass.GetFields().FirstOrDefault(x => x.Name == staticMemberAccess.MemberName!.StringValue) is { } field)
                     {
                         staticMemberAccess.MemberType = MemberType.Field;
 

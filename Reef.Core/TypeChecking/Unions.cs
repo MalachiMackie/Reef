@@ -11,12 +11,22 @@ public partial class TypeChecker
 
         public required DefId Id { get; init; }
         public required IReadOnlyList<GenericPlaceholder> TypeParameters { get; init; }
-        public required IReadOnlyList<IUnionVariant> Variants { get; init; }
-        public required IReadOnlyList<FunctionSignature> Functions { get; init; }
+        public required IReadOnlyList<IUnionVariant> Variants
+        {
+            get => Initialized ? field : throw new InvalidOperationException("Signature is not initialized");
+            init;
+        }
+        public required IReadOnlyList<FunctionSignature> Functions
+        {
+            get => Initialized ? field : throw new InvalidOperationException("Signature is not initialized");
+            init;
+        }
         public required bool Boxed { get; init; }
         public required bool IsPublic { get; init; }
 
         public required string Name { get; init; }
+
+        public bool Initialized { get; set; }
     }
 
     public interface IUnionVariant
@@ -104,68 +114,6 @@ public partial class TypeChecker
     private UnionSignature GetUnionSignature(DefId id)
     {
         return _moduleSignatures[id.ModuleId].Unions.First(x => x.Id == id);
-    }
-
-    private static IEnumerable<IUnionVariant> GetUnionVariants(InstantiatedUnion union)
-    {
-        var boxedInstantiatedUnion = new InstantiatedUnion(union.Signature, union.TypeArguments, boxed: true);
-        var unboxedInstantiatedUnion = new InstantiatedUnion(union.Signature, union.TypeArguments, boxed: false);
-
-        return union.Signature.Variants.Select(variant =>
-            {
-                switch (variant)
-                {
-                    case TupleUnionVariant tuple:
-                        {
-                            var createFunctionParameters = new OrderedDictionary<string, FunctionSignatureParameter>();
-                            var unboxedCreateFunctionParameters = new OrderedDictionary<string, FunctionSignatureParameter>();
-                            foreach (var parameter in tuple.BoxedCreateFunction.Parameters)
-                            {
-                                createFunctionParameters[parameter.Key] = parameter.Value with
-                                {
-                                    Type = InstantiateTypeReference(parameter.Value.Type, union.TypeArguments, [])
-                                };
-                            }
-                            foreach (var parameter in tuple.UnboxedCreateFunction.Parameters)
-                            {
-                                unboxedCreateFunctionParameters[parameter.Key] = parameter.Value with
-                                {
-                                    Type = InstantiateTypeReference(parameter.Value.Type, union.TypeArguments, [])
-                                };
-                            }
-
-                            return new TupleUnionVariant
-                            {
-                                Name = tuple.Name,
-                                TupleMembers =
-                                [
-                                    ..tuple.TupleMembers.Select(x => InstantiateTypeReference(x, union.TypeArguments, []))
-                                ],
-                                BoxedCreateFunction = tuple.BoxedCreateFunction with
-                                {
-                                    ReturnType = boxedInstantiatedUnion, // the create function for a tuple variant within this instantiated union returns this type, so directly use instantiated union
-                                    Parameters = createFunctionParameters,
-                                },
-                                UnboxedCreateFunction = tuple.UnboxedCreateFunction with
-                                {
-                                    ReturnType = unboxedInstantiatedUnion, // the create function for a tuple variant within this instantiated union returns this type, so directly use instantiated union
-                                    Parameters = unboxedCreateFunctionParameters,
-                                },
-                            };
-                        }
-                    case ClassUnionVariant classVariant:
-                        return new ClassUnionVariant
-                        {
-                            Name = classVariant.Name,
-                            Fields =
-                            [
-                                ..classVariant.Fields.Select(y => y with { Type = InstantiateTypeReference(y.Type, union.TypeArguments, []) })
-                            ]
-                        };
-                    default:
-                        return variant;
-                }
-            });
     }
 
     private static IUnionVariant? GetUnionVariant(InstantiatedUnion union, string name)
@@ -287,6 +235,75 @@ public partial class TypeChecker
         public bool IsSameSignature(InstantiatedUnion other)
         {
             return Signature == other.Signature;
+        }
+
+        private IReadOnlyList<IUnionVariant>? _unionVariants;
+        public IReadOnlyList<IUnionVariant> GetVariants()
+        {
+            if (_unionVariants is not null)
+            {
+                return _unionVariants;
+            }
+            var boxedInstantiatedUnion = new InstantiatedUnion(Signature, TypeArguments, boxed: true);
+            var unboxedInstantiatedUnion = new InstantiatedUnion(Signature, TypeArguments, boxed: false);
+
+            _unionVariants = [..Signature.Variants.Select(variant =>
+                {
+                    switch (variant)
+                    {
+                        case TupleUnionVariant tuple:
+                            {
+                                var createFunctionParameters = new OrderedDictionary<string, FunctionSignatureParameter>();
+                                var unboxedCreateFunctionParameters = new OrderedDictionary<string, FunctionSignatureParameter>();
+                                foreach (var parameter in tuple.BoxedCreateFunction.Parameters)
+                                {
+                                    createFunctionParameters[parameter.Key] = parameter.Value with
+                                    {
+                                        Type = InstantiateTypeReference(parameter.Value.Type, TypeArguments, [])
+                                    };
+                                }
+                                foreach (var parameter in tuple.UnboxedCreateFunction.Parameters)
+                                {
+                                    unboxedCreateFunctionParameters[parameter.Key] = parameter.Value with
+                                    {
+                                        Type = InstantiateTypeReference(parameter.Value.Type, TypeArguments, [])
+                                    };
+                                }
+
+                                return new TupleUnionVariant
+                                {
+                                    Name = tuple.Name,
+                                    TupleMembers =
+                                    [
+                                        ..tuple.TupleMembers.Select(x => InstantiateTypeReference(x, TypeArguments, []))
+                                    ],
+                                    BoxedCreateFunction = tuple.BoxedCreateFunction with
+                                    {
+                                        ReturnType = boxedInstantiatedUnion, // the create function for a tuple variant within this instantiated union returns this type, so directly use instantiated union
+                                        Parameters = createFunctionParameters,
+                                    },
+                                    UnboxedCreateFunction = tuple.UnboxedCreateFunction with
+                                    {
+                                        ReturnType = unboxedInstantiatedUnion, // the create function for a tuple variant within this instantiated union returns this type, so directly use instantiated union
+                                        Parameters = unboxedCreateFunctionParameters,
+                                    },
+                                };
+                            }
+                        case ClassUnionVariant classVariant:
+                            return new ClassUnionVariant
+                            {
+                                Name = classVariant.Name,
+                                Fields =
+                                [
+                                    ..classVariant.Fields.Select(y => y with { Type = InstantiateTypeReference(y.Type, TypeArguments, []) })
+                                ]
+                            };
+                        default:
+                            return variant;
+                    }
+                })];
+
+            return _unionVariants;
         }
 
         public override string ToString()

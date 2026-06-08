@@ -80,7 +80,7 @@ public partial class TypeChecker
                 AddError(TypeCheckerError.GenericTypeArgumentsOnNonFunctionValue(memberAccessExpression.SourceRange));
             }
 
-            if (TryGetClassField(classType, stringToken) is not { } field)
+            if (classType.GetFields().FirstOrDefault(x => x.Name == stringToken.StringValue) is not { } field)
             {
                 AddError(TypeCheckerError.UnknownTypeMember(stringToken, classType.Signature.Name));
                 return UnknownType.Instance;

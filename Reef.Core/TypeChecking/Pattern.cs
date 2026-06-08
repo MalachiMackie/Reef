@@ -81,7 +81,7 @@ public partial class TypeChecker
                         throw new InvalidOperationException("Duplicate fields found");
                     }
 
-                    var remainingFields = GetClassFields(classType)
+                    var remainingFields = classType.GetFields()
                         .Where(x => x.IsPublic || CanAccessPrivateMembers(classType.Signature))
                         .Select(x => x.Name)
                         .ToHashSet();
@@ -89,7 +89,7 @@ public partial class TypeChecker
                     foreach (var fieldPattern in classPattern.FieldPatterns)
                     {
                         remainingFields.Remove(fieldPattern.FieldName.StringValue);
-                        if (TryGetClassField(classType, fieldPattern.FieldName) is not { } field)
+                        if (classType.GetFields().FirstOrDefault(x => x.Name == fieldPattern.FieldName.StringValue) is not { } field)
                         {
                             AddError(TypeCheckerError.UnknownTypeMember(fieldPattern.FieldName, classType.Signature.Name));
                             continue;

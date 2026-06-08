@@ -14,7 +14,7 @@ public partial class TypeChecker
         }
 
         var (variantIndex, variant) =
-            GetUnionVariants(instantiatedUnion).Index().FirstOrDefault(x => x.Item.Name == initializer.VariantIdentifier.StringValue);
+            instantiatedUnion.GetVariants().Index().FirstOrDefault(x => x.Item.Name == initializer.VariantIdentifier.StringValue);
 
         if (variant is null)
         {
@@ -87,11 +87,13 @@ public partial class TypeChecker
             throw new InvalidOperationException($"Type {foundType} cannot be initialized");
         }
 
+        var classFields = instantiatedClass.GetFields();
+
         var initializedFields = new HashSet<string>();
-        var instanceFields = GetClassFields(instantiatedClass).Where(x => !x.IsStatic).ToDictionary(x => x.Name);
+        var instanceFields = classFields.Where(x => !x.IsStatic).ToDictionary(x => x.Name);
         var canAccessPrivateFields = CanAccessPrivateMembers(instantiatedClass.Signature);
 
-        var accessibleInstanceFields = GetClassFields(instantiatedClass)
+        var accessibleInstanceFields = classFields
             .Where(x => !x.IsStatic && x.IsPublic || canAccessPrivateFields)
             .Select(x => x.Name)
             .ToHashSet();
