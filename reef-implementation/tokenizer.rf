@@ -1,0 +1,30 @@
+use :::main:::{token:::*, helpers:::linked_list};
+
+pub fn tokenize(source: string): linked_list::<Token> {
+    var mut tokens = linked_list::create();
+
+    tokens.add(Token::Fn);
+
+    var mut i = 0;
+    while (i < source.Length) {
+        print_u64(i);
+        i = i + 1;
+    }
+
+    return tokens;
+}
+
+#[test]
+pub fn tokenize_keywords() {
+    var result = tokenize("fn");
+    if (result.get_length() != 1) {
+        print_string("unexpected length:");
+        print_u64(result.get_length());
+        print_string("\n");
+        panic();
+    }
+    if (!(result.get(0) matches option::Some(Token::Fn))) {
+        print_string("did not find expected token");
+        panic();
+    }
+}

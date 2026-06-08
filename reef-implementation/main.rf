@@ -1,14 +1,3 @@
 use token:::Token;
 
-var tokens = [Token::Identifier("hi"), Token::Fn, Token::Class];
-
-var mut i = 0;
-while (i < tokens.Length) {
-    var token = tokens[i];
-    i = i + 1;
-    match (token) {
-        Token::Identifier(var value) => { print_string("identifier: "); print_string(value); print_string("\n"); },
-        Token::Fn => print_string("fn\n"),
-        _ => print_string("todo\n"),
-    }
-}
+var source = "fn";

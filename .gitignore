@@ -36,6 +36,7 @@ Desktop.ini
 .DS_Store
 
 **/reef-implementation/build/
+**/reef-implementation/build-test/
 **/Examples/build/
 **/IntegrationTests/**/TestRuns/**
 integration-tests/**/build
