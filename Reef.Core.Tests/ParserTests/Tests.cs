@@ -10,7 +10,7 @@ namespace Reef.Core.Tests.ParserTests;
 
 public class ParserTests(ITestOutputHelper testOutputHelper)
 {
-    [Theory]
+    [Theory(Timeout = 3000)]
     [MemberData(nameof(TestCases.FailTestCases.TestCases), MemberType = typeof(TestCases.FailTestCases))]
     public void FailTests(
         [SuppressMessage("Usage", "xUnit1026:Theory methods should use all of their parameters")]
@@ -22,7 +22,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
         result.Errors.Should().NotBeEmpty();
     }
 
-    [Theory]
+    [Theory(Timeout = 3000)]
     [MemberData(nameof(TestCases.PopExpressionTestCases.TestCases), MemberType = typeof(TestCases.PopExpressionTestCases))]
     public void PopExpressionTests(
         [SuppressMessage("Usage", "xUnit1026:Theory methods should use all of their parameters")]
@@ -46,15 +46,29 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
         }
     }
 
-    [Fact]
+    [Fact(Timeout = 3000)]
     public void SingleTest()
     {
-
-        var source = "new A;";
-        var expectedProgram = Program("ParseTestCases", [ObjectInitializer(NamedTypeIdentifier("A"))]);
+        var source = "use :::main:::{token:::*, helpers::linked_list};";
+        var expectedProgram = Program("ParseTestCases",
+            moduleImports: [
+                ModuleImport(
+                    new ModulePathSegment(
+                        Identifier("main"),
+                        [
+                            new ModulePathSegment(Identifier("token"), [], true),
+                            new ModulePathSegment(Identifier("helpers"), [], false),
+                            new ModulePathSegment(Identifier("linked_list"), [], false),
+                        ],
+                        false
+                    ),
+                    isGlobal: true)
+            ]);
 
         IEnumerable<ParserError> expectedErrors = [
-            ParserError.ExpectedToken(Token.Semicolon(SourceSpan.Default), TokenType.LeftBrace, TokenType.DoubleColon)
+            ParserError.ExpectedToken(Token.DoubleColon(SourceSpan.Default), TokenType.Comma, TokenType.RightBrace),
+            ParserError.ExpectedToken(Token.DoubleColon(SourceSpan.Default), TokenType.Identifier),
+            ParserError.ExpectedToken(Identifier("linked_list"), TokenType.Comma, TokenType.RightBrace),
         ];
 
         var tokens = Tokenizer.Tokenize(source);
@@ -71,7 +85,7 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
             .Excluding(m => m.Type == typeof(SourceRange) || m.Type == typeof(SourceSpan)));
     }
 
-    [Theory]
+    [Theory(Timeout = 3000)]
     [MemberData(nameof(TestCases.ParseTestCases.TestCases), MemberType = typeof(TestCases.ParseTestCases))]
     public void ParseTest(
         [SuppressMessage("Usage", "xUnit1026:Theory methods should use all of their parameters")]

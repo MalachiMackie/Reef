@@ -9,6 +9,49 @@ public static class ParseErrorTestCases
         IEnumerable<(string, LangModule, IEnumerable<ParserError>)> data =
         [
             (
+                    "use :::main:::{token:::*, helpers linked_list};",
+                    Program("ParseErrorTestCases",
+                        moduleImports: [
+                            ModuleImport(
+                                new ModulePathSegment(
+                                    Identifier("main"),
+                                    [
+                                        new ModulePathSegment(Identifier("token"), [], true),
+                                        new ModulePathSegment(Identifier("helpers"), [], false),
+                                        new ModulePathSegment(Identifier("linked_list"), [], false),
+                                    ],
+                                    false
+                                ),
+                                isGlobal: true)
+                        ]),
+                    [
+                        ParserError.ExpectedToken(Identifier("linked_list"), TokenType.Comma, TokenType.RightBrace)
+                    ]
+                ),
+            (
+                "use :::main:::{token:::*, helpers::linked_list};",
+                Program("ParseErrorTestCases",
+                    moduleImports: [
+                        ModuleImport(
+                            new ModulePathSegment(
+                                Identifier("main"),
+                                [
+                                    new ModulePathSegment(Identifier("token"), [], true),
+                                    new ModulePathSegment(Identifier("helpers"), [], false),
+                                    new ModulePathSegment(Identifier("linked_list"), [], false),
+                                ],
+                                false
+                            ),
+                            isGlobal: true)
+                    ]),
+                [
+
+                    ParserError.ExpectedToken(Token.DoubleColon(SourceSpan.Default), TokenType.Comma, TokenType.RightBrace),
+                    ParserError.ExpectedToken(Token.DoubleColon(SourceSpan.Default), TokenType.Identifier),
+                    ParserError.ExpectedToken(Identifier("linked_list"), TokenType.Comma, TokenType.RightBrace),
+                ]
+            ),
+            (
                 "grab",
                 Program("ParseErrorTestCases", expressions: [Grab()]),
                 [

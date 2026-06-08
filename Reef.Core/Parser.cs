@@ -612,6 +612,7 @@ public sealed class Parser : IDisposable
     {
         if (!ExpectCurrentIdentifier(out var identifier))
         {
+            MoveNext();
             return null;
         }
 

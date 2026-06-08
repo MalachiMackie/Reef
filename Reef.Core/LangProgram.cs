@@ -20,6 +20,11 @@ public record LangModule(
     {
         var sb = new StringBuilder();
 
+        foreach (var import in TopLevelImports)
+        {
+            sb.AppendLine(import.ToString());
+        }
+
         foreach (var expression in Expressions)
         {
             sb.AppendLine($"{expression};");
@@ -35,6 +40,11 @@ public record LangModule(
             sb.AppendLine($"{langClass}");
         }
 
+        foreach (var attribute in Attributes)
+        {
+            sb.AppendLine(attribute.ToString());
+        }
+
         return sb.ToString();
     }
 
@@ -46,8 +56,46 @@ public record ModuleId(string Value)
 {
     public override string ToString() => Value;
 }
-public record ModulePathSegment(StringToken Identifier, IReadOnlyList<ModulePathSegment> SubSegments, bool UseAll);
-public record ModuleImport(bool IsGlobal, ModulePathSegment RootModulePathSegment);
+public record ModulePathSegment(StringToken Identifier, IReadOnlyList<ModulePathSegment> SubSegments, bool UseAll)
+{
+    public override string ToString()
+    {
+        var sb = new StringBuilder(Identifier.StringValue);
+
+        if (UseAll)
+        {
+            sb.Append(":::*");
+        }
+        else if (SubSegments.Count > 1)
+        {
+            sb.Append(":::{");
+            sb.AppendJoin(", ", SubSegments);
+            sb.Append('}');
+        }
+        else if (SubSegments.Count == 1)
+        {
+            sb.Append(":::");
+            sb.Append(SubSegments[0].ToString());
+        }
+
+        return sb.ToString();
+    }
+}
+
+public record ModuleImport(bool IsGlobal, ModulePathSegment RootModulePathSegment)
+{
+    public override string ToString()
+    {
+        var sb = new StringBuilder();
+        if (IsGlobal)
+        {
+            sb.Append(":::");
+        }
+        sb.Append(RootModulePathSegment.ToString());
+
+        return sb.ToString();
+    }
+}
 
 public interface ITypeIdentifier
 {
