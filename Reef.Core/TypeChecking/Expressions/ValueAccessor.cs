@@ -51,8 +51,8 @@ public partial class TypeChecker
             valueAccessorExpression.FunctionInstantiation = tupleVariantFunction;
 
             return new FunctionObject(
-                tupleVariantFunction.Parameters,
-                tupleVariantFunction.ReturnType,
+                tupleVariantFunction.GetParameters(),
+                tupleVariantFunction.GetReturnType(),
                 tupleVariantFunction.MutableReturn,
                 true);
         }
@@ -82,8 +82,8 @@ public partial class TypeChecker
             expression.FunctionInstantiation = instantiatedFunction;
 
             return new FunctionObject(
-                parameters: instantiatedFunction.Parameters,
-                returnType: instantiatedFunction.ReturnType,
+                parameters: instantiatedFunction.GetParameters(),
+                returnType: instantiatedFunction.GetReturnType(),
                 instantiatedFunction.MutableReturn,
                 true);
         }
@@ -108,8 +108,8 @@ public partial class TypeChecker
                 expression.FunctionInstantiation = instantiatedFunction;
 
                 return new FunctionObject(
-                    instantiatedFunction.Parameters,
-                    instantiatedFunction.ReturnType,
+                    instantiatedFunction.GetParameters(),
+                    instantiatedFunction.GetReturnType(),
                     instantiatedFunction.MutableReturn,
                     true);
             }
@@ -134,8 +134,8 @@ public partial class TypeChecker
                 expression.FunctionInstantiation = instantiatedFunction;
 
                 return new FunctionObject(
-                    instantiatedFunction.Parameters,
-                    instantiatedFunction.ReturnType,
+                    instantiatedFunction.GetParameters(),
+                    instantiatedFunction.GetReturnType(),
                     instantiatedFunction.MutableReturn,
                     true);
             }

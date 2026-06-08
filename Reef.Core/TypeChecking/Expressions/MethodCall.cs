@@ -40,22 +40,22 @@ public partial class TypeChecker
             throw new InvalidOperationException($"{methodType.GetType()} is not callable");
         }
 
-        if (methodCall.ArgumentList.Count != functionType.Parameters.Count)
+        if (methodCall.ArgumentList.Count != functionType.GetParameters().Count)
         {
             AddError(TypeCheckerError.IncorrectNumberOfMethodArguments(
-                methodCallExpression, functionType.Parameters.Count));
+                methodCallExpression, functionType.GetParameters().Count));
 
             foreach (var argument in methodCall.ArgumentList)
             {
                 TypeCheckExpression(argument);
             }
 
-            return functionType.ReturnType;
+            return functionType.GetReturnType();
         }
 
-        for (var i = 0; i < functionType.Parameters.Count; i++)
+        for (var i = 0; i < functionType.GetParameters().Count; i++)
         {
-            var parameter = functionType.Parameters[i];
+            var parameter = functionType.GetParameters()[i];
             var expectedParameterType = parameter.Type;
             var isParameterMutable = parameter.Mutable;
 
@@ -71,6 +71,6 @@ public partial class TypeChecker
             }
         }
 
-        return functionType.ReturnType;
+        return functionType.GetReturnType();
     }
 }

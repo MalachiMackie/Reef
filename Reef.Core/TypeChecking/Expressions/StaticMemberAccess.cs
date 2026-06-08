@@ -69,7 +69,7 @@ public partial class TypeChecker
 
                     staticMemberAccess.InstantiatedFunction = function;
 
-                    return new FunctionObject(function.Parameters, function.ReturnType, function.MutableReturn, true);
+                    return new FunctionObject(function.GetParameters(), function.GetReturnType(), function.MutableReturn, true);
 
                 }
             case InstantiatedUnion instantiatedUnion:
@@ -92,8 +92,8 @@ public partial class TypeChecker
                                     staticMemberAccess.InstantiatedFunction = tupleVariantFunction;
 
                                     return new FunctionObject(
-                                        tupleVariantFunction.Parameters,
-                                        tupleVariantFunction.ReturnType,
+                                        tupleVariantFunction.GetParameters(),
+                                        tupleVariantFunction.GetReturnType(),
                                         isMutableReturn: true,
                                         true);
                                 }
@@ -126,8 +126,8 @@ public partial class TypeChecker
                     staticMemberAccess.InstantiatedFunction = function;
 
                     return new FunctionObject(
-                        function.Parameters,
-                        function.ReturnType,
+                        function.GetParameters(),
+                        function.GetReturnType(),
                         function.MutableReturn,
                         true);
                 }

@@ -260,8 +260,8 @@ public partial class TypeChecker
 
     public interface IFunction
     {
-        IReadOnlyList<FunctionParameter> Parameters { get; }
-        ITypeReference ReturnType { get; }
+        IReadOnlyList<FunctionParameter> GetParameters();
+        ITypeReference GetReturnType();
         bool MutableReturn { get; }
     }
 
@@ -275,6 +275,9 @@ public partial class TypeChecker
         public ITypeReference ReturnType { get; } = returnType;
         public bool MutableReturn { get; } = isMutableReturn;
         public bool IsBoxed { get; } = isBoxed;
+
+        public ITypeReference GetReturnType() => ReturnType;
+        public IReadOnlyList<FunctionParameter> GetParameters() => Parameters;
 
         public override string ToString()
         {
@@ -307,54 +310,15 @@ public partial class TypeChecker
             Signature = signature;
 
             TypeArguments = [.. signature.TypeParameters.Select(x => x.Instantiate(instantiatedFrom: this))];
-            var parametersList = new List<FunctionParameter>();
-            Parameters = parametersList;
+            InScopeTypeParameters = inScopeTypeParameters;
 
-            var ownerTypeArguments = ownerType switch
+            OwnerTypeArguments = ownerType switch
             {
                 null => [],
                 InstantiatedClass ownerClass => ownerClass.TypeArguments,
                 InstantiatedUnion ownerUnion => ownerUnion.TypeArguments,
                 _ => throw new InvalidOperationException($"Unexpected owner type {ownerType.GetType()}")
             };
-
-            for (var i = 0; i < signature.Parameters.Count; i++)
-            {
-                var parameter = signature.Parameters.GetAt(i);
-                var functionParameter = new FunctionParameter(HandleType(parameter.Value.Type), parameter.Value.Mutable);
-                parametersList.Add(functionParameter);
-            }
-            ReturnType = HandleType(signature.ReturnType);
-
-            ITypeReference HandleType(ITypeReference type)
-            {
-                return type switch
-                {
-                    GenericTypeReference { ResolvedType: null } genericTypeReference => TypeArguments.FirstOrDefault(y =>
-                        y.GenericName == genericTypeReference.GenericName)
-                        ?? (ITypeReference?)inScopeTypeParameters.FirstOrDefault(x => x.GenericName == genericTypeReference.GenericName)
-                        ?? (ITypeReference?)ownerTypeArguments.FirstOrDefault(x => x.GenericName == genericTypeReference.GenericName)
-                        ?? genericTypeReference,
-                    GenericTypeReference { ResolvedType: { } resolvedType } => HandleType(resolvedType),
-                    GenericPlaceholder placeholder =>
-                        (ITypeReference?)TypeArguments.FirstOrDefault(y => y.GenericName == placeholder.GenericName)
-                        ?? (ITypeReference?)inScopeTypeParameters.FirstOrDefault(x => x.GenericName == placeholder.GenericName)
-                        ?? (ITypeReference?)ownerTypeArguments.FirstOrDefault(x => x.GenericName == placeholder.GenericName)
-                        ?? placeholder,
-                    InstantiatedUnion union => union.CloneWithTypeFilter(HandleType),
-                    InstantiatedClass klass => klass.CloneWithTypeFilter(HandleType),
-                    ArrayType { Length: not null } arrayType => new ArrayType(HandleType(arrayType.ElementType), arrayType.Boxed, arrayType.Length.Value),
-                    ArrayType { Length: null } arrayType => new ArrayType(HandleType(arrayType.ElementType)),
-                    FunctionObject functionObject => new FunctionObject(
-                        [.. functionObject.Parameters.Select(x => new FunctionParameter(HandleType(x.Type), x.Mutable))],
-                        HandleType(functionObject.ReturnType),
-                        functionObject.MutableReturn,
-                        functionObject.IsBoxed
-                    ),
-                    UnknownType => type,
-                    _ => throw new InvalidOperationException(type.GetType().ToString())
-                };
-            }
         }
 
         private FunctionSignature Signature { get; }
@@ -365,14 +329,45 @@ public partial class TypeChecker
         public ITypeReference? OwnerType { get; }
         public ITypeSignature? OwnerSignature => Signature.OwnerType;
         public IReadOnlyList<GenericTypeReference> TypeArguments { get; }
-        public ITypeReference ReturnType { get; }
+        private IReadOnlyList<GenericTypeReference> OwnerTypeArguments { get; }
+        private IReadOnlyCollection<GenericPlaceholder> InScopeTypeParameters { get; }
         public DefId FunctionId => Signature.Id;
         public bool MutableReturn => Signature.IsMutableReturn;
-        public IReadOnlyList<FunctionParameter> Parameters { get; }
         public string Name => Signature.Name;
         public DefId? ClosureTypeId => Signature.ClosureTypeId;
         public List<(DefId fieldTypeId, List<(IVariable fieldVariable, uint fieldIndex)> referencedVariables)> ClosureTypeFields =>
             Signature.ClosureTypeFields;
+
+        private ITypeReference? _returnType;
+        public ITypeReference GetReturnType()
+        {
+            _returnType ??= InstantiateTypeReference(Signature.ReturnType, [.. TypeArguments, .. OwnerTypeArguments], InScopeTypeParameters);
+            return _returnType;
+        }
+
+        private IReadOnlyList<FunctionParameter>? _parameters;
+        public IReadOnlyList<FunctionParameter> GetParameters()
+        {
+            if (_parameters is not null)
+            {
+                return _parameters;
+            }
+
+            var parametersList = new List<FunctionParameter>();
+            _parameters = parametersList;
+
+            for (var i = 0; i < Signature.Parameters.Count; i++)
+            {
+                var parameter = Signature.Parameters.GetAt(i);
+                var functionParameter = new FunctionParameter(InstantiateTypeReference(
+                    parameter.Value.Type,
+                    [.. TypeArguments, .. OwnerTypeArguments],
+                    InScopeTypeParameters), parameter.Value.Mutable);
+                parametersList.Add(functionParameter);
+            }
+
+            return parametersList;
+        }
     }
 
     private InstantiatedFunction InstantiateFunction(FunctionSignature signature,

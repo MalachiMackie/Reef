@@ -123,14 +123,14 @@ public partial class TypeChecker
                             {
                                 createFunctionParameters[parameter.Key] = parameter.Value with
                                 {
-                                    Type = InstantiateTypeReference(parameter.Value.Type, union.TypeArguments)
+                                    Type = InstantiateTypeReference(parameter.Value.Type, union.TypeArguments, [])
                                 };
                             }
                             foreach (var parameter in tuple.UnboxedCreateFunction.Parameters)
                             {
                                 unboxedCreateFunctionParameters[parameter.Key] = parameter.Value with
                                 {
-                                    Type = InstantiateTypeReference(parameter.Value.Type, union.TypeArguments)
+                                    Type = InstantiateTypeReference(parameter.Value.Type, union.TypeArguments, [])
                                 };
                             }
 
@@ -139,7 +139,7 @@ public partial class TypeChecker
                                 Name = tuple.Name,
                                 TupleMembers =
                                 [
-                                    ..tuple.TupleMembers.Select(x => InstantiateTypeReference(x, union.TypeArguments))
+                                    ..tuple.TupleMembers.Select(x => InstantiateTypeReference(x, union.TypeArguments, []))
                                 ],
                                 BoxedCreateFunction = tuple.BoxedCreateFunction with
                                 {
@@ -159,7 +159,7 @@ public partial class TypeChecker
                             Name = classVariant.Name,
                             Fields =
                             [
-                                ..classVariant.Fields.Select(y => y with { Type = InstantiateTypeReference(y.Type, union.TypeArguments) })
+                                ..classVariant.Fields.Select(y => y with { Type = InstantiateTypeReference(y.Type, union.TypeArguments, []) })
                             ]
                         };
                     default:
@@ -189,14 +189,14 @@ public partial class TypeChecker
                     {
                         createFunctionParameters[parameter.Key] = parameter.Value with
                         {
-                            Type = InstantiateTypeReference(parameter.Value.Type, union.TypeArguments)
+                            Type = InstantiateTypeReference(parameter.Value.Type, union.TypeArguments, [])
                         };
                     }
                     foreach (var parameter in tuple.UnboxedCreateFunction.Parameters)
                     {
                         unboxedCreateFunctionParameters[parameter.Key] = parameter.Value with
                         {
-                            Type = InstantiateTypeReference(parameter.Value.Type, union.TypeArguments)
+                            Type = InstantiateTypeReference(parameter.Value.Type, union.TypeArguments, [])
                         };
                     }
 
@@ -205,7 +205,7 @@ public partial class TypeChecker
                         Name = tuple.Name,
                         TupleMembers =
                         [
-                            ..tuple.TupleMembers.Select(x => InstantiateTypeReference(x, union.TypeArguments))
+                            ..tuple.TupleMembers.Select(x => InstantiateTypeReference(x, union.TypeArguments, []))
                         ],
                         BoxedCreateFunction = tuple.BoxedCreateFunction with
                         {
@@ -225,7 +225,7 @@ public partial class TypeChecker
                     Name = classVariant.Name,
                     Fields =
                     [
-                        ..classVariant.Fields.Select(y => y with { Type = InstantiateTypeReference(y.Type, union.TypeArguments) })
+                        ..classVariant.Fields.Select(y => y with { Type = InstantiateTypeReference(y.Type, union.TypeArguments, []) })
                     ]
                 };
             default:

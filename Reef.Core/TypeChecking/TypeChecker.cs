@@ -588,7 +588,7 @@ public partial class TypeChecker
                 IsStatic = field.IsStatic,
                 Name = field.Name,
                 StaticInitializer = field.StaticInitializer,
-                Type = InstantiateTypeReference(field.Type, classType.TypeArguments)
+                Type = InstantiateTypeReference(field.Type, classType.TypeArguments, [])
             });
     }
 
@@ -613,26 +613,33 @@ public partial class TypeChecker
             IsStatic = field.IsStatic,
             Name = field.Name,
             StaticInitializer = field.StaticInitializer,
-            Type = InstantiateTypeReference(field.Type, classType.TypeArguments)
+            Type = InstantiateTypeReference(field.Type, classType.TypeArguments, [])
         };
     }
 
-    private static ITypeReference InstantiateTypeReference(ITypeReference typeReference, IReadOnlyList<GenericTypeReference> typeArguments)
+    private static ITypeReference InstantiateTypeReference(
+        ITypeReference typeReference,
+        IEnumerable<GenericTypeReference> typeArguments,
+        IEnumerable<GenericPlaceholder> inScopeTypeParameters)
     {
         return typeReference switch
         {
             GenericTypeReference { ResolvedType: null } genericTypeReference => typeArguments.FirstOrDefault(y =>
-                y.OwnerType.Id == genericTypeReference.OwnerType.Id && y.GenericName == genericTypeReference.GenericName) ?? genericTypeReference,
-            GenericTypeReference { ResolvedType: { } resolvedType } => InstantiateTypeReference(resolvedType, typeArguments),
+                y.OwnerType.Id == genericTypeReference.OwnerType.Id && y.GenericName == genericTypeReference.GenericName)
+                ?? (ITypeReference?)inScopeTypeParameters.FirstOrDefault(x => x.OwnerType.Id == genericTypeReference.OwnerType.Id && x.GenericName == genericTypeReference.GenericName)
+                ?? genericTypeReference,
+            GenericTypeReference { ResolvedType: { } resolvedType } => InstantiateTypeReference(resolvedType, typeArguments, inScopeTypeParameters),
             GenericPlaceholder placeholder =>
-                (ITypeReference?)typeArguments.FirstOrDefault(y => y.OwnerType.Id == placeholder.OwnerType.Id && y.GenericName == placeholder.GenericName) ?? placeholder,
-            InstantiatedUnion union => union.CloneWithTypeFilter(x => InstantiateTypeReference(x, typeArguments)),
-            InstantiatedClass klass => klass.CloneWithTypeFilter(x => InstantiateTypeReference(x, typeArguments)),
-            ArrayType { Length: not null } arrayType => new ArrayType(InstantiateTypeReference(arrayType.ElementType, typeArguments), arrayType.Boxed, arrayType.Length.Value),
-            ArrayType { Length: null } arrayType => new ArrayType(InstantiateTypeReference(arrayType.ElementType, typeArguments)),
+                (ITypeReference?)typeArguments.FirstOrDefault(y => y.OwnerType.Id == placeholder.OwnerType.Id && y.GenericName == placeholder.GenericName)
+                ?? (ITypeReference?)inScopeTypeParameters.FirstOrDefault(x => x.OwnerType.Id == placeholder.OwnerType.Id && x.GenericName == placeholder.GenericName)
+                ?? placeholder,
+            InstantiatedUnion union => union.CloneWithTypeFilter(x => InstantiateTypeReference(x, typeArguments, inScopeTypeParameters)),
+            InstantiatedClass klass => klass.CloneWithTypeFilter(x => InstantiateTypeReference(x, typeArguments, inScopeTypeParameters)),
+            ArrayType { Length: not null } arrayType => new ArrayType(InstantiateTypeReference(arrayType.ElementType, typeArguments, inScopeTypeParameters), arrayType.Boxed, arrayType.Length.Value),
+            ArrayType { Length: null } arrayType => new ArrayType(InstantiateTypeReference(arrayType.ElementType, typeArguments, inScopeTypeParameters)),
             FunctionObject functionObject => new FunctionObject(
-                [.. functionObject.Parameters.Select(x => new FunctionParameter(InstantiateTypeReference(x.Type, typeArguments), x.Mutable))],
-                InstantiateTypeReference(functionObject.ReturnType, typeArguments),
+                [.. functionObject.Parameters.Select(x => new FunctionParameter(InstantiateTypeReference(x.Type, typeArguments, inScopeTypeParameters), x.Mutable))],
+                InstantiateTypeReference(functionObject.ReturnType, typeArguments, inScopeTypeParameters),
                 functionObject.MutableReturn,
                 functionObject.IsBoxed
             ),

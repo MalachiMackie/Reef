@@ -116,8 +116,8 @@ public partial class TypeChecker
         }
 
         return new FunctionObject(
-            parameters: function.Parameters,
-            returnType: function.ReturnType,
+            parameters: function.GetParameters(),
+            returnType: function.GetReturnType(),
             function.MutableReturn, true);
     }
 
@@ -163,8 +163,8 @@ public partial class TypeChecker
         memberAccessExpression.MemberAccess.InstantiatedFunction = function;
 
         return new FunctionObject(
-            function.Parameters,
-            function.ReturnType,
+            function.GetParameters(),
+            function.GetReturnType(),
             function.MutableReturn, true);
     }
 }
