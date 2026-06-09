@@ -296,7 +296,7 @@ public class TypeTwoTypeChecker(
             matchExpression.Value.ResolvedType ?? throw new InvalidOperationException("expected resolved type"),
             PlaceValidity.ValidOnly,
             // random guess
-            complexityLimit: 15,
+            complexityLimit: 100,
             neverType);
 
         foreach (var (arm, usefulness) in usefulnessReport.ArmUsefulness)

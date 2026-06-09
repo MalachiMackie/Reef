@@ -5,26 +5,52 @@ pub fn tokenize(source: string): linked_list::<Token> {
 
     tokens.add(Token::Fn);
 
-    var mut i = 0;
-    while (i < source.Length) {
-        print_u64(i);
-        i = i + 1;
-    }
+    //var mut i = 0;
+    //while (i < source.Length) {
+    //    print_u64(i);
+    //    i = i + 1;
+    //}
 
     return tokens;
 }
 
 #[test]
 pub fn tokenize_keywords() {
-    var result = tokenize("fn");
-    if (result.get_length() != 1) {
-        print_string("unexpected length:");
-        print_u64(result.get_length());
+    var tests = [
+        ("fn", Token::Fn),
+        ("pub", Token::Pub),
+    ];
+
+    var failed_tests = 0;
+
+    var i = 0;
+    while (i < tests.Length) {
+        var test_data = tests[i];
+        var source = test_data.Item0;
+        var expected_token = test_data.Item1;
+        var result = tokenize(test_data.Item0);
+
+        print_string("testing: ");
+        print_string(source);
         print_string("\n");
-        panic();
+
+        if (result.get(0) matches option::Some(var found_token)) {
+            print_string("found token ");
+            print_string(found_token.to_string());
+            print_string("\n");
+            if (!Token::eq(found_token, expected_token)) {
+                failed_tests = failed_tests + 1;
+            }
+        }
+        else {
+            print_string("no token was found\n");
+            failed_tests = failed_tests + 1;
+        }
+
+        i = i + 1;
     }
-    if (!(result.get(0) matches option::Some(Token::Fn))) {
-        print_string("did not find expected token");
+
+    if (failed_tests > 0) {
         panic();
     }
 }
