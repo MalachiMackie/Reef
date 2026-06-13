@@ -1303,6 +1303,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                     extern _CRT_INIT
                     extern global_handle_exception
                     extern init_runtime
+                    extern deinit_runtime
                 {_codeSegment}
 
                 segment .rdata align=16
@@ -1379,6 +1380,9 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
 
         _codeSegment.AppendLine($"    add     rsp, {ShadowSpaceBytes}");
 
+        _codeSegment.AppendLine($"    sub     rsp, {ShadowSpaceBytes}");
+        _codeSegment.AppendLine($"    call    deinit_runtime");
+        _codeSegment.AppendLine($"    add     rsp, {ShadowSpaceBytes}");
 
         // zero out rax as return value
         _codeSegment.AppendLine($"    xor     {Register.A.ToAsm(PointerSize)}, {Register.A.ToAsm(PointerSize)}");
@@ -1387,8 +1391,16 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         _codeSegment.AppendLine("    call    ExitProcess");
         _codeSegment.AppendLine("    jmp     main_end");
         _codeSegment.AppendLine($"unhandled_exception_continue:");
+
+        _codeSegment.AppendLine($"    sub     rsp, {ShadowSpaceBytes}");
+        _codeSegment.AppendLine($"    call    deinit_runtime");
+        _codeSegment.AppendLine($"    add     rsp, {ShadowSpaceBytes}");
+
+
+        _codeSegment.AppendLine($"; Set exit code to 1");
         _codeSegment.AppendLine($"    mov     {Register.A.ToAsm(PointerSize)}, 1");
         _codeSegment.AppendLine($"    mov     {Register.C.ToAsm(PointerSize)}, {Register.A.ToAsm(PointerSize)}");
+
         _codeSegment.AppendLine("    call    ExitProcess");
         _codeSegment.AppendLine("main_end:");
         _codeSegment.AppendLine();

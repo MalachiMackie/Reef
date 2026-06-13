@@ -64,20 +64,28 @@ public class IntegrationTestBase
             Assert.Fail($"Expected Exe file to exist: {exeFileName}");
         }
 
+        testLogger.LogInformation("Running exe: {Exe}", exeFileName);
+
         var process = new Process
         {
             StartInfo = new ProcessStartInfo(exeFileName)
             {
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
             },
         };
 
         process.Start();
 
-        var output = await process.StandardOutput.ReadToEndAsync();
-        var stdError = await process.StandardError.ReadToEndAsync();
+        var outputTask = process.StandardOutput.ReadToEndAsync();
+        var errorTask = process.StandardError.ReadToEndAsync();
+
         await process.WaitForExitAsync();
+
+        var output = await outputTask;
+        var stdError = await errorTask;
 
         testLogger.LogInformation(output);
 

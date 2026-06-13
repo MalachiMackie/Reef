@@ -287,6 +287,22 @@ void print_string_slice(string_slice slice) {
     }
 }
 
+void print_size_t_hex(size_t value)
+{
+    int started = 0;
+
+    for (int i = (int)(sizeof(size_t) * 2) - 1; i >= 0; --i)
+    {
+        unsigned digit = (value >> (i * 4)) & 0xF;
+
+        if (digit != 0 || started || i == 0)
+        {
+            started = 1;
+            putchar(digit < 10 ? '0' + digit : 'A' + (digit - 10));
+        }
+    }
+}
+
 void print_string(StringBoxedValue *str)
 {
     // strings are always null terminated
@@ -327,21 +343,7 @@ DEFINE_PRINT_INT(print_u16, uint16_t)
 DEFINE_PRINT_INT(print_u32, uint32_t)
 DEFINE_PRINT_INT(print_u64, uint64_t)
 
-void print_size_t_hex(size_t value)
-{
-    int started = 0;
 
-    for (int i = (int)(sizeof(size_t) * 2) - 1; i >= 0; --i)
-    {
-        unsigned digit = (value >> (i * 4)) & 0xF;
-
-        if (digit != 0 || started || i == 0)
-        {
-            started = 1;
-            putchar(digit < 10 ? '0' + digit : 'A' + (digit - 10));
-        }
-    }
-}
 
 void print_method_info(MethodInfo* handle)
 {
@@ -515,6 +517,10 @@ Heap* heaps;
 void init_runtime() {
     assert(typeInfoSize == sizeof(TypeInfo));
     assert(methodInfoSize == sizeof(MethodInfo));
+}
+
+void deinit_runtime() {
+    fflush(stdout);
 }
 
 void* allocate_inside_heap(Heap *heap, uint64_t size) {

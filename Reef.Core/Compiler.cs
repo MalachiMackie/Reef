@@ -1,13 +1,10 @@
 ﻿using System.Diagnostics;
 using System.IO.Abstractions;
-using System.Text;
 using Microsoft.Extensions.Logging;
 using Reef.Core.Abseil;
-using Reef.Core.Expressions;
 using Reef.Core.LoweredExpressions;
 
 namespace Reef.Core;
-
 
 public class Compiler
 {
@@ -75,8 +72,6 @@ public class Compiler
         logger.LogInformation("Lowering...");
         var allModules = typeCheckResults.Select(x => x.Value.Module.NotNull()).Concat(importedModules).ToDictionary(x => x.ModuleId);
 
-
-
         var loweredProgram = ProgramAbseil.Lower(
             allModules,
             mainModuleId,
@@ -91,130 +86,7 @@ public class Compiler
                 ct);
         }
 
-        logger.LogInformation("Generating Assembly...");
-
-        var usefulMethodIds = new TreeShaker(loweredProgram).Shake();
-
-        if (usefulMethodIds.Count == 0)
-        {
-            logger.LogError("No main method was found");
-            return false;
-        }
-
-        var assembly =
-            AssemblyLine.Process(loweredProgram, usefulMethodIds, logger);
-        var asmFile = $"{programName}.nasm";
-        await File.WriteAllTextAsync(Path.Join(buildDirectory, asmFile), assembly, ct);
-
-        var objFile = $"{programName}.obj";
-        // todo: move out to its own process, so Reef.Core doesn't interact with the file system
-        var nasmProcess = new Process
-        {
-            StartInfo = new ProcessStartInfo(
-                @"C:\Programs\nasm-3.00\nasm.exe",
-                [
-                    "-F", "cv8",
-                    "-f", "win64",
-                    "-o", Path.Join(buildDirectory, objFile),
-                    Path.Join(buildDirectory, asmFile),
-                ])
-            {
-                CreateNoWindow = true,
-                RedirectStandardError = true,
-                RedirectStandardOutput = true
-            }
-        };
-
-        logger.LogInformation("Assembling...");
-        nasmProcess.Start();
-
-        ct.Register(() =>
-        {
-            nasmProcess.Kill(true);
-        });
-
-
-        var nasmError = await nasmProcess.StandardError.ReadToEndAsync(ct);
-
-        if (nasmError.Length > 0)
-            logger.LogError("NasmError: {Error}", nasmError);
-
-        var nasmOutput = await nasmProcess.StandardOutput.ReadToEndAsync(ct);
-
-        if (nasmOutput.Length > 0)
-            logger.LogInformation("{NasmOutput}", nasmOutput);
-
-        await nasmProcess.WaitForExitAsync(ct);
-
-        if (nasmProcess.ExitCode != 0)
-        {
-            return false;
-        }
-
-        // var msvcVersion = "14.40.33807";
-        var msvcVersion = "14.41.34120";
-
-
-        // var windowsKitsVersion = "10.0.22621.0";
-        var windowsKitsVersion = "10.0.22000.0";
-
-        logger.LogInformation("Linking...");
-
-        var assemblyDirectory = Path.GetDirectoryName(typeof(Compiler).Assembly.Location).NotNull();
-
-        var runtimeLibraryLocation = Path.Combine(assemblyDirectory, "reef-runtime.lib");
-        var runtimeLibraryPdb = Path.Combine(assemblyDirectory, "reef-runtime.pdb");
-        File.Copy(runtimeLibraryPdb, Path.Combine(buildDirectory, "reef-runtime.pdb"), overwrite: true);
-
-        var linkProcess = new Process
-        {
-            StartInfo = new ProcessStartInfo(
-                $@"C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\{msvcVersion}\bin\HostX64\x64\link.exe",
-                [
-                    $"{Path.Join(buildDirectory, objFile)}",
-                    "/nologo",
-                    "/subsystem:console",
-                    $"/out:{Path.Join(buildDirectory, $"{programName}.exe")}",
-                    "/machine:x64",
-                    $"{runtimeLibraryLocation}",
-                    $"C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\{windowsKitsVersion}\\um\\x64\\kernel32.lib",
-                    $"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\{msvcVersion}\\lib\\x64\\legacy_stdio_definitions.lib",
-                    $"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\{msvcVersion}\\lib\\x64\\legacy_stdio_wide_specifiers.lib",
-                    $"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\{msvcVersion}\\lib\\x64\\vcruntimed.lib",
-                    // $"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\{msvcVersion}\\lib\\x64\\vcruntime.lib",
-                    $"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\{msvcVersion}\\lib\\x64\\msvcrtd.lib",
-                    // $"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\{msvcVersion}\\lib\\x64\\msvcrt.lib",
-                    $"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\{msvcVersion}\\lib\\x64\\oldnames.lib",
-                    // $"C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\{windowsKitsVersion}\\ucrt\\x64\\ucrt.lib",
-                    $"C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\{windowsKitsVersion}\\ucrt\\x64\\ucrtd.lib",
-                    $"C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\{windowsKitsVersion}\\um\\x64\\uuid.lib",
-                    "/debug:full",
-                    "/incremental:no"
-                ])
-            {
-                CreateNoWindow = true,
-                RedirectStandardError = true,
-                RedirectStandardOutput = true
-            }
-        };
-
-        linkProcess.Start();
-
-        ct.Register(linkProcess.Kill);
-
-        var linkOutput = await linkProcess.StandardOutput.ReadToEndAsync(ct);
-        var linkError = await linkProcess.StandardError.ReadToEndAsync(ct);
-
-        if (linkOutput.Length > 0)
-            logger.LogInformation("{LinkOutput}", linkOutput);
-        if (linkError.Length > 0)
-            logger.LogError("{LinkError}", linkError);
-
-        await linkProcess.WaitForExitAsync(ct);
-
-        logger.LogInformation("Done!");
-
-        return linkProcess.ExitCode == 0;
+        return await BuildExeFromLoweredCode(loweredProgram, programName, buildDirectory, logger, ct);
     }
 
     public static async Task<bool> Compile(
@@ -293,21 +165,11 @@ public class Compiler
                 ct);
         }
 
-        logger.LogInformation("Generating Assembly...");
+        return await BuildExeFromLoweredCode(loweredProgram, programName, buildDirectory, logger, ct);
+    }
 
-        var usefulMethodIds = new TreeShaker(loweredProgram).Shake();
-
-        if (usefulMethodIds.Count == 0)
-        {
-            logger.LogError("No main method was found");
-            return false;
-        }
-
-        var assembly =
-            AssemblyLine.Process(loweredProgram, usefulMethodIds, logger);
-        var asmFile = $"{programName}.nasm";
-        await File.WriteAllTextAsync(Path.Join(buildDirectory, asmFile), assembly, ct);
-
+    private static async Task<(bool, string)> Assemble(string programName, string buildDirectory, string asmFile, ILogger logger, CancellationToken ct)
+    {
         var objFile = $"{programName}.obj";
         // todo: move out to its own process, so Reef.Core doesn't interact with the file system
         var nasmProcess = new Process
@@ -335,7 +197,6 @@ public class Compiler
             nasmProcess.Kill(true);
         });
 
-
         var nasmError = await nasmProcess.StandardError.ReadToEndAsync(ct);
 
         if (nasmError.Length > 0)
@@ -348,18 +209,73 @@ public class Compiler
 
         await nasmProcess.WaitForExitAsync(ct);
 
-        if (nasmProcess.ExitCode != 0)
+        return (nasmProcess.ExitCode == 0, objFile);
+    }
+
+    // cache dev env vars because they don't change
+    private static Dictionary<string, string?>? _devEnvVars;
+    private static readonly Lock _devEnvVarsLock = new();
+    private static async Task<Dictionary<string, string?>> GetVSDevEnvVars(ILogger logger, CancellationToken ct)
+    {
+        lock (_devEnvVarsLock)
         {
-            return false;
+            if (_devEnvVars is not null)
+            {
+                logger.LogInformation("Using cached dev env vars");
+                return _devEnvVars;
+            }
+            logger.LogInformation("No cached dev env vars found");
         }
 
-        // var msvcVersion = "14.40.33807";
-        var msvcVersion = "14.41.34120";
+        var vsDevCmd = @"C:\Program Files\Microsoft Visual Studio\18\Community\Common7\Tools\VsDevCmd.bat";
 
+        var psi = new ProcessStartInfo
+        {
+            FileName = "cmd.exe",
+            Arguments = $"/c \"\"{vsDevCmd}\" -arch=x64 -host_arch=x64 && set\"",
+            RedirectStandardOutput = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
 
-        // var windowsKitsVersion = "10.0.22621.0";
-        var windowsKitsVersion = "10.0.22000.0";
+        var env = new Dictionary<string, string?>();
 
+        using var p = Process.Start(psi) ?? throw new InvalidOperationException();
+
+        var lines = await p.StandardOutput.ReadToEndAsync(ct);
+        foreach (var line in lines.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            var idx = line.IndexOf('=');
+            if (idx > 0)
+            {
+                var key = line[..idx];
+                var value = line[(idx + 1)..];
+                env[key] = value;
+            }
+        }
+        await p.WaitForExitAsync(ct);
+
+        lock (_devEnvVarsLock)
+        {
+            if (_devEnvVars is not null)
+            {
+                // devEnvVars was written to in the time we ran the command, so just discard what we just did
+                return _devEnvVars;
+            }
+
+            _devEnvVars = env;
+        }
+
+        return _devEnvVars;
+    }
+
+    private static async Task<bool> Link(
+        string buildDirectory,
+        string objFile,
+        string programName,
+        ILogger logger,
+        CancellationToken ct)
+    {
         logger.LogInformation("Linking...");
 
         var assemblyDirectory = Path.GetDirectoryName(typeof(Compiler).Assembly.Location).NotNull();
@@ -368,36 +284,55 @@ public class Compiler
         var runtimeLibraryPdb = Path.Combine(assemblyDirectory, "reef-runtime.pdb");
         File.Copy(runtimeLibraryPdb, Path.Combine(buildDirectory, "reef-runtime.pdb"), overwrite: true);
 
+        var vsPath = await GetVSInstallPath(logger, ct);
+        if (string.IsNullOrWhiteSpace(vsPath))
+        {
+            throw new InvalidOperationException("Could not find vs installation");
+        }
+
+        logger.LogInformation("VS Installation Path: {Path}", vsPath);
+
+        var msvcBase = Path.Combine(vsPath, "VC", "Tools", "MSVC");
+
+        var versionDir = Directory.GetDirectories(msvcBase)
+            .OrderByDescending(x => x)
+            .First();
+
+        var clPath = Path.Combine(versionDir, "bin", "HostX64", "x64", "cl.exe");
+        var linkPath = Path.Combine(versionDir, "bin", "HostX64", "x64", "link.exe");
+
+        var linkProcessStartInfo = new ProcessStartInfo(
+            linkPath,
+            [
+                // "/Zs", // no compilation, just linking
+                $"{Path.Join(buildDirectory, objFile)}",
+
+                // "/link", // following are linker flags
+                "/nologo",
+                "/subsystem:console",
+                $"/out:{Path.Join(buildDirectory, $"{programName}.exe")}",
+                "/machine:x64",
+                "/debug:full",
+                "/incremental:no",
+                "/defaultlib:libcmt.lib",
+                runtimeLibraryLocation,
+            ])
+        {
+            CreateNoWindow = true,
+            RedirectStandardError = true,
+            RedirectStandardOutput = true,
+        };
+
+        var env = await GetVSDevEnvVars(logger, ct);
+
+        foreach (var kv in env)
+        {
+            linkProcessStartInfo.Environment[kv.Key] = kv.Value;
+        }
+
         var linkProcess = new Process
         {
-            StartInfo = new ProcessStartInfo(
-                $@"C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\{msvcVersion}\bin\HostX64\x64\link.exe",
-                [
-                    $"{Path.Join(buildDirectory, objFile)}",
-                    "/nologo",
-                    "/subsystem:console",
-                    $"/out:{Path.Join(buildDirectory, $"{programName}.exe")}",
-                    "/machine:x64",
-                    $"{runtimeLibraryLocation}",
-                    $"C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\{windowsKitsVersion}\\um\\x64\\kernel32.lib",
-                    $"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\{msvcVersion}\\lib\\x64\\legacy_stdio_definitions.lib",
-                    $"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\{msvcVersion}\\lib\\x64\\legacy_stdio_wide_specifiers.lib",
-                    $"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\{msvcVersion}\\lib\\x64\\vcruntimed.lib",
-                    // $"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\{msvcVersion}\\lib\\x64\\vcruntime.lib",
-                    $"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\{msvcVersion}\\lib\\x64\\msvcrtd.lib",
-                    // $"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\{msvcVersion}\\lib\\x64\\msvcrt.lib",
-                    $"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\{msvcVersion}\\lib\\x64\\oldnames.lib",
-                    // $"C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\{windowsKitsVersion}\\ucrt\\x64\\ucrt.lib",
-                    $"C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\{windowsKitsVersion}\\ucrt\\x64\\ucrtd.lib",
-                    $"C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\{windowsKitsVersion}\\um\\x64\\uuid.lib",
-                    "/debug:full",
-                    "/incremental:no"
-                ])
-            {
-                CreateNoWindow = true,
-                RedirectStandardError = true,
-                RedirectStandardOutput = true
-            }
+            StartInfo = linkProcessStartInfo
         };
 
         linkProcess.Start();
@@ -414,8 +349,71 @@ public class Compiler
 
         await linkProcess.WaitForExitAsync(ct);
 
+        return linkProcess.ExitCode == 0;
+    }
+
+    private static string? _vsInstallPath;
+    private static readonly Lock _vsInstallPathLock = new();
+
+    private static async Task<string> GetVSInstallPath(ILogger logger, CancellationToken ct)
+    {
+        lock (_vsInstallPathLock)
+        {
+            if (_vsInstallPath is not null)
+            {
+                logger.LogInformation("Using cached vs install path");
+                return _vsInstallPath;
+            }
+            logger.LogInformation("No cached vs install path found");
+        }
+
+        var vswhere = @"C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe";
+
+        var psi = new ProcessStartInfo
+        {
+            FileName = vswhere,
+            Arguments = "-latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath",
+            RedirectStandardOutput = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+        var vsInstallPath = await Process.Start(psi)!.StandardOutput.ReadToEndAsync(ct);
+
+        lock (_vsInstallPathLock)
+        {
+            _vsInstallPath ??= vsInstallPath.Trim();
+        }
+
+        return _vsInstallPath;
+    }
+
+    private static async Task<bool> BuildExeFromLoweredCode(LoweredProgram loweredProgram, string programName, string buildDirectory, ILogger logger, CancellationToken ct)
+    {
+        logger.LogInformation("Generating Assembly...");
+
+        var usefulMethodIds = new TreeShaker(loweredProgram).Shake();
+
+        if (usefulMethodIds.Count == 0)
+        {
+            logger.LogError("No main method was found");
+            return false;
+        }
+
+        var assembly =
+            AssemblyLine.Process(loweredProgram, usefulMethodIds, logger);
+        var asmFile = $"{programName}.nasm";
+        await File.WriteAllTextAsync(Path.Join(buildDirectory, asmFile), assembly, ct);
+
+        var (nasmResult, objFile) = await Assemble(programName, buildDirectory, asmFile, logger, ct);
+        if (!nasmResult)
+        {
+            return false;
+        }
+
+        var linkResult = await Link(buildDirectory, objFile, programName, logger, ct);
+
         logger.LogInformation("Done!");
 
-        return linkProcess.ExitCode == 0;
+        return linkResult;
     }
 }

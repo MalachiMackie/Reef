@@ -7,6 +7,7 @@
         <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
         <RootNamespace>Reef.Core</RootNamespace>
         <LangVersion>default</LangVersion>
+        <NoWarn>CA1873</NoWarn>
     </PropertyGroup>
 
     <ItemGroup>
@@ -21,11 +22,11 @@
         <EmbeddedResource Include="..\reef-std\Diagnostics.rf" LogicalName="reef-std\Diagnostics.rf" />
         <EmbeddedResource Include="..\reef-std\Reflection.rf" LogicalName="reef-std\Reflection.rf" />
 
-        <None Include="..\reef-runtime\cmake-build-debug-visual-studio\reef-runtime.pdb">
+        <None Include="..\reef-runtime\build\reef-runtime.pdb">
             <Link>reef-runtime.pdb</Link>
             <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </None>
-        <None Include="..\reef-runtime\cmake-build-debug-visual-studio\reef-runtime.lib">
+        <None Include="..\reef-runtime\build\reef-runtime.lib">
             <Link>reef-runtime.lib</Link>
             <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </None>
