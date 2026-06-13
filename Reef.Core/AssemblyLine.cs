@@ -1551,10 +1551,16 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                         break;
                     }
 
+                    if (concreteTypeReference.DefinitionId == DefId.Unit)
+                    {
+                        size = 0;
+                        alignment = 1;
+                        break;
+                    }
+
                     if (concreteTypeReference.DefinitionId == DefId.Int8
                         || concreteTypeReference.DefinitionId == DefId.UInt8
-                        || concreteTypeReference.DefinitionId == DefId.Boolean
-                        || concreteTypeReference.DefinitionId == DefId.Unit)
+                        || concreteTypeReference.DefinitionId == DefId.Boolean)
                     {
                         size = 1;
                         alignment = 1;
@@ -2488,8 +2494,22 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                 }
             case Assert assert:
                 {
-                    // TODO: actually assert
-                    ProcessTerminator(new GoTo(assert.GoTo), currentTypeArguments);
+                    var register = AllocateRegister();
+                    var type = GetOperandType(assert.Value, currentTypeArguments);
+                    Debug.Assert(type is LoweredConcreteTypeReference { DefinitionId: var defId } && defId == DefId.Boolean);
+                    var size = GetTypeSize(type, currentTypeArguments);
+
+                    MoveOperandToDestination(assert.Value, register, currentTypeArguments);
+                    _methodBody.AppendLine($"    cmp     {register.ToAsm(size.Size.NotNull())}, 1");
+                    _methodBody.AppendLine($"    je     {GetBasicBlockLabel(assert.GoTo)}");
+
+                    _methodBody.AppendLine($"    sub     rsp, {ShadowSpaceBytes}");
+                    _methodBody.AppendLine("    call    panic");
+                    _methodBody.AppendLine($"    add     rsp, {ShadowSpaceBytes}");
+
+                    _methodBody.AppendLine($"    jmp     {GetBasicBlockLabel(assert.GoTo)}");
+
+                    FreeRegister(register);
                     break;
                 }
             default:
@@ -3187,6 +3207,12 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
 
     private void MoveIntoPlace(IAsmPlace destination, IAsmPlace source, uint size)
     {
+        if (size == 0)
+        {
+            // noop
+            return;
+        }
+
         switch (source)
         {
             case PointerTo pointerTo:
@@ -3336,6 +3362,11 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
 
     private void MoveIntoPlace(IAsmPlace place, string constantValue, uint size)
     {
+        if (size == 0)
+        {
+            return;
+        }
+
         Debug.Assert(size <= SizeSpecifiers.Keys.Max());
         switch (place)
         {

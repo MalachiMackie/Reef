@@ -18,6 +18,32 @@ public class ArrayTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task AccessArrayOutOfBounds_EmptyArray()
+    {
+        await SetupTest(
+            """
+            var a: [string; 0] = [];
+            var b = a[0];
+            """);
+
+        var result = await Run();
+        result.ExitCode.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task AccessArrayOutOfBounds_PopulatedArray()
+    {
+        await SetupTest(
+            """
+            var a = ["hi"];
+            var b = a[1];
+            """);
+
+        var result = await Run();
+        result.ExitCode.Should().Be(1);
+    }
+
+    [Fact]
     public async Task CreateArrayWithItem()
     {
         await SetupTest(

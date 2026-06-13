@@ -4,7 +4,7 @@ namespace Reef.Core;
 
 public class TreeShaker(LoweredProgram program)
 {
-    private readonly HashSet<DefId> _usefulMethodDefIds = [];
+    private readonly HashSet<DefId> _usefulMethodDefIds = [DefId.Panic];
     private readonly Dictionary<DefId, IMethod> _methods = program.Methods
         .ToDictionary(x => x.Id);
 
