@@ -8,6 +8,11 @@ public partial class TypeChecker
 {
     private FunctionSignature TypeCheckFunctionSignature(DefId defId, LangFunction fn, ITypeSignature? ownerType)
     {
+        if (fn.Name.StringValue == "Self")
+        {
+            AddError(TypeCheckerError.DefinitionNameCannotBeSelf(fn.Name));
+        }
+
         if (fn.ExternModifier is { Token.Type: TokenType.Extern } && fn.Block is not null)
         {
             AddError(TypeCheckerError.ExternFunctionDefinesBody(fn.Name));

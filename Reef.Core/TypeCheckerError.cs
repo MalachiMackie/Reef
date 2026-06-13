@@ -499,6 +499,13 @@ public record TypeCheckerError
         );
     }
 
+    public static TypeCheckerError DefinitionNameCannotBeSelf(StringToken name)
+    {
+        return new(
+            TypeCheckerErrorType.DefinitionNameCannotBeSelf,
+            new SourceRange(name.SourceSpan, name.SourceSpan),
+            $"Definition name \"Self\" is reserved");
+    }
 }
 
 public enum TypeCheckerErrorType
@@ -569,5 +576,7 @@ public enum TypeCheckerErrorType
     GrabNotLastInBlock,
     GrabNotInBlock,
     NonIndexableType,
-    UninitializableType
+    UninitializableType,
+    DefinitionNameCannotBeSelf
+
 }

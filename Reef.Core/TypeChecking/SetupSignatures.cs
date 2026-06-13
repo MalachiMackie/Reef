@@ -49,6 +49,11 @@ public partial class TypeChecker
                     IsPublic = union.AccessModifier is { Token.Type: TokenType.Pub }
                 };
 
+                if (union.Name.StringValue == "Self")
+                {
+                    AddError(TypeCheckerError.DefinitionNameCannotBeSelf(union.Name));
+                }
+
                 var (moduleFunctions, moduleUnions, moduleClasses, moduleAttributes) = _moduleSignatures[CurrentModuleId];
                 if (moduleUnions.Select(x => x.Name)
                     .Concat(moduleClasses.Select(x => x.Name))
@@ -98,6 +103,12 @@ public partial class TypeChecker
                     },
                     IsPublic = klass.AccessModifier is { Token.Type: TokenType.Pub }
                 };
+
+
+                if (klass.Name.StringValue == "Self")
+                {
+                    AddError(TypeCheckerError.DefinitionNameCannotBeSelf(klass.Name));
+                }
 
                 var (moduleFunctions, moduleUnions, moduleClasses, moduleAttributes) = _moduleSignatures[CurrentModuleId];
                 if (moduleUnions.Select(x => x.Name)

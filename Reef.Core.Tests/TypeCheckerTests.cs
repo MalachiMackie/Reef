@@ -124,6 +124,66 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     "main.rf",
                     """
+                    union MyUnion {
+                        A,
+                        pub static fn something() {
+                            var x: Self = Self::A;
+                        }
+                    }
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    union MyUnion {
+                        pub fn something() {
+                            var x: Self = this;
+                        }
+                    }
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    class MyUnion<T>{
+                        pub fn something() {
+                            var x: Self = this;
+                        }
+                    }
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    unboxed union MyUnion<T>{
+                        A,
+                        B(T),
+
+                        pub fn something(): T {
+                            return match (this)
+                            {
+                                Self::A => todo!,
+                                Self::B(var x) => x,
+                            };
+                        }
+                    }
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
                     union MyUnion<T>{
                         A,
                         B(T),
@@ -131,8 +191,8 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                         pub fn something(): T {
                             return match (this)
                             {
-                                MyUnion::A => todo!,
-                                MyUnion::B(var x) => x,
+                                Self::A => todo!,
+                                Self::B(var x) => x,
                             };
                         }
                     }
@@ -3559,7 +3619,51 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
         return new TheoryData<string, Dictionary<string, (string contents, IReadOnlyList<TypeCheckerError> expectedErrors)>>
         {
             {
-                "",
+                "Self used in non type context",
+                new()
+                {
+                    {
+                    "main.rf", ("""
+                                var x: Self = todo!;
+                                """, [TypeCheckerError.SymbolNotFound(Identifier("Self"))])
+                    }
+                }
+            },
+            {
+                "class named self",
+                new()
+                {
+                    {
+                    "main.rf", ("""
+                                class Self {}
+                                """, [TypeCheckerError.DefinitionNameCannotBeSelf(Identifier("Self"))])
+                    }
+                }
+            },
+            {
+                "union named self",
+                new()
+                {
+                    {
+                    "main.rf", ("""
+                                union Self {}
+                                """, [TypeCheckerError.DefinitionNameCannotBeSelf(Identifier("Self"))])
+                    }
+                }
+            },
+            {
+                "function named self",
+                new()
+                {
+                    {
+                    "main.rf", ("""
+                                fn Self() {}
+                                """, [TypeCheckerError.DefinitionNameCannotBeSelf(Identifier("Self"))])
+                    }
+                }
+            },
+            {
+                "access private static member",
                 new()
                 {
                     {
@@ -3571,7 +3675,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 }
             },
             {
-                "",
+                "object initializer for type with private field",
                 new()
                 {
                     {

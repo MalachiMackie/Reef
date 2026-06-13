@@ -768,6 +768,44 @@ public partial class TypeChecker
     {
         var identifierName = typeIdentifier.Identifier.StringValue;
 
+        if (identifierName == "Self")
+        {
+            switch (CurrentTypeSignature)
+            {
+                case null:
+                    {
+                        AddError(TypeCheckerError.SymbolNotFound(typeIdentifier.Identifier));
+                        return UnknownType.Instance;
+                    }
+                case ClassSignature classSignature:
+                    {
+                        return InstantiateClass(
+                            classSignature,
+                            [.. classSignature.TypeParameters.Select(x => (x, SourceRange.Default))],
+                            CurrentFunctionSignature is { IsStatic: false }
+                                // if we're in an instance function, then self type should be boxed
+                                ? Token.Boxed(SourceSpan.Default)
+                                : null,
+                            SourceRange.Default);
+                    }
+                case UnionSignature unionSignature:
+                    {
+                        return InstantiateUnion(
+                            unionSignature,
+                            [.. unionSignature.TypeParameters.Select(x => (x, SourceRange.Default))],
+                            CurrentFunctionSignature is { IsStatic: false }
+                                // if we're in an instance function, then self type should be boxed
+                                ? Token.Boxed(SourceSpan.Default)
+                                : null,
+                            SourceRange.Default);
+                    }
+                default:
+                    {
+                        throw new InvalidOperationException(CurrentTypeSignature.GetType().ToString());
+                    }
+            }
+        }
+
         if (SearchForType(
             identifierName,
             [.. typeIdentifier.ModulePath.Select(x => x.StringValue)],
