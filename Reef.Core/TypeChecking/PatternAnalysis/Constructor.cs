@@ -90,6 +90,11 @@ public interface IConstructor
             return new VariantsConstructorSet(variants, NonExhaustive: false);
         }
 
+        if (type is TypeChecker.GenericPlaceholder)
+        {
+            return new NoConstructorsConstructorSet();
+        }
+
         var klass = type switch
         {
             TypeChecker.InstantiatedClass x => x,

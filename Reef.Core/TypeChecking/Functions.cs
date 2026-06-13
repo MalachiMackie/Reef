@@ -207,8 +207,16 @@ public partial class TypeChecker
                     "this",
                     new ThisVariable(fnSignature.OwnerType switch
                     {
-                        ClassSignature c => InstantiateClass(c, boxedSpecifier: Token.Boxed(SourceSpan.Default)),
-                        UnionSignature u => InstantiateUnion(u, [], boxingSpecifier: Token.Boxed(SourceSpan.Default), sourceRange: SourceRange.Default),
+                        ClassSignature c => InstantiateClass(
+                            c,
+                            typeArguments: [.. c.TypeParameters.Select(x => (x, SourceRange.Default))],
+                            boxedSpecifier: Token.Boxed(SourceSpan.Default),
+                            SourceRange.Default),
+                        UnionSignature u => InstantiateUnion(
+                            u,
+                            [.. u.TypeParameters.Select(x => (x, SourceRange.Default))],
+                            boxingSpecifier: Token.Boxed(SourceSpan.Default),
+                            sourceRange: SourceRange.Default),
                         _ => throw new UnreachableException()
                     }));
         }

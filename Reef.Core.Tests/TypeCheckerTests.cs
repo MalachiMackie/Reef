@@ -124,6 +124,26 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     "main.rf",
                     """
+                    union MyUnion<T>{
+                        A,
+                        B(T),
+
+                        pub fn something(): T {
+                            return match (this)
+                            {
+                                MyUnion::A => todo!,
+                                MyUnion::B(var x) => x,
+                            };
+                        }
+                    }
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
                     union MyUnion {
                         A(string)
                     }
