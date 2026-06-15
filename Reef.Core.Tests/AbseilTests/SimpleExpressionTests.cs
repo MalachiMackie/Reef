@@ -1,4 +1,3 @@
-using Reef.Core.Abseil;
 using Reef.Core.LoweredExpressions;
 using static Reef.Core.Tests.LoweredProgramHelpers;
 
@@ -9,53 +8,103 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
     [Fact]
     public async Task SingleTest()
     {
-        var source =
-                        """
-                        var a = {
-                            print_string("hi");
-                            grab true;
-                        };
-
-                        if ({grab false;}) {
-                            print_string("bye");
+        var source = """
+                        class MyClass
+                        {
+                            pub fn to_string(): string {
+                                return "MyClass";
+                            }
                         }
-
+                        var a = (new MyClass{}, new MyClass{});
+                        var b = a.Item0.to_string();
+                        var c = a.Item1.to_string();
                         """;
-        var expectedProgram = LoweredProgram(ModuleId, methods: [
-            Method(new DefId(ModuleId, $"{ModuleId}:::_Main"),
-                                "_Main",
-                                [
-                                    new BasicBlock(
-                                        BB0,
-                                        [],
-                                        new MethodCall(
-                                            new LoweredFunctionReference(DefId.PrintString, []),
-                                            [new StringConstant("hi")],
-                                            Local1,
-                                            BB1)
-                                    ),
-                                    new BasicBlock(
-                                        BB1,
-                                        [new Assign(Local0, new Use(new BoolConstant(true)))],
-                                        new SwitchInt(new BoolConstant(false), new(){ { 0, BB3 } }, BB2)
-                                    ),
-                                    new BasicBlock(
-                                        BB2,
-                                        [],
-                                        new MethodCall(
-                                            new LoweredFunctionReference(DefId.PrintString, []),
-                                            [new StringConstant("bye")],
-                                            Local2,
-                                            BB3)),
-                                    new BasicBlock(BB3, [], new Return())
-                                ],
-                                Unit,
-                                locals: [
-                                    new MethodLocal("_local0", "a", BooleanT),
-                                    new MethodLocal("_local1", null, Unit),
-                                    new MethodLocal("_local2", null, Unit),
-                                ])
-        ]);
+        var expectedProgram = LoweredProgram(ModuleId,
+            types: [
+                DataType(
+                                    ModuleId,
+                                    "MyClass",
+                                    variants: [Variant("_classVariant")])],
+            methods: [
+                Method(
+                                    new DefId(ModuleId, $"{ModuleId}:::MyClass__to_string"),
+                                    "MyClass__to_string",
+                                    [
+                                        new BasicBlock(
+                                            BB0,
+                                            [new Assign(new Local("_returnValue"), new Use(new StringConstant("MyClass")))],
+                                            new Return()
+                                        ),
+                                    ],
+                                    returnType: StringT,
+                                    parameters: [
+                                        (
+                                            "this",
+                                            new LoweredPointer(BoxedValue(ConcreteTypeReference("MyClass", ModuleId)))
+                                        )
+                                    ]),
+                                Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
+                                    [
+                                        new BasicBlock(
+                                            BB0,
+                                            [
+                                                new Assign(
+                                                    Local0,
+                                                    new CreateObject(
+                                                        Tuple(
+                                                            new LoweredPointer(BoxedValue(ConcreteTypeReference("MyClass", ModuleId))),
+                                                            new LoweredPointer(BoxedValue(ConcreteTypeReference("MyClass", ModuleId))))))
+                                            ],
+                                            AllocateMethodCall(
+                                                BoxedValue(ConcreteTypeReference("MyClass", ModuleId)),
+                                                new Field(Local0, "Item0", "_classVariant"),
+                                                BB1)
+                                        ),
+                                        new BasicBlock(
+                                            BB1,
+                                            [
+                                                ..CreateBoxedObject(
+                                                    new Deref(new Field(Local0, "Item0", "_classVariant")),
+                                                    ConcreteTypeReference("MyClass", ModuleId))
+                                            ],
+                                            AllocateMethodCall(
+                                                BoxedValue(ConcreteTypeReference("MyClass", ModuleId)),
+                                                new Field(Local0, "Item1", "_classVariant"),
+                                                BB2)),
+                                        new BasicBlock(
+                                            BB2,
+                                            [
+                                                ..CreateBoxedObject(
+                                                    new Deref(new Field(Local0, "Item1", "_classVariant")),
+                                                    ConcreteTypeReference("MyClass", ModuleId))
+                                            ],
+                                            new MethodCall(
+                                                new LoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}:::MyClass__to_string"), []),
+                                                [new Copy(new Field(Local0, "Item0", "_classVariant"))],
+                                                Local1,
+                                                BB3)),
+                                        new BasicBlock(
+                                            BB3,
+                                            [],
+                                            new MethodCall(
+                                                new LoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}:::MyClass__to_string"), []),
+                                                [new Copy(new Field(Local0, "Item1", "_classVariant"))],
+                                                Local2,
+                                                BB4)),
+                                        new BasicBlock(BB4, [], new Return())
+                                    ],
+                                    Unit,
+                                    locals: [
+                                        new MethodLocal(
+                                            "_local0",
+                                            "a",
+                                            Tuple(
+                                                new LoweredPointer(BoxedValue(ConcreteTypeReference("MyClass", ModuleId))),
+                                                new LoweredPointer(BoxedValue(ConcreteTypeReference("MyClass", ModuleId))))),
+                                        new MethodLocal("_local1", "b", StringT),
+                                        new MethodLocal("_local2", "c", StringT),
+                                    ])
+            ]);
 
         var program = await CreateProgram(ModuleId, source);
         var loweredProgram = Lower(program, ModuleId);
@@ -979,6 +1028,106 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                             Unit,
                             locals: [
                                 new MethodLocal("_local0", "a", Tuple(Int32T, StringT))
+                            ])
+                    ])
+            },
+            {
+                "two element tuple",
+                """
+                class MyClass
+                {
+                    pub fn to_string(): string {
+                        return "MyClass";
+                    }
+                }
+                var a = (new MyClass{}, new MyClass{});
+                var b = a.Item0.to_string();
+                var c = a.Item1.to_string();
+                """,
+                LoweredProgram(ModuleId,
+                    types: [
+                        DataType(
+                            ModuleId,
+                            "MyClass",
+                            variants: [Variant("_classVariant")])],
+                    methods: [
+                        Method(
+                            new DefId(ModuleId, $"{ModuleId}:::MyClass__to_string"),
+                            "MyClass__to_string",
+                            [
+                                new BasicBlock(
+                                    BB0,
+                                    [new Assign(new Local("_returnValue"), new Use(new StringConstant("MyClass")))],
+                                    new Return()
+                                ),
+                            ],
+                            returnType: StringT,
+                            parameters: [
+                                (
+                                    "this",
+                                    new LoweredPointer(BoxedValue(ConcreteTypeReference("MyClass", ModuleId)))
+                                )
+                            ]),
+                        Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
+                            [
+                                new BasicBlock(
+                                    BB0,
+                                    [
+                                        new Assign(
+                                            Local0,
+                                            new CreateObject(
+                                                Tuple(
+                                                    new LoweredPointer(BoxedValue(ConcreteTypeReference("MyClass", ModuleId))),
+                                                    new LoweredPointer(BoxedValue(ConcreteTypeReference("MyClass", ModuleId))))))
+                                    ],
+                                    AllocateMethodCall(
+                                        BoxedValue(ConcreteTypeReference("MyClass", ModuleId)),
+                                        new Field(Local0, "Item0", "_classVariant"),
+                                        BB1)
+                                ),
+                                new BasicBlock(
+                                    BB1,
+                                    [
+                                        ..CreateBoxedObject(
+                                            new Deref(new Field(Local0, "Item0", "_classVariant")),
+                                            ConcreteTypeReference("MyClass", ModuleId))
+                                    ],
+                                    AllocateMethodCall(
+                                        BoxedValue(ConcreteTypeReference("MyClass", ModuleId)),
+                                        new Field(Local0, "Item1", "_classVariant"),
+                                        BB2)),
+                                new BasicBlock(
+                                    BB2,
+                                    [
+                                        ..CreateBoxedObject(
+                                            new Deref(new Field(Local0, "Item1", "_classVariant")),
+                                            ConcreteTypeReference("MyClass", ModuleId))
+                                    ],
+                                    new MethodCall(
+                                        new LoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}:::MyClass__to_string"), []),
+                                        [new Copy(new Field(Local0, "Item0", "_classVariant"))],
+                                        Local1,
+                                        BB3)),
+                                new BasicBlock(
+                                    BB3,
+                                    [],
+                                    new MethodCall(
+                                        new LoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}:::MyClass__to_string"), []),
+                                        [new Copy(new Field(Local0, "Item1", "_classVariant"))],
+                                        Local2,
+                                        BB4)),
+                                new BasicBlock(BB4, [], new Return())
+                            ],
+                            Unit,
+                            locals: [
+                                new MethodLocal(
+                                    "_local0",
+                                    "a",
+                                    Tuple(
+                                        new LoweredPointer(BoxedValue(ConcreteTypeReference("MyClass", ModuleId))),
+                                        new LoweredPointer(BoxedValue(ConcreteTypeReference("MyClass", ModuleId))))),
+                                new MethodLocal("_local1", "b", StringT),
+                                new MethodLocal("_local2", "c", StringT),
                             ])
                     ])
             },

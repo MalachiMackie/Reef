@@ -20,4 +20,35 @@ public class TupleTests : IntegrationTestBase
         result.ExitCode.Should().Be(0);
         result.StandardOutput.Should().Be($"1, hi");
     }
+
+    [Fact]
+    public async Task GetTupleElementsWithReferenceObject()
+    {
+        await SetupTest(
+            """
+            union MyUnion{
+                A,
+                B,
+
+                pub fn to_string(): string {
+                    return match (this)
+                    {
+                        Self::A => "A",
+                        Self::B => "B",
+                    };
+                }
+            }
+
+            var a = (MyUnion::A, MyUnion::B);
+            var b = a.Item0;
+            var c = a.Item1;
+            print_string(b.to_string());
+            print_string(c.to_string());
+            """
+        );
+        var result = await Run();
+
+        result.ExitCode.Should().Be(0);
+        result.StandardOutput.Should().Be($"AB");
+    }
 }

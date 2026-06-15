@@ -1422,7 +1422,8 @@ public partial class ProgramAbseil
         {
             TypeChecker.FunctionObject f => f.IsBoxed,
             TypeChecker.GenericPlaceholder => false,
-            TypeChecker.GenericTypeReference => false,
+            TypeChecker.GenericTypeReference { ResolvedType: null } => false,
+            TypeChecker.GenericTypeReference { ResolvedType: { } resolvedType } => IsTypeReferenceBoxed(resolvedType.NotNull()),
             TypeChecker.InstantiatedClass instantiatedClass => instantiatedClass.Boxed,
             TypeChecker.InstantiatedUnion instantiatedUnion => instantiatedUnion.Boxed,
             TypeChecker.UnspecifiedSizedIntType unspecifiedSizedIntType => unspecifiedSizedIntType.Boxed,
