@@ -3619,6 +3619,19 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
         return new TheoryData<string, Dictionary<string, (string contents, IReadOnlyList<TypeCheckerError> expectedErrors)>>
         {
             {
+                "unknown field in class variant pattern",
+                new()
+                {
+                    {
+                    "main.rf", ("""
+                                    union MyUnion{A{field x: u32}, B}
+                                    var a = MyUnion::B;
+                                    var b = a matches MyUnion::A{x: _, y: _,};
+                                """, [TypeCheckerError.SymbolNotFound(Identifier("y"))])
+                    }
+                }
+            },
+            {
                 "Self used in non type context",
                 new()
                 {

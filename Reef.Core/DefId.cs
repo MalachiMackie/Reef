@@ -28,6 +28,7 @@ public record DefId(ModuleId ModuleId, string FullName)
     public static DefId ObjectHeader { get; } = new(CoreLibModuleId, $"{CoreLibModuleId}:::ObjectHeader");
     public static DefId Panic { get; } = new(CoreLibModuleId, $"{CoreLibModuleId}:::panic");
     public static DefId Sizeof { get; } = new(CoreLibModuleId, $"{CoreLibModuleId}:::sizeof");
+    public static DefId TypeIdOf { get; } = new(CoreLibModuleId, $"{CoreLibModuleId}:::type_id_of");
 
     public static DefId AsBytes { get; } = new(CoreLibModuleId, $"{CoreLibModuleId}:::as_bytes");
     public static DefId FromBytes { get; } = new(CoreLibModuleId, $"{CoreLibModuleId}:::from_bytes");

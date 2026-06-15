@@ -1,4 +1,3 @@
-using Reef.Core.Abseil;
 using Reef.Core.LoweredExpressions;
 using static Reef.Core.Tests.LoweredProgramHelpers;
 
@@ -25,174 +24,135 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
     public async Task Single()
     {
         var source = """
-                  union MyUnion{A, B, C}
-                  class MyClass{pub field MyField: unboxed MyUnion, pub field SecondField: unboxed MyUnion}
-
-                  var a = new unboxed MyClass {
-                      MyField = unboxed MyUnion::A,
-                      SecondField = unboxed MyUnion::B,
-                  };
-                  var b = match (a) {
-                      unboxed MyClass { MyField: unboxed MyUnion::A, SecondField: unboxed MyUnion::A } => 1,
-                      unboxed MyClass { MyField: unboxed MyUnion::A, SecondField: _          } => 2,
-                      unboxed MyClass { MyField: unboxed MyUnion::B, SecondField: unboxed MyUnion::B } => 3,
-                      unboxed MyClass { MyField: unboxed MyUnion::C, SecondField: unboxed MyUnion::A } => 4,
-                      _ => 5
-                  };
-                  """;
+                        unboxed union MyUnion{A, B(u32, u32), C{field a: u32, field b: u32}}
+                        var a = MyUnion::A;
+                        var b = match (a)
+                        {
+                            MyUnion::A => 6,
+                            MyUnion::B(var x, var y) => x + y,
+                            MyUnion::C{a: var z, b: var w} => z + w,
+                        };
+                        """;
         var expectedProgram = LoweredProgram(ModuleId,
             types: [
                 DataType(ModuleId, "MyUnion",
-                              variants: [
-                                 Variant("A", [Field("_variantIdentifier", UInt16T)]),
-                                 Variant("B", [Field("_variantIdentifier", UInt16T)]),
-                                 Variant("C", [Field("_variantIdentifier", UInt16T)]),
-                              ]),
-                          DataType(ModuleId, "MyClass",
-                              variants: [
-                                 Variant(
-                                      "_classVariant",
-                                      [
-                                          Field("MyField", new LoweredConcreteTypeReference( new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])),
-                                          Field("SecondField", new LoweredConcreteTypeReference( new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))
-                                      ])
-                              ])
+                                    variants: [
+                                        Variant("A", [Field("_variantIdentifier", UInt16T)]),
+                                        Variant("B", [Field("_variantIdentifier", UInt16T), Field("Item0", UInt32T), Field("Item1", UInt32T)]),
+                                        Variant("C", [Field("_variantIdentifier", UInt16T), Field("a", UInt32T), Field("b", UInt32T)]),
+                                    ])
             ],
             methods: [
-                Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
-                              [
-                                  new BasicBlock(
-                                      BB0,
-                                      [
-                                          new Assign(
-                                              Local0,
-                                              new CreateObject(new LoweredConcreteTypeReference( new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))),
-                                          new Assign(
-                                              new Field(
-                                                  Local0,
-                                                  "MyField",
-                                                  "_classVariant"),
-                                              new CreateObject(new LoweredConcreteTypeReference( new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
-                                          new Assign(
-                                              new Field(
-                                                  new Field(
-                                                      Local0,
-                                                      "MyField",
-                                                      "_classVariant"),
-                                                  "_variantIdentifier",
-                                                  "A"),
-                                              new Use(new UIntConstant(0, 2))),
-                                          new Assign(
-                                              new Field(
-                                                  Local0,
-                                                  "SecondField",
-                                                  "_classVariant"),
-                                              new CreateObject(new LoweredConcreteTypeReference( new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))),
-                                          new Assign(
-                                              new Field(
-                                                  new Field(
-                                                      Local0,
-                                                      "SecondField",
-                                                      "_classVariant"),
-                                                  "_variantIdentifier",
-                                                  "B"),
-                                              new Use(new UIntConstant(1, 2)))
-                                      ],
-                                      new SwitchInt(
-                                          new Copy(
-                                              new Field(
-                                                  new Field(
-                                                      Local0,
-                                                      "MyField",
-                                                      "_classVariant"),
-                                                  "_variantIdentifier",
-                                                  "A")),
-                                          new Dictionary<int, BasicBlockId>
-                                          {
-                                              { 0, BB1 },
-                                              { 1, BB4 },
-                                              { 2, BB6 },
-                                          },
-                                          BB8)),
-                                  new BasicBlock(
-                                      BB1,
-                                      [],
-                                      new SwitchInt(
-                                          new Copy(
-                                              new Field(
-                                                  new Field(
-                                                      Local0,
-                                                      "SecondField",
-                                                      "_classVariant"),
-                                                  "_variantIdentifier",
-                                                  "A")),
-                                          new Dictionary<int, BasicBlockId>
-                                          {
-                                              { 0, BB2 }
-                                          },
-                                          BB3)),
-                                  new BasicBlock(
-                                      BB2,
-                                      [new Assign(Local1, new Use(new IntConstant(1, 4)))],
-                                      new GoTo(BB9)),
-                                  new BasicBlock(
-                                      BB3,
-                                      [new Assign(Local1, new Use(new IntConstant(2, 4)))],
-                                      new GoTo(BB9)),
-                                  new BasicBlock(
-                                      BB4,
-                                      [],
-                                      new SwitchInt(
-                                          new Copy(
-                                              new Field(
-                                                  new Field(
-                                                      Local0,
-                                                      "SecondField",
-                                                      "_classVariant"),
-                                                  "_variantIdentifier",
-                                                  "A")),
-                                          new Dictionary<int, BasicBlockId>
-                                          {
-                                              { 1, BB5 }
-                                          },
-                                          BB8)),
-                                  new BasicBlock(
-                                      BB5,
-                                      [new Assign(Local1, new Use(new IntConstant(3, 4)))],
-                                      new GoTo(BB9)),
-                                  new BasicBlock(
-                                      BB6,
-                                      [],
-                                      new SwitchInt(
-                                          new Copy(
-                                              new Field(
-                                                  new Field(
-                                                      Local0,
-                                                      "SecondField",
-                                                      "_classVariant"),
-                                                  "_variantIdentifier",
-                                                  "A")),
-                                          new Dictionary<int, BasicBlockId>
-                                          {
-                                              { 0, BB7 }
-                                          },
-                                          BB8)),
-                                  new BasicBlock(
-                                      BB7,
-                                      [new Assign(Local1, new Use(new IntConstant(4, 4)))],
-                                      new GoTo(BB9)),
-                                  new BasicBlock(
-                                      BB8,
-                                      [new Assign(Local1, new Use(new IntConstant(5, 4)))],
-                                      new GoTo(BB9)),
-                                  new BasicBlock(
-                                      BB9, [], new Return())
-                              ],
-                              Unit,
-                              locals: [
-                                  new MethodLocal("_local0", "a", new LoweredConcreteTypeReference( new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])),
-                                  new MethodLocal("_local1", "b", Int32T),
-                              ])
+                Method(new DefId(ModuleId, $"{ModuleId}:::MyUnion__Create__B"), "MyUnion__Create__B",
+                                    [
+                                        new BasicBlock(
+                                            BB0,
+                                            [],
+                                            AllocateMethodCall(
+                                                BoxedValue(ConcreteTypeReference("MyUnion", ModuleId)),
+                                                ReturnValue,
+                                                BB1)),
+                                        new BasicBlock(
+                                            BB1,
+                                            [
+                                                ..CreateBoxedObject(
+                                                    new Deref(ReturnValue),
+                                                        ConcreteTypeReference("MyUnion", ModuleId)),
+                                                new Assign(
+                                                    new Field(new Field(new Deref(ReturnValue), "Value", "_classVariant"), "_variantIdentifier", "B"),
+                                                    new Use(new UIntConstant(1, 2))),
+                                                new Assign(
+                                                    new Field(new Field(new Deref(ReturnValue), "Value", "_classVariant"), "Item0", "B"),
+                                                    new Use(new Copy(Param0))),
+                                                new Assign(
+                                                    new Field(new Field(new Deref(ReturnValue), "Value", "_classVariant"), "Item1", "B"),
+                                                    new Use(new Copy(Param1)))
+                                            ],
+                                            new Return())
+                                    ],
+                                    parameters: [("Item0", UInt32T), ("Item1", UInt32T)],
+                                    returnType: new LoweredPointer(BoxedValue(ConcreteTypeReference("MyUnion", ModuleId)))),
+                                Method(new DefId(ModuleId, $"{ModuleId}:::MyUnion__unboxed__Create__B"), "MyUnion__unboxed__Create__B",
+                                    [
+                                        new BasicBlock(
+                                            BB0,
+                                            [
+                                                new Assign(
+                                                    ReturnValue,
+                                                        new CreateObject(ConcreteTypeReference("MyUnion", ModuleId))),
+                                                new Assign(
+                                                    new Field(ReturnValue, "_variantIdentifier", "B"),
+                                                    new Use(new UIntConstant(1, 2))),
+                                                new Assign(
+                                                    new Field(ReturnValue, "Item0", "B"),
+                                                    new Use(new Copy(Param0))),
+                                                new Assign(
+                                                    new Field(ReturnValue, "Item1", "B"),
+                                                    new Use(new Copy(Param1)))
+                                            ],
+                                            new Return())
+                                    ],
+                                    parameters: [("Item0", UInt32T), ("Item1", UInt32T)],
+                                    returnType: ConcreteTypeReference("MyUnion", ModuleId)),
+                                Method(
+                                    new DefId(ModuleId, $"{ModuleId}:::_Main"),
+                                    "_Main",
+                                    [
+                                        new BasicBlock(BB0,
+                                            [
+                                                new Assign(
+                                                    Local0,
+                                                    new CreateObject(ConcreteTypeReference("MyUnion", ModuleId))),
+                                                new Assign(
+                                                    new Field(Local0, "_variantIdentifier", "A"),
+                                                    new Use(new UIntConstant(0, 2))),
+                                            ],
+                                            new SwitchInt(
+                                                new Copy(new Field(Local0, "_variantIdentifier", "A")),
+                                                new(){ { 0, BB1 }, { 1, BB2 }, { 2, BB3 } },
+                                                BB4)),
+                                        new BasicBlock(BB1,
+                                            [
+                                                new Assign(Local5, new Use(new UIntConstant(6, 4)))
+                                            ],
+                                            new GoTo(BB4)),
+                                        new BasicBlock(BB2,
+                                            [
+                                                new Assign(
+                                                    Local1,
+                                                    new Use(new Copy(new Field(Local0, "Item0", "B")))),
+                                                new Assign(
+                                                    Local2,
+                                                    new Use(new Copy(new Field(Local0, "Item1", "B")))),
+                                                new Assign(
+                                                    Local5,
+                                                    new BinaryOperation(new Copy(Local1), new Copy(Local2), BinaryOperationKind.Add))
+                                            ],
+                                            new GoTo(BB4)),
+                                        new BasicBlock(BB3,
+                                            [
+                                                new Assign(
+                                                    Local3,
+                                                    new Use(new Copy(new Field(Local0, "a", "C")))),
+                                                new Assign(
+                                                    Local4,
+                                                    new Use(new Copy(new Field(Local0, "b", "C")))),
+                                                new Assign(
+                                                    Local5,
+                                                    new BinaryOperation(new Copy(Local3), new Copy(Local4), BinaryOperationKind.Add))
+                                            ],
+                                            new GoTo(BB4)),
+                                        new BasicBlock(BB4, [], new Return())
+                                    ],
+                                    locals: [
+                                        new MethodLocal("_local0", "a", ConcreteTypeReference("MyUnion", ModuleId)),
+                                        new MethodLocal("_local1", "x", UInt32T),
+                                        new MethodLocal("_local2", "y", UInt32T),
+                                        new MethodLocal("_local3", "z", UInt32T),
+                                        new MethodLocal("_local4", "w", UInt32T),
+                                        new MethodLocal("_local5", "b", UInt32T),
+                                    ],
+                                    returnType: Unit)
             ]);
         var program = await CreateProgram(ModuleId, source);
         var loweredProgram = Lower(program, ModuleId);
@@ -210,6 +170,260 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
     {
         return new()
         {
+            {
+                "match of variants with multiple field variable declaration pattern",
+                """
+                unboxed union MyUnion{A, B(u32, u32), C{field a: u32, field b: u32}}
+                var a = MyUnion::A;
+                var b = match (a)
+                {
+                    MyUnion::A => 6,
+                    MyUnion::B(var x, var y) => x + y,
+                    MyUnion::C{a: var z, b: var w} => z + w,
+                };
+                """,
+                LoweredProgram(ModuleId,
+                    types: [
+                        DataType(ModuleId, "MyUnion",
+                            variants: [
+                                Variant("A", [Field("_variantIdentifier", UInt16T)]),
+                                Variant("B", [Field("_variantIdentifier", UInt16T), Field("Item0", UInt32T), Field("Item1", UInt32T)]),
+                                Variant("C", [Field("_variantIdentifier", UInt16T), Field("a", UInt32T), Field("b", UInt32T)]),
+                            ])
+                    ],
+                    methods: [
+                        Method(new DefId(ModuleId, $"{ModuleId}:::MyUnion__Create__B"), "MyUnion__Create__B",
+                            [
+                                new BasicBlock(
+                                    BB0,
+                                    [],
+                                    AllocateMethodCall(
+                                        BoxedValue(ConcreteTypeReference("MyUnion", ModuleId)),
+                                        ReturnValue,
+                                        BB1)),
+                                new BasicBlock(
+                                    BB1,
+                                    [
+                                        ..CreateBoxedObject(
+                                            new Deref(ReturnValue),
+                                                ConcreteTypeReference("MyUnion", ModuleId)),
+                                        new Assign(
+                                            new Field(new Field(new Deref(ReturnValue), "Value", "_classVariant"), "_variantIdentifier", "B"),
+                                            new Use(new UIntConstant(1, 2))),
+                                        new Assign(
+                                            new Field(new Field(new Deref(ReturnValue), "Value", "_classVariant"), "Item0", "B"),
+                                            new Use(new Copy(Param0))),
+                                        new Assign(
+                                            new Field(new Field(new Deref(ReturnValue), "Value", "_classVariant"), "Item1", "B"),
+                                            new Use(new Copy(Param1)))
+                                    ],
+                                    new Return())
+                            ],
+                            parameters: [("Item0", UInt32T), ("Item1", UInt32T)],
+                            returnType: new LoweredPointer(BoxedValue(ConcreteTypeReference("MyUnion", ModuleId)))),
+                        Method(new DefId(ModuleId, $"{ModuleId}:::MyUnion__unboxed__Create__B"), "MyUnion__unboxed__Create__B",
+                            [
+                                new BasicBlock(
+                                    BB0,
+                                    [
+                                        new Assign(
+                                            ReturnValue,
+                                                new CreateObject(ConcreteTypeReference("MyUnion", ModuleId))),
+                                        new Assign(
+                                            new Field(ReturnValue, "_variantIdentifier", "B"),
+                                            new Use(new UIntConstant(1, 2))),
+                                        new Assign(
+                                            new Field(ReturnValue, "Item0", "B"),
+                                            new Use(new Copy(Param0))),
+                                        new Assign(
+                                            new Field(ReturnValue, "Item1", "B"),
+                                            new Use(new Copy(Param1)))
+                                    ],
+                                    new Return())
+                            ],
+                            parameters: [("Item0", UInt32T), ("Item1", UInt32T)],
+                            returnType: ConcreteTypeReference("MyUnion", ModuleId)),
+                        Method(
+                            new DefId(ModuleId, $"{ModuleId}:::_Main"),
+                            "_Main",
+                            [
+                                new BasicBlock(BB0,
+                                    [
+                                        new Assign(
+                                            Local0,
+                                            new CreateObject(ConcreteTypeReference("MyUnion", ModuleId))),
+                                        new Assign(
+                                            new Field(Local0, "_variantIdentifier", "A"),
+                                            new Use(new UIntConstant(0, 2))),
+                                    ],
+                                    new SwitchInt(
+                                        new Copy(new Field(Local0, "_variantIdentifier", "A")),
+                                        new(){ { 0, BB1 }, { 1, BB2 }, { 2, BB3 } },
+                                        BB4)),
+                                new BasicBlock(BB1,
+                                    [
+                                        new Assign(Local5, new Use(new UIntConstant(6, 4)))
+                                    ],
+                                    new GoTo(BB4)),
+                                new BasicBlock(BB2,
+                                    [
+                                        new Assign(
+                                            Local1,
+                                            new Use(new Copy(new Field(Local0, "Item0", "B")))),
+                                        new Assign(
+                                            Local2,
+                                            new Use(new Copy(new Field(Local0, "Item1", "B")))),
+                                        new Assign(
+                                            Local5,
+                                            new BinaryOperation(new Copy(Local1), new Copy(Local2), BinaryOperationKind.Add))
+                                    ],
+                                    new GoTo(BB4)),
+                                new BasicBlock(BB3,
+                                    [
+                                        new Assign(
+                                            Local3,
+                                            new Use(new Copy(new Field(Local0, "a", "C")))),
+                                        new Assign(
+                                            Local4,
+                                            new Use(new Copy(new Field(Local0, "b", "C")))),
+                                        new Assign(
+                                            Local5,
+                                            new BinaryOperation(new Copy(Local3), new Copy(Local4), BinaryOperationKind.Add))
+                                    ],
+                                    new GoTo(BB4)),
+                                new BasicBlock(BB4, [], new Return())
+                            ],
+                            locals: [
+                                new MethodLocal("_local0", "a", ConcreteTypeReference("MyUnion", ModuleId)),
+                                new MethodLocal("_local1", "x", UInt32T),
+                                new MethodLocal("_local2", "y", UInt32T),
+                                new MethodLocal("_local3", "z", UInt32T),
+                                new MethodLocal("_local4", "w", UInt32T),
+                                new MethodLocal("_local5", "b", UInt32T),
+                            ],
+                            returnType: Unit)
+                    ])
+            },
+            {
+                "match on variants with single field variable declaration pattern",
+                """
+                unboxed union MyUnion{A, B(u32), C{field a: u32}}
+                var a = MyUnion::A;
+                var b = match (a)
+                {
+                    MyUnion::A => 6,
+                    MyUnion::B(var x) => x,
+                    MyUnion::C{a: var y} => y,
+                };
+                """,
+                LoweredProgram(ModuleId,
+                    types: [
+                        DataType(ModuleId, "MyUnion",
+                            variants: [
+                                Variant("A", [Field("_variantIdentifier", UInt16T)]),
+                                Variant("B", [Field("_variantIdentifier", UInt16T), Field("Item0", UInt32T)]),
+                                Variant("C", [Field("_variantIdentifier", UInt16T), Field("a", UInt32T)]),
+                            ])
+                    ],
+                    methods: [
+                        Method(new DefId(ModuleId, $"{ModuleId}:::MyUnion__Create__B"), "MyUnion__Create__B",
+                            [
+                                new BasicBlock(
+                                    BB0,
+                                    [],
+                                    AllocateMethodCall(
+                                        BoxedValue(ConcreteTypeReference("MyUnion", ModuleId)),
+                                        ReturnValue,
+                                        BB1)),
+                                new BasicBlock(
+                                    BB1,
+                                    [
+                                        ..CreateBoxedObject(
+                                            new Deref(ReturnValue),
+                                                ConcreteTypeReference("MyUnion", ModuleId)),
+                                        new Assign(
+                                            new Field(new Field(new Deref(ReturnValue), "Value", "_classVariant"), "_variantIdentifier", "B"),
+                                            new Use(new UIntConstant(1, 2))),
+                                        new Assign(
+                                            new Field(new Field(new Deref(ReturnValue), "Value", "_classVariant"), "Item0", "B"),
+                                            new Use(new Copy(Param0)))
+                                    ],
+                                    new Return())
+                            ],
+                            parameters: [("Item0", UInt32T)],
+                            returnType: new LoweredPointer(BoxedValue(ConcreteTypeReference("MyUnion", ModuleId)))),
+                        Method(new DefId(ModuleId, $"{ModuleId}:::MyUnion__unboxed__Create__B"), "MyUnion__unboxed__Create__B",
+                            [
+                                new BasicBlock(
+                                    BB0,
+                                    [
+                                        new Assign(
+                                            ReturnValue,
+                                                new CreateObject(ConcreteTypeReference("MyUnion", ModuleId))),
+                                        new Assign(
+                                            new Field(ReturnValue, "_variantIdentifier", "B"),
+                                            new Use(new UIntConstant(1, 2))),
+                                        new Assign(
+                                            new Field(ReturnValue, "Item0", "B"),
+                                            new Use(new Copy(Param0)))
+                                    ],
+                                    new Return())
+                            ],
+                            parameters: [("Item0", UInt32T)],
+                            returnType: ConcreteTypeReference("MyUnion", ModuleId)),
+                        Method(
+                            new DefId(ModuleId, $"{ModuleId}:::_Main"),
+                            "_Main",
+                            [
+                                new BasicBlock(BB0,
+                                    [
+                                        new Assign(
+                                            Local0,
+                                            new CreateObject(ConcreteTypeReference("MyUnion", ModuleId))),
+                                        new Assign(
+                                            new Field(Local0, "_variantIdentifier", "A"),
+                                            new Use(new UIntConstant(0, 2))),
+                                    ],
+                                    new SwitchInt(
+                                        new Copy(new Field(Local0, "_variantIdentifier", "A")),
+                                        new(){ { 0, BB1 }, { 1, BB2 }, { 2, BB3 } },
+                                        BB4)),
+                                new BasicBlock(BB1,
+                                    [
+                                        new Assign(Local3, new Use(new UIntConstant(6, 4)))
+                                    ],
+                                    new GoTo(BB4)),
+                                new BasicBlock(BB2,
+                                    [
+                                        new Assign(
+                                            Local1,
+                                            new Use(new Copy(new Field(Local0, "Item0", "B")))),
+                                        new Assign(
+                                            Local3,
+                                            new Use(new Copy(Local1)))
+                                    ],
+                                    new GoTo(BB4)),
+                                new BasicBlock(BB3,
+                                    [
+                                        new Assign(
+                                            Local2,
+                                            new Use(new Copy(new Field(Local0, "a", "C")))),
+                                        new Assign(
+                                            Local3,
+                                            new Use(new Copy(Local2)))
+                                    ],
+                                    new GoTo(BB4)),
+                                new BasicBlock(BB4, [], new Return())
+                            ],
+                            locals: [
+                                new MethodLocal("_local0", "a", ConcreteTypeReference("MyUnion", ModuleId)),
+                                new MethodLocal("_local1", "x", UInt32T),
+                                new MethodLocal("_local2", "y", UInt32T),
+                                new MethodLocal("_local3", "b", UInt32T),
+                            ],
+                            returnType: Unit)
+                    ])
+            },
             {
                 "match on union variant",
                 """

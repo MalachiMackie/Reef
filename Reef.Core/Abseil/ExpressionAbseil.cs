@@ -413,9 +413,9 @@ public partial class ProgramAbseil
         {
             switch (node)
             {
-                case DiscardNode discardNode:
+                case DiscardNode discardNodeX:
                     {
-                        discardNodes.Add(discardNode);
+                        discardNodes.Add(discardNodeX);
                         break;
                     }
                 case TypeNode typeNode:
@@ -435,23 +435,28 @@ public partial class ProgramAbseil
 
         Debug.Assert(discardNodes.Count <= 1);
 
-        if (discardNodes.Count == 1)
+        if (discardNodes is [var firstDiscardNode])
         {
-            var discardNode = discardNodes[0];
+            if (firstDiscardNode.Branches.Count > 0)
+            {
+                Debug.Assert(firstDiscardNode.Expression is null);
+                LowerMatchTree(firstDiscardNode.Branches, destination, otherwiseBasicBlockId, afterBasicBlockId);
+                return;
+            }
+
             if (variantNodes.Count == 0 && typeNodes.Count == 0)
             {
-                foreach (var (variable, accessor) in GetAncestorVariableAssignments(discardNode))
+                foreach (var (variable, accessor) in GetAncestorVariableAssignments(firstDiscardNode))
                 {
                     _basicBlockStatements.Add(
                         new Assign(GetLocalVariablePlace(variable), new Use(accessor.ToOperand())));
                 }
 
-                LowerExpression(discardNode.Expression.NotNull(), destination);
+                LowerExpression(firstDiscardNode.Expression.NotNull(), destination);
                 return;
             }
 
             otherwiseBasicBlockId = new BasicBlockId("otherwise");
-
         }
 
         if (variantNodes.Count > 0)
@@ -615,9 +620,9 @@ public partial class ProgramAbseil
             }
         }
 
-        if (discardNodes.Count == 1)
+        if (discardNodes is [var discardNode])
         {
-            var discardNode = discardNodes[0];
+            Debug.Assert(discardNode.Branches.Count == 0);
             _basicBlocks[^1].Terminator = new GoTo(afterBasicBlockId);
             otherwiseBasicBlockId.Id = GetNextEmptyBasicBlock().Id;
 
@@ -977,9 +982,7 @@ public partial class ProgramAbseil
 
     private static IEnumerable<INode> GetNodeLeafs(INode node)
     {
-        return node.Branches.Count == 0
-            ? [node]
-            : node.Branches.SelectMany(GetNodeLeafs);
+        return node.Branches.SelectMany(GetNodeLeafs).DefaultIfEmpty(node);
     }
 
     private IExpressionResult LowerMatch(MatchExpression e, IPlace? destination)
@@ -1899,6 +1902,23 @@ public partial class ProgramAbseil
             Debug.Assert(instantiatedFunction.TypeArguments.Count == 1);
             var typeArgument = GetTypeReference(instantiatedFunction.TypeArguments[0]);
             var value = new SizeOf(typeArgument);
+
+            if (destination is not null)
+            {
+                _basicBlockStatements.Add(new Assign(
+                    destination,
+                    new Use(value)));
+            }
+
+            return new OperandResult(value);
+        }
+
+        // replace calls to type_id_of to getting the typeid
+        if (instantiatedFunction is { FunctionId: var typeIdOfFnId } && typeIdOfFnId == DefId.TypeIdOf)
+        {
+            Debug.Assert(instantiatedFunction.TypeArguments.Count == 1);
+            var typeArgument = GetTypeReference(instantiatedFunction.TypeArguments[0]);
+            var value = new TypeIdOf(typeArgument);
 
             if (destination is not null)
             {

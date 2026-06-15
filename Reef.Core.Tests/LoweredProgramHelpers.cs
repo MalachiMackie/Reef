@@ -61,6 +61,8 @@ public static class LoweredProgramHelpers
     public static readonly Local Local1 = new("_local1");
     public static readonly Local Local2 = new("_local2");
     public static readonly Local Local3 = new("_local3");
+    public static readonly Local Local4 = new("_local4");
+    public static readonly Local Local5 = new("_local5");
     public static readonly Local ReturnValue = new("_returnValue");
 
     public static readonly Local Param0 = new("_param0");
@@ -204,6 +206,11 @@ public static class LoweredProgramHelpers
     public static LoweredConcreteTypeReference UInt16T { get; }
         = new(
             DefId.UInt16,
+            []);
+
+    public static LoweredConcreteTypeReference UInt32T { get; }
+        = new(
+            DefId.UInt32,
             []);
 
     public static LoweredConcreteTypeReference Tuple(params IReadOnlyList<ILoweredTypeReference> types)

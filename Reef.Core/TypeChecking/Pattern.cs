@@ -183,7 +183,7 @@ public partial class TypeChecker
                     }
 
                     if (!classVariantPattern.RemainingFieldsDiscarded &&
-                        classVariantPattern.FieldPatterns.Count != classVariant.Fields.Count)
+                        classVariantPattern.FieldPatterns.Count < classVariant.Fields.Count)
                     {
                         AddError(TypeCheckerError.MissingFieldsInUnionClassVariantPattern(
                             classVariantPattern,
@@ -192,8 +192,12 @@ public partial class TypeChecker
 
                     foreach (var fieldPattern in classVariantPattern.FieldPatterns)
                     {
-                        var fieldType = classVariant.Fields.FirstOrDefault(x => x.Name == fieldPattern.FieldName.StringValue)?.Type
-                            ?? throw new InvalidOperationException($"No field named {fieldPattern.FieldName}");
+                        var fieldType = classVariant.Fields.FirstOrDefault(x => x.Name == fieldPattern.FieldName.StringValue)?.Type;
+                        if (fieldType is null)
+                        {
+                            AddError(TypeCheckerError.SymbolNotFound(fieldPattern.FieldName));
+                            continue;
+                        }
 
                         if (fieldPattern.Pattern is null)
                         {
