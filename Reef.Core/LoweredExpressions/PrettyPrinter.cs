@@ -350,8 +350,8 @@ public class PrettyPrinter(LoweredProgram module)
                 }
             case Deref deref:
                 {
-                    _stringBuilder.Append('*');
                     PrettyPrintPlace(deref.PointerPlace);
+                    _stringBuilder.Append(".*");
                     break;
                 }
             case Index index:

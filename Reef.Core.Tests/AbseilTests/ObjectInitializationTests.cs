@@ -26,6 +26,57 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : Tes
         return new()
         {
             {
+                "boxed object initializer straight into method call",
+                """
+                class MyClass{}
+                fn some_fn(value: MyClass){}
+                some_fn(new MyClass{});
+                """,
+                LoweredProgram(
+                    ModuleId,
+                    types: [
+                        DataType(ModuleId, "MyClass", variants: [Variant("_classVariant")])
+                    ],
+                    methods: [
+                        Method(
+                            new DefId(ModuleId, $"{ModuleId}:::some_fn"),
+                            "some_fn",
+                            [
+                                new BasicBlock(BB0, [], new Return())
+                            ],
+                            returnType: Unit,
+                            parameters: [("value", new LoweredPointer(BoxedValue(ConcreteTypeReference("MyClass", ModuleId))))]),
+                        Method(
+                            new DefId(ModuleId, $"{ModuleId}:::_Main"),
+                            "_Main",
+                            [
+                                new BasicBlock(
+                                    BB0,
+                                    [],
+                                    AllocateMethodCall(
+                                        BoxedValue(ConcreteTypeReference("MyClass", ModuleId)),
+                                        Local1,
+                                        BB1)),
+                                new BasicBlock(BB1, [
+                                    ..CreateBoxedObject(
+                                        new Deref(Local1),
+                                        new LoweredConcreteTypeReference(
+                                            new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))
+                                ], new MethodCall(
+                                    new LoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}:::some_fn"), []),
+                                    [new Copy(Local1)],
+                                    Local0,
+                                    BB2)),
+                                new BasicBlock(BB2, [], new Return())
+                            ],
+                            returnType: Unit,
+                            locals: [
+                                new MethodLocal("_local0", null, Unit),
+                                new MethodLocal("_local1", null, new LoweredPointer(BoxedValue(ConcreteTypeReference("MyClass", ModuleId)))),
+                            ])
+                    ])
+            },
+            {
                 "create empty class",
                 "class MyClass{} var a = new MyClass{};",
                 LoweredProgram(ModuleId,

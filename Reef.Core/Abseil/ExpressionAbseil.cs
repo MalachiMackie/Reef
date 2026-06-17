@@ -1034,12 +1034,7 @@ public partial class ProgramAbseil
                 }
             case TypePattern { Variable: var variable, TypeReference: var typeReference }:
                 {
-                    var loweredTypeReference = GetTypeReference(typeReference.NotNull());
-                    if (loweredTypeReference is not LoweredConcreteTypeReference)
-                    {
-                        throw new NotImplementedException(
-                            "Only concrete type patterns are currently supported. This needs to be implemented when interfaces are added");
-                    }
+                    var loweredTypeReference = GetConcreteTypeReference(GetTypeReference(typeReference.NotNull()));
 
                     if (variable is not null)
                     {

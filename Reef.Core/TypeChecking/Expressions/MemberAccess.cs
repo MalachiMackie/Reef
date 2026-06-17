@@ -18,12 +18,7 @@ public partial class TypeChecker
 
         while (ownerType is GenericTypeReference genericTypeReference)
         {
-            if (genericTypeReference.ResolvedType is null)
-            {
-                throw new NotImplementedException();
-            }
-
-            ownerType = genericTypeReference.ResolvedType;
+            ownerType = genericTypeReference.ResolvedType ?? new UnknownInferredType();
         }
 
         switch (ownerType)
@@ -50,6 +45,8 @@ public partial class TypeChecker
                 AddError(TypeCheckerError.MemberAccessOnGenericExpression(memberAccessExpression));
                 return UnknownType.Instance;
             case UnknownType:
+                return UnknownType.Instance;
+            case UnknownInferredType:
                 return UnknownType.Instance;
             default:
                 throw new InvalidOperationException(ownerType.GetType().ToString());
