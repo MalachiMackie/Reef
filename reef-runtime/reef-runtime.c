@@ -9,6 +9,8 @@
 #include <stdbool.h>
 #include <intrin.h>
 #include <string.h>
+#include <uchar.h>
+#include <wchar.h>
 #include <windows.h>
 
 #define STB_DS_IMPLEMENTATION
@@ -31,16 +33,6 @@ typedef double max_align_t;
 #define PACK( __Declaration__ ) __pragma( pack(push, 1) ) __Declaration__ __pragma( pack(pop))
 #endif
 
-void print_i8(int8_t num);
-void print_i16(int16_t num);
-void print_i32(int32_t num);
-void print_i64(int64_t num);
-
-void print_u8(uint8_t num);
-void print_u16(uint16_t num);
-void print_u32(uint32_t num);
-void print_u64(uint64_t num);
-
 typedef uint32_t TypeId;
 
 typedef PACK(struct {
@@ -57,6 +49,45 @@ typedef PACK(struct {
     char padding[4];
     string str;
 }) StringBoxedValue;
+
+void print_i8(int8_t num);
+void print_i16(int16_t num);
+void print_i32(int32_t num);
+void print_i64(int64_t num);
+
+void print_u8(uint8_t num);
+void print_u16(uint16_t num);
+void print_u32(uint32_t num);
+void print_u64(uint64_t num);
+void print_size_t_hex(size_t value);
+void print_string(StringBoxedValue *str);
+
+
+typedef PACK(struct {
+    uint64_t length;
+    void* data;
+}) UnknownArray;
+
+
+typedef PACK(struct {
+    ObjectHeader header;
+    uint32_t padding;
+    UnknownArray array;
+}) BoxedUnknownArray;
+
+typedef char32_t reef_char;
+
+typedef PACK(struct {
+    uint64_t length;
+    reef_char value[];
+}) CharArray;
+
+typedef PACK(struct {
+    ObjectHeader header;
+    char padding[4];
+    CharArray array;
+}) BoxedCharArray;
+
 
 typedef PACK(struct {
     StringBoxedValue *original_string;
@@ -260,6 +291,7 @@ extern uint64_t typeInfoSize;
 extern uint64_t fieldInfoSize;
 extern uint64_t variantInfoSize;
 extern TypeId boxedValueStringTypeId;
+extern TypeId boxedCharArrayTypeId;
 
 MethodInfo *get_method_info(uint64_t index)
 {
@@ -272,6 +304,189 @@ TypeInfo *get_type_info(uint64_t index)
     assert(index < typeInfoCount);
 
     return &typeInfoArray[index];
+}
+
+/**
+ * Encode a code point using UTF-8
+ *
+ * @author Ondřej Hruška <ondra@ondrovo.com>
+ * @license MIT
+ *
+ * https://gist.github.com/MightyPork/52eda3e5677b4b03524e40c9f0ab1da5
+ *
+ * @param out - output buffer (min 5 characters), will be 0-terminated
+ * @param utf - code point 0-0x10FFFF
+ * @return number of bytes on success, 0 on failure (also produces U+FFFD, which uses 3 bytes)
+ */
+int utf8_encode(char *out, uint32_t utf)
+{
+  if (utf <= 0x7F) {
+    // Plain ASCII
+    out[0] = (char) utf;
+    out[1] = 0;
+    return 1;
+  }
+  else if (utf <= 0x07FF) {
+    // 2-byte unicode
+    out[0] = (char) (((utf >> 6) & 0x1F) | 0xC0);
+    out[1] = (char) (((utf >> 0) & 0x3F) | 0x80);
+    out[2] = 0;
+    return 2;
+  }
+  else if (utf <= 0xFFFF) {
+    // 3-byte unicode
+    out[0] = (char) (((utf >> 12) & 0x0F) | 0xE0);
+    out[1] = (char) (((utf >>  6) & 0x3F) | 0x80);
+    out[2] = (char) (((utf >>  0) & 0x3F) | 0x80);
+    out[3] = 0;
+    return 3;
+  }
+  else if (utf <= 0x10FFFF) {
+    // 4-byte unicode
+    out[0] = (char) (((utf >> 18) & 0x07) | 0xF0);
+    out[1] = (char) (((utf >> 12) & 0x3F) | 0x80);
+    out[2] = (char) (((utf >>  6) & 0x3F) | 0x80);
+    out[3] = (char) (((utf >>  0) & 0x3F) | 0x80);
+    out[4] = 0;
+    return 4;
+  }
+  else {
+    // error - use replacement character
+    out[0] = (char) 0xEF;
+    out[1] = (char) 0xBF;
+    out[2] = (char) 0xBD;
+    out[3] = 0;
+    return 0;
+  }
+}
+
+void* allocate(uint64_t size);
+
+int utf8_decode_char(const char *in, uint32_t *utf);
+
+void utf8_decode_string(string *str, reef_char* destination)
+{
+    if (str->length == 0)
+    {
+        destination = NULL;
+        return;
+    }
+
+    char *chars = str->chars;
+
+    uint64_t bytes_i = 0;
+    uint64_t chars_i = 0;
+    while (chars[bytes_i])
+    {
+        uint32_t *ch = &destination[chars_i];
+        int bytes_used = utf8_decode_char(chars + bytes_i, ch);
+
+        assert(*ch != 0xFFFD);
+        assert(bytes_used > 0);
+        chars_i++;
+        bytes_i += bytes_used;
+    }
+}
+
+int utf8_decode_char(const char *in, uint32_t *utf)
+{
+    const unsigned char *s = (const unsigned char *)in;
+    uint32_t cp;
+
+    // ASCII
+    if ((s[0] & 0x80) == 0) {
+        *utf = s[0];
+        return 1;
+    }
+
+    // 2-byte sequence
+    if ((s[0] & 0xE0) == 0xC0) {
+        if ((s[1] & 0xC0) != 0x80)
+            goto invalid;
+
+        cp =
+            ((uint32_t)(s[0] & 0x1F) << 6) |
+            ((uint32_t)(s[1] & 0x3F));
+
+        // Reject overlong encodings
+        if (cp < 0x80)
+            goto invalid;
+
+        *utf = cp;
+        return 2;
+    }
+
+    // 3-byte sequence
+    if ((s[0] & 0xF0) == 0xE0) {
+        if ((s[1] & 0xC0) != 0x80 ||
+            (s[2] & 0xC0) != 0x80)
+            goto invalid;
+
+        cp =
+            ((uint32_t)(s[0] & 0x0F) << 12) |
+            ((uint32_t)(s[1] & 0x3F) <<  6) |
+            ((uint32_t)(s[2] & 0x3F));
+
+        // Reject overlong encodings
+        if (cp < 0x800)
+            goto invalid;
+
+        // Reject UTF-16 surrogate range
+        if (cp >= 0xD800 && cp <= 0xDFFF)
+            goto invalid;
+
+        *utf = cp;
+        return 3;
+    }
+
+    // 4-byte sequence
+    if ((s[0] & 0xF8) == 0xF0) {
+        if ((s[1] & 0xC0) != 0x80 ||
+            (s[2] & 0xC0) != 0x80 ||
+            (s[3] & 0xC0) != 0x80)
+            goto invalid;
+
+        cp =
+            ((uint32_t)(s[0] & 0x07) << 18) |
+            ((uint32_t)(s[1] & 0x3F) << 12) |
+            ((uint32_t)(s[2] & 0x3F) <<  6) |
+            ((uint32_t)(s[3] & 0x3F));
+
+        // Reject overlong encodings
+        if (cp < 0x10000)
+            goto invalid;
+
+        // Reject code points beyond Unicode maximum
+        if (cp > 0x10FFFF)
+            goto invalid;
+
+        *utf = cp;
+        return 4;
+    }
+
+invalid:
+    *utf = 0xFFFD; // Unicode replacement character
+    return 0;
+}
+
+BoxedCharArray* string_chars(StringBoxedValue *str)
+{
+    uint64_t size = sizeof(ObjectHeader)
+            + 4 // padding
+            + sizeof(uint64_t) // length
+            + (sizeof(reef_char) * str->str.length);
+
+    BoxedCharArray *array = allocate(
+        size
+    );
+
+    ObjectHeader header = {.typeId = boxedCharArrayTypeId};
+    array->header = header;
+    array->array.length = str->str.length;
+
+    utf8_decode_string(&str->str, array->array.value);
+
+    return array;
 }
 
 void print_string_slice(string_slice slice) {
@@ -300,6 +515,16 @@ void print_size_t_hex(size_t value)
             started = 1;
             putchar(digit < 10 ? '0' + digit : 'A' + (digit - 10));
         }
+    }
+}
+
+void print_char(reef_char ch)
+{
+    char bytes[4];
+    int bytes_used = utf8_encode(bytes, ch);
+    for (int i = 0; i < bytes_used; i++)
+    {
+        fputc(bytes[i], stdout);
     }
 }
 
@@ -601,8 +826,17 @@ void* allocate(uint64_t size) {
     return ptr;
 }
 
-uint8_t* unsafe_allocate_array_bytes(uint64_t item_size, uint64_t length) {
-    return allocate(item_size * length);
+uint8_t* unsafe_allocate_array_bytes(ObjectHeader objectHeader, uint64_t item_size, uint64_t length) {
+    BoxedUnknownArray* array = allocate(
+        (item_size * length)
+        + sizeof(uint64_t)
+        + 4 // padding
+        + sizeof(ObjectHeader));
+
+    array->header = objectHeader;
+    array->array.length = length;
+
+    return (uint8_t*)array;
 }
 
 StringBoxedValue *allocate_new_string(uint64_t length) {
@@ -612,6 +846,7 @@ StringBoxedValue *allocate_new_string(uint64_t length) {
         length
         + 1 // extra byte for null terminated string that it outside of length
         + sizeof(uint64_t) // length
+        + 4 // padding
         + sizeof(ObjectHeader);
 
     // for now this assumes 1 byte characters. Once we support unicode characters, this will need to change

@@ -1281,6 +1281,13 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
             new Dictionary<LoweredGenericPlaceholder, ILoweredTypeReference>()
         );
 
+        var boxedCharArrayTypeId = GetTypeId(
+            new LoweredConcreteTypeReference(DefId.BoxedValue, [
+                new LoweredConcreteTypeReference(DefId.Char, [])
+            ]),
+            new Dictionary<LoweredGenericPlaceholder, ILoweredTypeReference>()
+        );
+
         CreateMain(mainMethod);
 
         return $"""
@@ -1294,6 +1301,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                 global methodInfoCount
                 global methodInfoSize
                 global boxedValueStringTypeId
+                global boxedCharArrayTypeId
                 global get_rbp
                 global main
                 global unhandled_exception_continue
@@ -1316,6 +1324,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                     methodInfoCount dq 0x{_methodCount:X}
                     typeInfoCount dq 0x{_typeIds.Count:X}
                     boxedValueStringTypeId dq 0x{boxedValueStringTypeId:X}
+                    boxedCharArrayTypeId dq 0x{boxedCharArrayTypeId:X}
                     ALIGN 16, db 0
                     typeInfoArray:
                 {_typeInfoDataSubSegment}
@@ -1537,7 +1546,9 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                         break;
                     }
 
-                    if (concreteTypeReference.DefinitionId == DefId.Int32 || concreteTypeReference.DefinitionId == DefId.UInt32)
+                    if (concreteTypeReference.DefinitionId == DefId.Int32
+                        || concreteTypeReference.DefinitionId == DefId.UInt32
+                        || concreteTypeReference.DefinitionId == DefId.Char)
                     {
                         size = 4;
                         alignment = 4;

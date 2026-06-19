@@ -18,6 +18,97 @@ public class StringTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task PrintStringConstantByChars()
+    {
+        await SetupTest("""
+            var str = "Hello World!";
+            var chars = str.chars();
+            var i = 0;
+            while (i < chars.Length)
+            {
+                print_char(chars[i]);
+                print_string("\n");
+                i = i + 1;
+            }
+            """);
+
+        var result = await Run();
+
+        using var _ = new AssertionScope();
+        result.ExitCode.Should().Be(0);
+        result.StandardOutput.Should().Be(
+            $"""
+            H
+            e
+            l
+            l
+            o
+            {' '}
+            W
+            o
+            r
+            l
+            d
+            !
+
+            """
+        );
+    }
+
+    [Fact]
+    public async Task PrintUnicodeString()
+    {
+        await SetupTest("""print_string("こんにちは");""");
+
+        var result = await Run();
+
+        using var _ = new AssertionScope();
+        result.ExitCode.Should().Be(0);
+        result.StandardOutput.Should().Be("こんにちは");
+    }
+
+    [Fact]
+    public async Task PrintUnicodeStringByChars()
+    {
+        await SetupTest("""
+            var str = "こんにちは";
+            var chars = str.chars();
+            var i = 0;
+            while (i < chars.Length)
+            {
+                print_char(chars[i]);
+                print_string("\n");
+                i = i + 1;
+            }
+            """);
+
+        var result = await Run();
+
+        using var _ = new AssertionScope();
+        result.ExitCode.Should().Be(0);
+        result.StandardOutput.Should().Be("""
+            こ
+            ん
+            に
+            ち
+            は
+
+            """);
+    }
+
+    [Fact]
+    public async Task PrintUnicodeStringLength()
+    {
+        await SetupTest("""print_u64("こんにちは".Length);""");
+
+        var result = await Run();
+
+        using var _ = new AssertionScope();
+        result.ExitCode.Should().Be(0);
+        result.StandardOutput.Should().Be("5");
+    }
+
+    [Fact]
     public async Task PrintMultipleStringConstants()
     {
         await SetupTest("""print_string("Hello ");print_string("World!!");""");

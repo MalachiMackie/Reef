@@ -50,6 +50,7 @@ public record DefId(ModuleId ModuleId, string FullName)
     public static DefId Unit { get; } = new(CoreLibModuleId, CoreLibModuleId.Value + ":::unit");
 
     public static DefId String { get; } = new(CoreLibModuleId, CoreLibModuleId.Value + ":::string");
+    public static DefId Char { get; } = new(CoreLibModuleId, CoreLibModuleId.Value + ":::char");
     public static DefId Array { get; } = new(CoreLibModuleId, CoreLibModuleId.Value + ":::array");
 
     public static DefId Int64 { get; } = new(CoreLibModuleId, CoreLibModuleId.Value + ":::i64");

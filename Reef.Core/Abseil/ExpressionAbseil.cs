@@ -1796,8 +1796,8 @@ public partial class ProgramAbseil
             _basicBlockStatements = [];
             _basicBlocks.Add(new BasicBlock(new BasicBlockId($"bb{_basicBlocks.Count}"), _basicBlockStatements));
 
-            destination = new Deref(destination);
             returnValue = destination;
+            destination = new Deref(destination);
 
             CreateObject(
                 boxedValueType.NotNull(),

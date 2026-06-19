@@ -44,3 +44,5 @@ reef-runtime/build/
 **/IntegrationTests/**/TestRuns/**
 integration-tests/**/build
 integration-tests/**/build-test
+
+reef-scratch/
