@@ -13,6 +13,7 @@ public partial class TypeChecker
         {
             { AccessType: ValueAccessType.Literal, Token: IntToken { Type: TokenType.IntLiteral } } => new UnspecifiedSizedIntType { Boxed = false },
             { AccessType: ValueAccessType.Literal, Token: StringToken { Type: TokenType.StringLiteral } } => String(),
+            { AccessType: ValueAccessType.Literal, Token: StringToken { Type: TokenType.CharLiteral } } => Char(),
             { AccessType: ValueAccessType.Literal, Token.Type: TokenType.True or TokenType.False } => Boolean(),
             // todo: bring union variants into scope
             { AccessType: ValueAccessType.Variable, Token: StringToken { Type: TokenType.Identifier, StringValue: "ok" } } =>

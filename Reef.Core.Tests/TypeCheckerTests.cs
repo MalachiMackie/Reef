@@ -3148,8 +3148,9 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                                """
                 }
             },
-            // less than
+            new() { { "main.rf", "var a: char = 'a';" } },
 
+            // less than
             new() { { "main.rf", "var a: bool = 1 < 2;" } },
             // GreaterThan,
             new() { { "main.rf", "var a: bool = 2 > 2;" } },

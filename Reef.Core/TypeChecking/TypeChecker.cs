@@ -721,6 +721,7 @@ public partial class TypeChecker
     private InstantiatedClass Never() => GetBuiltInType(DefId.Never);
     private InstantiatedClass Boolean() => GetBuiltInType(DefId.Boolean);
     private InstantiatedClass String() => GetBuiltInType(DefId.String);
+    private InstantiatedClass Char() => GetBuiltInType(DefId.Char);
     private InstantiatedClass UInt64() => GetBuiltInType(DefId.UInt64);
     private InstantiatedClass UInt32() => GetBuiltInType(DefId.UInt32);
     private InstantiatedClass UInt16() => GetBuiltInType(DefId.UInt16);
