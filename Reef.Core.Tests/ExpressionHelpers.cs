@@ -12,8 +12,6 @@ public static class ExpressionHelpers
             Token.IntLiteral(value, SourceSpan.Default), null, [], false));
     }
 
-    public static StringToken Identifier(string identifier) => Token.Identifier(identifier, SourceSpan.Default);
-
     public static ValueAccessorExpression Literal(string value)
     {
         return new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
@@ -28,6 +26,14 @@ public static class ExpressionHelpers
                 : Token.False(SourceSpan.Default),
             null, [], false));
     }
+
+    public static ValueAccessorExpression CharLiteral(string value)
+    {
+        return new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal,
+            Token.CharLiteral(value, SourceSpan.Default), null, [], false));
+    }
+
+    public static StringToken Identifier(string identifier) => Token.Identifier(identifier, SourceSpan.Default);
 
     public static BinaryOperatorExpression Multiply(IExpression? left, IExpression? right)
     {

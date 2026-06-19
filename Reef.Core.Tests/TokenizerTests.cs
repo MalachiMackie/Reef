@@ -210,6 +210,18 @@ public class TokenizerTests
                 new[] { Token.StringLiteral("hello this is a string", new SourceSpan(new SourcePosition(0, 0, 0), 24)) }
             ],
             [
+                "' '",
+                new [] { Token.CharLiteral(" ", new SourceSpan(new SourcePosition(0, 0, 0), 3)) }
+            ],
+            [
+                "'a'",
+                new [] { Token.CharLiteral("a", new SourceSpan(new SourcePosition(0, 0, 0), 3)) }
+            ],
+            [
+                "'\n'",
+                new [] { Token.CharLiteral("\n", new SourceSpan(new SourcePosition(0, 0, 0), 3)) }
+            ],
+            [
                 """
                 "\\\\\\\\"
                 """,

@@ -25,6 +25,7 @@ public enum TokenType
     Else,
     IntLiteral,
     StringLiteral,
+    CharLiteral,
     QuestionMark,
     Return,
     True,

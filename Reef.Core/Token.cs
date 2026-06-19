@@ -253,9 +253,14 @@ public record Token
         return new Token { Type = TokenType.If, SourceSpan = sourceSpan };
     }
 
-    public static Token StringLiteral(string value, SourceSpan sourceSpan)
+    public static StringToken StringLiteral(string value, SourceSpan sourceSpan)
     {
         return new StringToken { StringValue = value, Type = TokenType.StringLiteral, SourceSpan = sourceSpan };
+    }
+
+    public static StringToken CharLiteral(string value, SourceSpan sourceSpan)
+    {
+        return new StringToken { StringValue = value, Type = TokenType.CharLiteral, SourceSpan = sourceSpan };
     }
 
     public static IntToken IntLiteral(int value, SourceSpan sourceSpan)

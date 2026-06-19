@@ -130,6 +130,23 @@ public record ParserError
             attribute.SourceRange,
             $"Unexpected attribute: \"{attribute}\"");
     }
+
+    public static ParserError EmptyCharLiteral(StringToken token)
+    {
+        return new ParserError(
+            ParserErrorType.EmptyCharLiteral,
+            new SourceRange(token.SourceSpan, token.SourceSpan),
+            "Char literal cannot be empty");
+    }
+
+    public static ParserError CharLiteralTooLong(StringToken token)
+    {
+        return new ParserError(
+            ParserErrorType.CharLiteralTooLong,
+            new SourceRange(token.SourceSpan, token.SourceSpan),
+            "Char literal can only contain a single character or a single escape sequence");
+    }
+
 }
 
 public enum ParserErrorType
@@ -148,4 +165,6 @@ public enum ParserErrorType
     ExpectedTypeName,
     ExpectedConstraint,
     UnexpectedAttribute,
+    EmptyCharLiteral,
+    CharLiteralTooLong,
 }

@@ -9,6 +9,29 @@ public static class ParseErrorTestCases
         IEnumerable<(string, LangModule, IEnumerable<ParserError>)> data =
         [
             (
+                "'';",
+                Program("ParseErrorTestCases", expressions: [CharLiteral("")]),
+                [
+                    ParserError.EmptyCharLiteral(Token.CharLiteral("", SourceSpan.Default))
+                ]
+            ),
+            (
+                "'aa';",
+                Program("ParseErrorTestCases", expressions: [CharLiteral("aa")]),
+                [
+                    ParserError.CharLiteralTooLong(Token.CharLiteral("aa", SourceSpan.Default))
+                ]
+            ),
+            (
+                """
+                '\na';
+                """,
+                Program("ParseErrorTestCases", expressions: [CharLiteral("\na")]),
+                [
+                    ParserError.CharLiteralTooLong(Token.CharLiteral("\na", SourceSpan.Default))
+                ]
+            ),
+            (
                     "use :::main:::{token:::*, helpers linked_list};",
                     Program("ParseErrorTestCases",
                         moduleImports: [

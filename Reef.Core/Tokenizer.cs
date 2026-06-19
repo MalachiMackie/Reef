@@ -391,7 +391,9 @@ public class Tokenizer
             TokenType.Else when source is "else" => Token.Else(new SourceSpan(position, (ushort)source.Length)),
             TokenType.IntLiteral when int.TryParse(source, out var intValue) => Token.IntLiteral(intValue,
                 new SourceSpan(position, (ushort)source.Length)),
-            TokenType.StringLiteral when ExactlyMatchesStringLiteral(source) => Token.StringLiteral(
+            TokenType.StringLiteral when ExactlyMatchesStringOrCharLiteral(source, '"') => Token.StringLiteral(
+                GetString(source[1..^1]), new SourceSpan(position, (ushort)source.Length)),
+            TokenType.CharLiteral when ExactlyMatchesStringOrCharLiteral(source, '\'') => Token.CharLiteral(
                 GetString(source[1..^1]), new SourceSpan(position, (ushort)source.Length)),
             TokenType.QuestionMark when source is "?" => Token.QuestionMark(new SourceSpan(position,
                 (ushort)source.Length)),
@@ -543,6 +545,9 @@ public class Tokenizer
             case '0' or '1' or '2' or '3' or '4' or '5' or '6' or '7' or '8' or '9':
                 tokens[i++] = TokenType.IntLiteral;
                 break;
+            case '\'':
+                tokens[i++] = TokenType.CharLiteral;
+                break;
             case '"':
                 tokens[i++] = TokenType.StringLiteral;
                 break;
@@ -623,7 +628,8 @@ public class Tokenizer
             TokenType.NotEquals => Matches(source, "!="),
             TokenType.Else => Matches(source, "else"),
             TokenType.IntLiteral => (source[0] == '-' || char.IsDigit(source[0])) && (source.Length == 1 || !source[1..].ContainsAnyExcept(Digits)),
-            TokenType.StringLiteral => PossiblyMatchesStringLiteral(source),
+            TokenType.StringLiteral => PossiblyMatchesStringOrCharLiteral(source, '"'),
+            TokenType.CharLiteral => PossiblyMatchesStringOrCharLiteral(source, '\''),
             TokenType.QuestionMark => source is "?",
             TokenType.Return => Matches(source, "return"),
             TokenType.True => Matches(source, "true"),
@@ -645,9 +651,9 @@ public class Tokenizer
 
 
 
-        static bool PossiblyMatchesStringLiteral(ReadOnlySpan<char> stringSource)
+        static bool PossiblyMatchesStringOrCharLiteral(ReadOnlySpan<char> stringSource, char wrappingChar)
         {
-            if (stringSource[0] != '"')
+            if (stringSource[0] != wrappingChar)
             {
                 return false;
             }
@@ -660,7 +666,7 @@ public class Tokenizer
 
             var rest = stringSource[1..];
 
-            var lastQuoteIndex = rest.LastIndexOf('"');
+            var lastQuoteIndex = rest.LastIndexOf(wrappingChar);
 
             // haven't found the ending quote yet
             if (lastQuoteIndex < 0)
@@ -689,9 +695,9 @@ public class Tokenizer
         }
     }
 
-    private static bool ExactlyMatchesStringLiteral(ReadOnlySpan<char> stringSource)
+    private static bool ExactlyMatchesStringOrCharLiteral(ReadOnlySpan<char> stringSource, char wrappingChar)
     {
-        if (stringSource[0] != '"')
+        if (stringSource[0] != wrappingChar)
         {
             return false;
         }
@@ -703,7 +709,7 @@ public class Tokenizer
 
         var rest = stringSource[1..];
 
-        var lastQuoteIndex = rest.LastIndexOf('"');
+        var lastQuoteIndex = rest.LastIndexOf(wrappingChar);
 
         // if there is no quote, or it's not at the end of the string, then it's not valid
         if (lastQuoteIndex < 0 || lastQuoteIndex != rest.Length - 1)
@@ -711,6 +717,7 @@ public class Tokenizer
             return false;
         }
 
+        // TODO: move this to parser errors
         var untilQuote = rest[..lastQuoteIndex];
         var withoutTrailingBackSlashes = untilQuote.TrimEnd('\\');
         var backslashCount = untilQuote.Length - withoutTrailingBackSlashes.Length;

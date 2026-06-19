@@ -1774,8 +1774,11 @@ public sealed class Parser : IDisposable
         var expression = Current.Type switch
         {
             // value accessors
-            TokenType.StringLiteral or TokenType.IntLiteral or TokenType.True or TokenType.False =>
-                GetLiteralExpression(),
+            TokenType.StringLiteral
+                or TokenType.CharLiteral
+                or TokenType.IntLiteral
+                or TokenType.True
+                or TokenType.False => GetLiteralExpression(),
             TokenType.Var => GetVariableDeclaration(),
             TokenType.LeftBrace => GetBlockExpression(),
             TokenType.If => GetIfExpression(),
@@ -2369,6 +2372,22 @@ public sealed class Parser : IDisposable
 
     private ValueAccessorExpression GetLiteralExpression()
     {
+        if (Current is StringToken { Type: TokenType.CharLiteral, StringValue: var stringValue } charToken)
+        {
+            if (stringValue.Length > 1 && !stringValue.StartsWith('\\'))
+            {
+                _errors.Add(ParserError.CharLiteralTooLong(charToken));
+            }
+            if (stringValue.StartsWith('\\') && stringValue.Length > 2)
+            {
+                _errors.Add(ParserError.CharLiteralTooLong(charToken));
+            }
+            if (stringValue.Length == 0)
+            {
+                _errors.Add(ParserError.EmptyCharLiteral(charToken));
+            }
+        }
+
         var expression = new ValueAccessorExpression(new ValueAccessor(ValueAccessType.Literal, Current, null, [], false));
 
         MoveNext();

@@ -10,6 +10,22 @@ public static class ParseTestCases
         return [.. new (string Source, LangModule ExpectedProgram)[]
         {
             (
+                "'a';",
+                Program("ParseTestCases", expressions: [CharLiteral("a")])
+            ),
+            (
+                """
+                '\n';
+                """,
+                Program("ParseTestCases", expressions: [CharLiteral("\n")])
+            ),
+            (
+                """
+                '\\';
+                """,
+                Program("ParseTestCases", expressions: [CharLiteral("\\")])
+            ),
+            (
                 "grab x;",
                 Program("ParseTestCases",
                     expressions: [Grab(VariableAccessor("x"))])
