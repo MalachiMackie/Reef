@@ -2910,14 +2910,17 @@ public sealed class Parser : IDisposable
         var expressions = new List<MaybeExpression>();
         Token? last = null;
 
+        var foundExpression = false;
+
         while (_hasNext)
         {
             if (Current.Type == TokenType.Semicolon)
             {
-                if (expressions.Count == 0)
+                if (!foundExpression)
                 {
                     expressions.Add(new MaybeExpression(null));
                 }
+                foundExpression = false;
                 last = Current;
 
                 if (!MoveNext())
@@ -2935,7 +2938,11 @@ public sealed class Parser : IDisposable
                 break;
             }
 
-            expressions.Add(new MaybeExpression(PopExpression(out var consumedToken)));
+            if (PopExpression() is { } expression)
+            {
+                foundExpression = true;
+                expressions.Add(new MaybeExpression(expression));
+            }
 
             if (!_hasNext)
             {

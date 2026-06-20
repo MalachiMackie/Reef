@@ -43,6 +43,30 @@ public static class ParseTestCases
                     ])
             ),
             (
+                "for (true;;){}",
+                Program("ParseTestCases",
+                    expressions: [
+                        ForLoop(
+                            Literal(true),
+                            null,
+                            null,
+                            Block()
+                        )
+                    ])
+            ),
+            (
+                "for (;;true){}",
+                Program("ParseTestCases",
+                    expressions: [
+                        ForLoop(
+                            null,
+                            null,
+                            Literal(true),
+                            Block()
+                        )
+                    ])
+            ),
+            (
                 "'a';",
                 Program("ParseTestCases", expressions: [CharLiteral("a")])
             ),
