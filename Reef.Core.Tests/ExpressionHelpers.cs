@@ -73,6 +73,15 @@ public static class ExpressionHelpers
         );
     }
 
+    public static ForExpression ForLoop(
+        IExpression? initializerExpression,
+        IExpression? checkExpression,
+        IExpression? incrementExpression,
+        IExpression? body)
+    {
+        return new ForExpression(initializerExpression, checkExpression, incrementExpression, body, SourceRange.Default);
+    }
+
     public static BlockExpression Block(IReadOnlyList<IExpression>? expressions = null, IReadOnlyList<ModuleImport>? moduleImports = null)
     {
         return new BlockExpression(new Block(expressions ?? [], [], moduleImports ?? []), SourceRange.Default);

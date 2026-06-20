@@ -10,6 +10,39 @@ public static class ParseTestCases
         return [.. new (string Source, LangModule ExpectedProgram)[]
         {
             (
+                "for (var i = 0; i < 10; i = i + 1){}",
+                Program("ParseTestCases",
+                    expressions: [
+                        ForLoop(
+                            VariableDeclaration("i", Literal(0)),
+                            BinaryOperatorExpression(
+                                BinaryOperatorType.LessThan,
+                                VariableAccessor("i"),
+                                Literal(10)),
+                            BinaryOperatorExpression(
+                                BinaryOperatorType.ValueAssignment,
+                                VariableAccessor("i"),
+                                BinaryOperatorExpression(
+                                    BinaryOperatorType.Plus,
+                                    VariableAccessor("i"),
+                                    Literal(1))),
+                            Block()
+                        )
+                    ])
+            ),
+            (
+                "for (;true;){}",
+                Program("ParseTestCases",
+                    expressions: [
+                        ForLoop(
+                            null,
+                            Literal(true),
+                            null,
+                            Block()
+                        )
+                    ])
+            ),
+            (
                 "'a';",
                 Program("ParseTestCases", expressions: [CharLiteral("a")])
             ),

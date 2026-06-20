@@ -541,6 +541,7 @@ public sealed class Parser : IDisposable
                 else if (expression.ExpressionType is not (
                         ExpressionType.IfExpression
                         or ExpressionType.Block
+                        or ExpressionType.For
                         or ExpressionType.While
                         or ExpressionType.Match))
                 {
@@ -563,13 +564,13 @@ public sealed class Parser : IDisposable
                 if (expression.ExpressionType is not (
                         ExpressionType.IfExpression
                         or ExpressionType.Block
+                        or ExpressionType.For
                         or ExpressionType.While
                         or ExpressionType.Match))
                 {
                     _errors.Add(ParserError.ExpectedToken(Current, TokenType.Semicolon));
                 }
             }
-
         }
 
         var endToken = foundClosingToken ?? _lastToken.NotNull();
@@ -1783,6 +1784,7 @@ public sealed class Parser : IDisposable
             TokenType.LeftBrace => GetBlockExpression(),
             TokenType.If => GetIfExpression(),
             TokenType.While => GetWhile(),
+            TokenType.For => GetFor(),
             TokenType.Break => GetBreak(),
             TokenType.Grab => GetGrab(),
             TokenType.Continue => GetContinue(),
@@ -2884,6 +2886,98 @@ public sealed class Parser : IDisposable
 
         return new MethodCallExpression(new MethodCall(method, argumentList),
             method.SourceRange with { End = lastToken?.SourceSpan ?? leftParenthesis.SourceSpan });
+    }
+
+    record MaybeExpression(IExpression? Expression);
+
+    private ForExpression? GetFor()
+    {
+        var start = Current.SourceSpan;
+        if (!ExpectNextToken(TokenType.LeftParenthesis))
+        {
+            MoveNext();
+            return null;
+        }
+
+        var end = Current.SourceSpan;
+
+        if (!MoveNext())
+        {
+            _errors.Add(ParserError.ExpectedTokenOrExpression(null, TokenType.Semicolon, TokenType.RightParenthesis));
+            return new ForExpression(null, null, null, null, new SourceRange(start, end));
+        }
+
+        var expressions = new List<MaybeExpression>();
+        Token? last = null;
+
+        while (_hasNext)
+        {
+            if (Current.Type == TokenType.Semicolon)
+            {
+                if (expressions.Count == 0)
+                {
+                    expressions.Add(new MaybeExpression(null));
+                }
+                last = Current;
+
+                if (!MoveNext())
+                {
+                    _errors.Add(ParserError.ExpectedTokenOrExpression(null, TokenType.Semicolon, TokenType.RightParenthesis));
+                }
+                continue;
+            }
+
+            if (Current.Type == TokenType.RightParenthesis)
+            {
+                expressions.Add(new MaybeExpression(null));
+                last = Current;
+                MoveNext();
+                break;
+            }
+
+            expressions.Add(new MaybeExpression(PopExpression(out var consumedToken)));
+
+            if (!_hasNext)
+            {
+                _errors.Add(ParserError.ExpectedTokenOrExpression(null, TokenType.Semicolon, TokenType.RightParenthesis));
+                break;
+            }
+
+            if (Current.Type == TokenType.RightParenthesis)
+            {
+                last = Current;
+                MoveNext();
+                break;
+            }
+        }
+
+        if (last is not null)
+        {
+            end = last.SourceSpan;
+        }
+
+        if (expressions.Count != 3)
+        {
+            _errors.Add(ParserError.ForLoopIncorrectNumberOfExpressions(expressions.Count, new SourceRange(start, end)));
+        }
+
+        IExpression? body = null;
+
+        if (!_hasNext)
+        {
+            _errors.Add(ParserError.ExpectedExpression(null));
+        }
+        else
+        {
+            body = PopExpression();
+        }
+
+        return new ForExpression(
+            expressions.FirstOrDefault()?.Expression,
+            expressions.Skip(1).FirstOrDefault()?.Expression,
+            expressions.Skip(2).FirstOrDefault()?.Expression,
+            body,
+            new SourceRange(start, end));
     }
 
     private WhileExpression? GetWhile()

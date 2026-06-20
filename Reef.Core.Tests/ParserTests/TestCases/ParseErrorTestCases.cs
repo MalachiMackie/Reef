@@ -9,6 +9,113 @@ public static class ParseErrorTestCases
         IEnumerable<(string, LangModule, IEnumerable<ParserError>)> data =
         [
             (
+                "for (;true;)",
+                Program("ParseErrorTestCases",
+                    expressions: [
+                        ForLoop(
+                            null,
+                            Literal(true),
+                            null,
+                            null
+                        )
+                    ]),
+                [ParserError.ExpectedExpression(null)]
+            ),
+            (
+                "for",
+                Program("ParseErrorTestCases",
+                    expressions: []),
+                [ParserError.ExpectedToken(null, TokenType.LeftParenthesis)]
+            ),
+            (
+                "for (",
+                Program("ParseErrorTestCases",
+                    expressions: [
+                        ForLoop(
+                            null,
+                            null,
+                            null,
+                            null
+                        )
+                    ]),
+                [
+                    ParserError.ExpectedTokenOrExpression(null, TokenType.Semicolon, TokenType.RightParenthesis),
+                ]
+            ),
+            (
+                "for (true",
+                Program("ParseErrorTestCases",
+                    expressions: [
+                        ForLoop(
+                            Literal(true),
+                            null,
+                            null,
+                            null
+                        )
+                    ]),
+                [
+                    ParserError.ExpectedTokenOrExpression(null, TokenType.Semicolon, TokenType.RightParenthesis),
+                    ParserError.ForLoopIncorrectNumberOfExpressions(1, SourceRange.Default),
+                    ParserError.ExpectedExpression(null),
+                ]
+            ),
+            (
+                "for (true;",
+                Program("ParseErrorTestCases",
+                    expressions: [
+                        ForLoop(
+                            Literal(true),
+                            null,
+                            null,
+                            null
+                        )
+                    ]),
+                [
+                    ParserError.ExpectedTokenOrExpression(null, TokenType.Semicolon, TokenType.RightParenthesis),
+                    ParserError.ForLoopIncorrectNumberOfExpressions(1, SourceRange.Default),
+                    ParserError.ExpectedExpression(null),
+                ]
+            ),
+            (
+                "for (true; true; true)",
+                Program("ParseErrorTestCases",
+                    expressions: [
+                        ForLoop(
+                            Literal(true),
+                            Literal(true),
+                            Literal(true),
+                            null
+                        )
+                    ]),
+                [ParserError.ExpectedExpression(null)]
+            ),
+            (
+                "for (true; true){}",
+                Program("ParseErrorTestCases",
+                    expressions: [
+                        ForLoop(
+                            Literal(true),
+                            Literal(true),
+                            null,
+                            Block()
+                        )
+                    ]),
+                [ParserError.ForLoopIncorrectNumberOfExpressions(2, SourceRange.Default)]
+            ),
+            (
+                "for (true; true; true; true){}",
+                Program("ParseErrorTestCases",
+                    expressions: [
+                        ForLoop(
+                            Literal(true),
+                            Literal(true),
+                            Literal(true),
+                            Block()
+                        )
+                    ]),
+                [ParserError.ForLoopIncorrectNumberOfExpressions(4, SourceRange.Default)]
+            ),
+            (
                 "'';",
                 Program("ParseErrorTestCases", expressions: [CharLiteral("")]),
                 [

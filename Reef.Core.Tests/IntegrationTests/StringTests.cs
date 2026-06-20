@@ -14,7 +14,6 @@ public class StringTests : IntegrationTestBase
     [InlineData("new line", "\\n", "\n")]
     [InlineData("single single quote", "'", "'")]
     [InlineData("unicode character", "は", "は")]
-    [TestMe]
     public async Task PrintCharConstant(string name, string constant, string expectedOutput)
     {
         await SetupTest($"print_char('{constant}');", name);

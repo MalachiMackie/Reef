@@ -331,6 +331,51 @@ public record IfExpressionExpression(IfExpression IfExpression, SourceRange Sour
 
 public record AttributeReference(DefId AttributeId);
 
+public record ForExpression(
+    IExpression? InitializerExpression,
+    IExpression? CheckExpression,
+    IExpression? IncrementExpression,
+    IExpression? Body,
+    SourceRange SourceRange) : IExpression
+{
+    public ExpressionType ExpressionType => ExpressionType.For;
+
+    public TypeChecker.ITypeReference? ResolvedType { get; set; }
+
+    public bool Diverges => new[] { InitializerExpression, CheckExpression, IncrementExpression, Body }.Any(x => x is { Diverges: true });
+
+    public bool ValueUseful { get; set; }
+
+    public override string ToString()
+    {
+        var sb = new StringBuilder("for (");
+        if (InitializerExpression is not null)
+        {
+            sb.Append(InitializerExpression.ToString());
+        }
+        sb.Append(';');
+        if (CheckExpression is not null)
+        {
+            sb.Append(' ');
+            sb.Append(CheckExpression.ToString());
+        }
+        sb.Append(';');
+        if (IncrementExpression is not null)
+        {
+            sb.Append(' ');
+            sb.Append(IncrementExpression.ToString());
+        }
+        sb.Append(')');
+        if (Body is not null)
+        {
+            sb.Append(Body.ToString());
+        }
+
+        return sb.ToString();
+    }
+
+}
+
 public record BlockExpression(Block Block, SourceRange SourceRange) : IExpression
 {
     public ExpressionType ExpressionType => ExpressionType.Block;
@@ -688,6 +733,7 @@ public enum ExpressionType
     None,
     Grab,
     ValueAccess,
+    For,
     UnaryOperator,
     BinaryOperator,
     VariableDeclaration,

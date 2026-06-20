@@ -147,6 +147,14 @@ public record ParserError
             "Char literal can only contain a single character or a single escape sequence");
     }
 
+    public static ParserError ForLoopIncorrectNumberOfExpressions(int foundExpressionCount, SourceRange sourceRange)
+    {
+        return new ParserError(
+            ParserErrorType.ForLoopIncorrectNumberOfExpressions,
+            sourceRange,
+            $"For loop expects 3 expressions, but found {foundExpressionCount}");
+        throw new NotImplementedException();
+    }
 }
 
 public enum ParserErrorType
@@ -167,4 +175,6 @@ public enum ParserErrorType
     UnexpectedAttribute,
     EmptyCharLiteral,
     CharLiteralTooLong,
+    ForLoopIncorrectNumberOfExpressions,
+
 }

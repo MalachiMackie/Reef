@@ -8,7 +8,7 @@ namespace Reef.Core;
 public class Tokenizer
 {
     // maximum potential token types at the same time
-    private const int MaxPotentialTokenTypes = 4;
+    private const int MaxPotentialTokenTypes = 5;
     private static readonly SearchValues<char> Digits = SearchValues.Create("0123456789");
 
     private readonly List<int> _notTokens = [];
@@ -340,6 +340,7 @@ public class Tokenizer
             TokenType.Unboxed when source is "unboxed" => Token.Unboxed(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Extern when source is "extern" => Token.Extern(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Grab when source is "grab" => Token.Grab(new SourceSpan(position, (ushort)source.Length)),
+            TokenType.For when source is "for" => Token.For(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Boxed when source is "boxed" => Token.Boxed(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Attribute when source is "attribute" => Token.Attribute(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Hash when source is "#" => Token.Hash(new SourceSpan(position, (ushort)source.Length)),
@@ -459,6 +460,7 @@ public class Tokenizer
                 break;
             case 'f':
                 tokens[i++] = TokenType.False;
+                tokens[i++] = TokenType.For;
                 tokens[i++] = TokenType.Fn;
                 tokens[i++] = TokenType.Field;
                 break;
@@ -602,6 +604,7 @@ public class Tokenizer
             TokenType.LeftSquareBracket => Matches(source, "["),
             TokenType.RightSquareBracket => Matches(source, "]"),
             TokenType.Union => Matches(source, "union"),
+            TokenType.For => Matches(source, "for"),
             TokenType.Unboxed => Matches(source, "unboxed"),
             TokenType.Boxed => Matches(source, "boxed"),
             TokenType.Mut => Matches(source, "mut"),

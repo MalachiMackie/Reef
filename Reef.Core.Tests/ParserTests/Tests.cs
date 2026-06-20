@@ -49,26 +49,12 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
     [Fact(Timeout = 3000)]
     public void SingleTest()
     {
-        var source = "use :::main:::{token:::*, helpers::linked_list};";
-        var expectedProgram = Program("ParseTestCases",
-            moduleImports: [
-                ModuleImport(
-                    new ModulePathSegment(
-                        Identifier("main"),
-                        [
-                            new ModulePathSegment(Identifier("token"), [], true),
-                            new ModulePathSegment(Identifier("helpers"), [], false),
-                            new ModulePathSegment(Identifier("linked_list"), [], false),
-                        ],
-                        false
-                    ),
-                    isGlobal: true)
-            ]);
+        var source = "for";
+        var expectedProgram = Program("ParseErrorTestCases",
+            expressions: []);
 
         IEnumerable<ParserError> expectedErrors = [
-            ParserError.ExpectedToken(Token.DoubleColon(SourceSpan.Default), TokenType.Comma, TokenType.RightBrace),
-            ParserError.ExpectedToken(Token.DoubleColon(SourceSpan.Default), TokenType.Identifier),
-            ParserError.ExpectedToken(Identifier("linked_list"), TokenType.Comma, TokenType.RightBrace),
+            ParserError.ExpectedToken(null, TokenType.LeftParenthesis)
         ];
 
         var tokens = Tokenizer.Tokenize(source);

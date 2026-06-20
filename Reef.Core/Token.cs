@@ -386,4 +386,12 @@ public record Token
         };
     }
 
+    public static Token For(SourceSpan sourceSpan)
+    {
+        return new Token
+        {
+            Type = TokenType.For,
+            SourceSpan = sourceSpan
+        };
+    }
 }

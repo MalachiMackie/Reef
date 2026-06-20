@@ -46,6 +46,7 @@ public enum TokenType
     Union,
     Match,
     While,
+    For,
     Break,
     Continue,
     Matches,
