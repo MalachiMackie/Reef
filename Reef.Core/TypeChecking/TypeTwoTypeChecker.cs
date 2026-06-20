@@ -203,6 +203,9 @@ public class TypeTwoTypeChecker(
             case WhileExpression whileExpression:
                 CheckWhileExpression(whileExpression);
                 break;
+            case ForExpression forExpression:
+                CheckForExpression(forExpression);
+                break;
             case CollectionExpression collectionExpression:
                 CheckCollectionExpression(collectionExpression);
                 break;
@@ -251,6 +254,26 @@ public class TypeTwoTypeChecker(
         if (whileExpression.Body is not null)
         {
             CheckExpression(whileExpression.Body);
+        }
+    }
+
+    private void CheckForExpression(ForExpression forExpression)
+    {
+        if (forExpression.InitializerExpression is not null)
+        {
+            CheckExpression(forExpression.InitializerExpression);
+        }
+        if (forExpression.CheckExpression is not null)
+        {
+            CheckExpression(forExpression.CheckExpression);
+        }
+        if (forExpression.IncrementExpression is not null)
+        {
+            CheckExpression(forExpression.IncrementExpression);
+        }
+        if (forExpression.Body is not null)
+        {
+            CheckExpression(forExpression.Body);
         }
     }
 

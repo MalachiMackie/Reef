@@ -44,6 +44,7 @@ public partial class TypeChecker
             CollectionExpression collectionExpression => TypeCheckCollectionExpression(collectionExpression),
             FillCollectionExpression fillCollectionExpression => TypeCheckFillCollectionExpression(fillCollectionExpression),
             IndexExpression indexExpression => TypeCheckIndexExpression(indexExpression),
+            ForExpression forExpression => TypeCheckForExpression(forExpression),
             _ => throw new UnreachableException($"{expression.ExpressionType}")
         };
 
@@ -145,7 +146,67 @@ public partial class TypeChecker
         return Never();
     }
 
-    private InstantiatedClass TypeCheckWhileExpression(WhileExpression whileExpression)
+    private ITypeReference TypeCheckForExpression(ForExpression forExpression)
+    {
+        using var _ = PushScope();
+        if (forExpression.InitializerExpression is not null)
+        {
+            TypeCheckExpression(forExpression.InitializerExpression);
+        }
+
+        if (forExpression.CheckExpression is not null)
+        {
+            TypeCheckExpression(forExpression.CheckExpression);
+            forExpression.CheckExpression.ValueUseful = true;
+            ExpectExpressionType(Boolean(), forExpression.CheckExpression);
+        }
+
+        var variableDeclarations = forExpression.CheckExpression is null
+            ? []
+            : GetExpressionUninitializedDeclaredVariables(forExpression.CheckExpression);
+
+        var uninstantiatedVariables =
+            GetScopedVariables().OfType<LocalVariable>()
+            .Where(x => !x.Instantiated)
+            .ToDictionary(x => x, _ => new VariableIfInstantiation());
+
+        foreach (var variable in variableDeclarations)
+        {
+            variable.Instantiated = true;
+        }
+
+
+        _loopDepth++;
+
+        ITypeReference bodyType = Unit();
+
+        if (forExpression.Body is not null)
+        {
+            bodyType = TypeCheckExpression(forExpression.Body);
+        }
+
+        if (forExpression.IncrementExpression is not null)
+        {
+            TypeCheckExpression(forExpression.IncrementExpression);
+        }
+
+        _loopDepth--;
+
+        foreach (var (variable, variableInstantiation) in uninstantiatedVariables)
+        {
+            variableInstantiation.InstantiatedInBody = variable.Instantiated;
+            variable.Instantiated = false;
+        }
+
+        foreach (var variable in variableDeclarations)
+        {
+            variable.Instantiated = false;
+        }
+
+        return bodyType;
+    }
+
+    private ITypeReference TypeCheckWhileExpression(WhileExpression whileExpression)
     {
         if (whileExpression.Check is not null)
         {
@@ -154,18 +215,43 @@ public partial class TypeChecker
             ExpectExpressionType(Boolean(), whileExpression.Check);
         }
 
+        var variableDeclarations = whileExpression.Check is null
+            ? []
+            : GetExpressionUninitializedDeclaredVariables(whileExpression.Check);
+
+        var uninstantiatedVariables =
+            GetScopedVariables().OfType<LocalVariable>()
+            .Where(x => !x.Instantiated)
+            .ToDictionary(x => x, _ => new VariableIfInstantiation());
+
+        foreach (var variable in variableDeclarations)
+        {
+            variable.Instantiated = true;
+        }
+
         _loopDepth++;
+
+        ITypeReference bodyType = Unit();
 
         if (whileExpression.Body is not null)
         {
-            TypeCheckExpression(whileExpression.Body);
-
-            ExpectExpressionType(Unit(), whileExpression.Body);
+            bodyType = TypeCheckExpression(whileExpression.Body);
         }
 
         _loopDepth--;
 
-        return Unit();
+        foreach (var (variable, variableInstantiation) in uninstantiatedVariables)
+        {
+            variableInstantiation.InstantiatedInBody = variable.Instantiated;
+            variable.Instantiated = false;
+        }
+
+        foreach (var variable in variableDeclarations)
+        {
+            variable.Instantiated = false;
+        }
+
+        return bodyType;
     }
 
     private bool ExpectMutableExpression(IExpression expression, bool report = true)

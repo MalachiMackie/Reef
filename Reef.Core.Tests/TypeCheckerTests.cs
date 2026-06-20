@@ -124,6 +124,121 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     "main.rf",
                     """
+                    for (var i = 0; i < 10; i = i + 1)
+                    {}
+                    """
+                },
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    for (;;)
+                    {}
+                    """
+                },
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    for ({};{grab true;};{})
+                    {}
+                    """
+                },
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    for (1; true; 1)
+                    {}
+                    """
+                },
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    var i = 0;
+                    for (; true;)
+                    {
+                        i = i + 1;
+                    }
+                    """
+                },
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    for (var i = 0; true;)
+                    {
+                        i = i + 1;
+                    }
+                    """
+                },
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    var b = 0;
+                    for (; b matches var c;)
+                    {
+                        var d = c;
+                    }
+                    """
+                },
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    var a = for (var i = 0; i < 10; i = i + 1)
+                    {
+                        grab i;
+                    };
+                    """
+                },
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    var b = 0;
+                    while (b matches var c) {
+                        var d = c;
+                    }
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    var b = 0;
+                    var c = while (b < 10) {
+                        b = b + 1;
+                        grab b;
+                    };
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
                     union MyUnion {
                         A,
                         pub static fn something() {
@@ -3619,6 +3734,39 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
     {
         return new TheoryData<string, Dictionary<string, (string contents, IReadOnlyList<TypeCheckerError> expectedErrors)>>
         {
+            {
+                "for loop incorrect check expression type",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            for (;1;)
+                            {}
+                            """,
+                            [TypeCheckerError.MismatchedTypes(SourceRange.Default, Boolean, UnspecifiedSizedIntType)]
+                        )
+                    }
+                }
+            },
+            {
+                "for loop incorrect check expression type",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            for (var i = 0;;)
+                            {}
+                            var b = i;
+                            """,
+                            [TypeCheckerError.SymbolNotFound(Identifier("i"))]
+                        )
+                    }
+                }
+            },
             {
                 "unknown field in class variant pattern",
                 new()
