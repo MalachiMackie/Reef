@@ -2564,7 +2564,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                         _ => throw new UnreachableException()
                     };
                 }
-            case SizeOf sizeOf:
+            case SizeOf:
                 return new LoweredConcreteTypeReference(DefId.UInt64, []);
             case StringConstant:
                 return new LoweredPointer(
@@ -2572,6 +2572,8 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                         new LoweredConcreteTypeReference(DefId.String, [])
                     ])
                 );
+            case CharConstant:
+                return new LoweredConcreteTypeReference(DefId.Char, []);
             case UnitConstant:
                 return new LoweredConcreteTypeReference(DefId.Unit, []);
             default:
@@ -3033,6 +3035,13 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                 {
                     var typeId = GetTypeId(type, currentTypeArguments);
                     MoveIntoPlace(destination, $"0x{typeId:X}", PointerSize);
+                    break;
+                }
+            case CharConstant(var value):
+                {
+                    var utf32 = char.ConvertToUtf32($"{value}", 0);
+
+                    MoveIntoPlace(destination, $"0x{utf32:X}", size: 4);
                     break;
                 }
             default:
