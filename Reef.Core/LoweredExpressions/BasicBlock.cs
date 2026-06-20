@@ -68,6 +68,8 @@ public record AddressOf(IPlace Place) : IOperand;
 
 public record StringConstant(string Value) : IOperand;
 
+public record CharConstant(char Value) : IOperand;
+
 public record IntConstant(long Value, byte ByteSize) : IOperand;
 
 public record UIntConstant(ulong Value, byte ByteSize) : IOperand;

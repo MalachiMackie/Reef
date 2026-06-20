@@ -504,6 +504,20 @@ public class PrettyPrinter(LoweredProgram module)
                     _stringBuilder.Append(')');
                     break;
                 }
+            case CharConstant(var charValue):
+                {
+                    _stringBuilder.Append('\'');
+                    _stringBuilder.Append(charValue switch
+                    {
+                        '\n' => "\\n",
+                        '\t' => "\\t",
+                        '\r' => "\\r",
+                        '\'' => "\\'",
+                        _ => charValue.ToString()
+                    });
+                    _stringBuilder.Append('\'');
+                    break;
+                }
             default:
                 throw new ArgumentOutOfRangeException(operand.ToString());
         }

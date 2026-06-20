@@ -2349,7 +2349,20 @@ public partial class ProgramAbseil
 
         var operand = e switch
         {
-            { ValueAccessor: { AccessType: ValueAccessType.Literal, Token: StringToken { StringValue: var stringLiteral } } } => new OperandResult(new StringConstant(stringLiteral)),
+            {
+                ValueAccessor:
+                {
+                    AccessType: ValueAccessType.Literal,
+                    Token: StringToken { Type: TokenType.StringLiteral, StringValue: var stringLiteral }
+                }
+            } => new OperandResult(new StringConstant(stringLiteral)),
+            {
+                ValueAccessor:
+                {
+                    AccessType: ValueAccessType.Literal,
+                    Token: StringToken { Type: TokenType.CharLiteral, StringValue: var charLiteral }
+                }
+            } => new OperandResult(new CharConstant(charLiteral.Single())),
             { ValueAccessor: { AccessType: ValueAccessType.Literal, Token: IntToken { Type: TokenType.IntLiteral, IntValue: var intValue } }, ResolvedType: var resolvedType } =>
                 new OperandResult(IsIntSigned(resolvedType.NotNull())
                     ? new IntConstant(intValue, GetIntSize(resolvedType.NotNull()))

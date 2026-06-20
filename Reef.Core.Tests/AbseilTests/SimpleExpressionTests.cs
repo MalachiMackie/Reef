@@ -320,6 +320,33 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                 ])
             },
             {
+                "char literal ",
+                "var a = ' ';",
+                LoweredProgram(ModuleId, methods: [
+                    Method(
+                        new DefId(ModuleId, $"{ModuleId}:::_Main"),
+                        "_Main",
+                        [
+                            new BasicBlock(
+                                new BasicBlockId("bb0"),
+                                [
+                                    new Assign(new Local("_local0"), new Use(new CharConstant(' ')))
+                                ])
+                            {
+                                Terminator = new GoTo(new BasicBlockId("bb1"))
+                            },
+                            new BasicBlock(
+                                new BasicBlockId("bb1"),
+                                [])
+                            {
+                                Terminator = new Return()
+                            }
+                        ],
+                        Unit,
+                        locals: [new MethodLocal("_local0", "a", CharT)])
+                ])
+            },
+            {
                 "variable declaration",
                 "var a = \"\";",
                 LoweredProgram(ModuleId, methods: [

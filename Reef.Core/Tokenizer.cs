@@ -306,6 +306,7 @@ public class Tokenizer
                 't' => '\t',
                 'r' => '\r',
                 '"' => '"',
+                '\'' => '\'',
                 '\\' => '\\',
                 _ => throw new InvalidOperationException()
             });

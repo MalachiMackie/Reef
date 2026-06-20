@@ -190,6 +190,11 @@ public static class LoweredProgramHelpers
             DefId.Unit,
             []);
 
+    public static LoweredConcreteTypeReference CharT { get; }
+        = new(
+            DefId.Char,
+            []);
+
     public static LoweredPointer StringT { get; }
         = new(BoxedValue(new LoweredConcreteTypeReference(DefId.String, [])));
 

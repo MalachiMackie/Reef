@@ -26,6 +26,18 @@ public static class ParseTestCases
                 Program("ParseTestCases", expressions: [CharLiteral("\\")])
             ),
             (
+                """
+                '\'';
+                """,
+                Program("ParseTestCases", expressions: [CharLiteral("'")])
+            ),
+            (
+                """
+                "\"";
+                """,
+                Program("ParseTestCases", expressions: [Literal("\"")])
+            ),
+            (
                 "grab x;",
                 Program("ParseTestCases",
                     expressions: [Grab(VariableAccessor("x"))])

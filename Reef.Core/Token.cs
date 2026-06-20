@@ -12,6 +12,7 @@ public record StringToken : Token
         {
             TokenType.Identifier => StringValue,
             TokenType.StringLiteral => $"\"{StringValue}\"",
+            TokenType.CharLiteral => $"'{StringValue}'",
             TokenType.SingleLineComment => $"//{StringValue}",
             TokenType.MultiLineComment => $"/*{StringValue}*/",
             _ => throw new ArgumentOutOfRangeException()

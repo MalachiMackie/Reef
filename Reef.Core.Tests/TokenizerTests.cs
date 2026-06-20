@@ -240,6 +240,30 @@ public class TokenizerTests
                     Token.Semicolon(new SourceSpan(new SourcePosition(2, 0, 2), 1))
                 }
             ],
+            [
+                """
+                "\""
+                """,
+                new [] { Token.StringLiteral("\"", new SourceSpan(SourcePosition.Default, 4)) }
+            ],
+            [
+                """
+                '\''
+                """,
+                new [] { Token.CharLiteral("'", new SourceSpan(SourcePosition.Default, 4)) }
+            ],
+            [
+                """
+                '\\'
+                """,
+                new [] { Token.CharLiteral("\\", new SourceSpan(SourcePosition.Default, 4)) }
+            ],
+            [
+                """
+                "\\"
+                """,
+                new [] { Token.StringLiteral("\\", new SourceSpan(SourcePosition.Default, 4)) }
+            ],
             ["\"\"", new [] {Token.StringLiteral("", new SourceSpan(SourcePosition.Default, 2))}],
             [
                 """
