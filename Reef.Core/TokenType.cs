@@ -66,5 +66,9 @@ public enum TokenType
     Where,
     Hash,
     Attribute,
+    DoubleDash,
+    DoublePlus,
+    LeftAngleBracketEquals,
+    RightAngleBracketEquals,
 
 }

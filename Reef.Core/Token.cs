@@ -97,6 +97,10 @@ public record Token
             TokenType.TripleColon => ":::",
             TokenType.Extern => "extern",
             TokenType.Hash => "#",
+            TokenType.DoubleDash => "--",
+            TokenType.DoublePlus => "++",
+            TokenType.LeftAngleBracketEquals => "<=",
+            TokenType.RightAngleBracketEquals => ">=",
             _ => throw new UnreachableException(Type.ToString())
         };
     }
@@ -209,9 +213,19 @@ public record Token
         return new Token { Type = TokenType.LeftAngleBracket, SourceSpan = sourceSpan };
     }
 
+    public static Token LeftAngleBracketEquals(SourceSpan sourceSpan)
+    {
+        return new Token { Type = TokenType.LeftAngleBracketEquals, SourceSpan = sourceSpan };
+    }
+
     public static Token RightAngleBracket(SourceSpan sourceSpan)
     {
         return new Token { Type = TokenType.RightAngleBracket, SourceSpan = sourceSpan };
+    }
+
+    public static Token RightAngleBracketEquals(SourceSpan sourceSpan)
+    {
+        return new Token { Type = TokenType.RightAngleBracketEquals, SourceSpan = sourceSpan };
     }
 
     public static Token Comma(SourceSpan sourceSpan)
@@ -309,6 +323,11 @@ public record Token
         return new Token { Type = TokenType.Dash, SourceSpan = sourceSpan };
     }
 
+    public static Token DoubleDash(SourceSpan sourceSpan)
+    {
+        return new Token { Type = TokenType.DoubleDash, SourceSpan = sourceSpan };
+    }
+
     public static Token Star(SourceSpan sourceSpan)
     {
         return new Token { Type = TokenType.Star, SourceSpan = sourceSpan };
@@ -327,6 +346,11 @@ public record Token
     public static Token Plus(SourceSpan sourceSpan)
     {
         return new Token { Type = TokenType.Plus, SourceSpan = sourceSpan };
+    }
+
+    public static Token DoublePlus(SourceSpan sourceSpan)
+    {
+        return new Token { Type = TokenType.DoublePlus, SourceSpan = sourceSpan };
     }
 
     public static Token Dot(SourceSpan sourceSpan)

@@ -379,7 +379,11 @@ public class Tokenizer
             TokenType.Colon when source is ":" => Token.Colon(new SourceSpan(position, (ushort)source.Length)),
             TokenType.LeftAngleBracket when source is "<" => Token.LeftAngleBracket(new SourceSpan(position,
                 (ushort)source.Length)),
+            TokenType.LeftAngleBracketEquals when source is "<=" => Token.LeftAngleBracketEquals(new SourceSpan(position,
+                (ushort)source.Length)),
             TokenType.RightAngleBracket when source is ">" => Token.RightAngleBracket(new SourceSpan(position,
+                (ushort)source.Length)),
+            TokenType.RightAngleBracketEquals when source is ">=" => Token.RightAngleBracketEquals(new SourceSpan(position,
                 (ushort)source.Length)),
             TokenType.Var when source is "var" => Token.Var(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Equals when source is "=" => Token.Equals(new SourceSpan(position, (ushort)source.Length)),
@@ -406,7 +410,9 @@ public class Tokenizer
                 (ushort)source.Length)),
             TokenType.Star when source is "*" => Token.Star(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Plus when source is "+" => Token.Plus(new SourceSpan(position, (ushort)source.Length)),
+            TokenType.DoublePlus when source is "++" => Token.DoublePlus(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Dash when source is "-" => Token.Dash(new SourceSpan(position, (ushort)source.Length)),
+            TokenType.DoubleDash when source is "--" => Token.DoubleDash(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Dot when source is "." => Token.Dot(new SourceSpan(position, (ushort)source.Length)),
             TokenType.SingleLineComment when source.StartsWith("//") => Token.SingleLineComment(source[2..].ToString(),
                 new SourceSpan(position, (ushort)source.Length)),
@@ -472,9 +478,11 @@ public class Tokenizer
                 break;
             case '<':
                 tokens[i++] = TokenType.LeftAngleBracket;
+                tokens[i++] = TokenType.LeftAngleBracketEquals;
                 break;
             case '>':
                 tokens[i++] = TokenType.RightAngleBracket;
+                tokens[i++] = TokenType.RightAngleBracketEquals;
                 break;
             case 'n':
                 tokens[i++] = TokenType.New;
@@ -529,9 +537,11 @@ public class Tokenizer
                 break;
             case '+':
                 tokens[i++] = TokenType.Plus;
+                tokens[i++] = TokenType.DoublePlus;
                 break;
             case '-':
                 tokens[i++] = TokenType.Dash;
+                tokens[i++] = TokenType.DoubleDash;
                 tokens[i++] = TokenType.IntLiteral;
                 break;
             case 'w':
@@ -624,7 +634,9 @@ public class Tokenizer
             TokenType.EqualsArrow => Matches(source, "=>"),
             TokenType.Colon => Matches(source, ":"),
             TokenType.LeftAngleBracket => Matches(source, "<"),
+            TokenType.LeftAngleBracketEquals => Matches(source, "<="),
             TokenType.RightAngleBracket => Matches(source, ">"),
+            TokenType.RightAngleBracketEquals => Matches(source, ">="),
             TokenType.Var => Matches(source, "var"),
             TokenType.Equals => Matches(source, "="),
             TokenType.Comma => Matches(source, ","),
@@ -643,7 +655,9 @@ public class Tokenizer
             TokenType.Star => Matches(source, "*"),
             TokenType.ForwardSlash => Matches(source, "/"),
             TokenType.Plus => Matches(source, "+"),
+            TokenType.DoublePlus => Matches(source, "++"),
             TokenType.Dash => Matches(source, "-"),
+            TokenType.DoubleDash => Matches(source, "--"),
             TokenType.Dot => Matches(source, "."),
             TokenType.DoubleAmpersand => Matches(source, "&&"),
             TokenType.DoubleBar => Matches(source, "||"),
