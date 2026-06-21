@@ -124,13 +124,18 @@ public partial class TypeChecker
         return UnknownType.Instance;
     }
 
-    private uint _loopDepth;
-
     private InstantiatedClass TypeCheckContinueExpression(ContinueExpression continueExpression)
     {
-        if (_loopDepth == 0)
+        var scope = _typeCheckingScopes.Peek();
+        if (scope.LoopExpression is null)
         {
             AddError(TypeCheckerError.ContinueUsedOutsideOfLoop(continueExpression));
+        }
+        else if (scope.LoopExpression.ValueUseful)
+        {
+            // todo: we could have continue return a value like
+            // continue x;
+            AddError(TypeCheckerError.ContinueUsedInValueLoop(continueExpression.SourceRange));
         }
 
         return Never();
@@ -138,26 +143,38 @@ public partial class TypeChecker
 
     private InstantiatedClass TypeCheckBreakExpression(BreakExpression breakExpression)
     {
-        if (_loopDepth == 0)
+        var scope = _typeCheckingScopes.Peek();
+        if (scope.LoopExpression is null)
         {
             AddError(TypeCheckerError.BreakUsedOutsideOfLoop(breakExpression));
         }
+        else if (scope.LoopExpression.ValueUseful)
+        {
+            // todo: we could have break return a value like
+            // break x;
+            AddError(TypeCheckerError.BreakUsedInValueLoop(breakExpression.SourceRange));
+        }
 
         return Never();
+
     }
 
     private ITypeReference TypeCheckForExpression(ForExpression forExpression)
     {
-        using var _ = PushScope();
+        // push outer scope to caputure the initializer expression variable
+        using var __ = PushScope();
         if (forExpression.InitializerExpression is not null)
         {
             TypeCheckExpression(forExpression.InitializerExpression);
         }
 
+        using var _ = PushScope(loopExpression: forExpression);
+
         if (forExpression.CheckExpression is not null)
         {
-            TypeCheckExpression(forExpression.CheckExpression);
             forExpression.CheckExpression.ValueUseful = true;
+            TypeCheckExpression(forExpression.CheckExpression);
+
             ExpectExpressionType(Boolean(), forExpression.CheckExpression);
         }
 
@@ -175,9 +192,6 @@ public partial class TypeChecker
             variable.Instantiated = true;
         }
 
-
-        _loopDepth++;
-
         ITypeReference bodyType = Unit();
 
         if (forExpression.Body is not null)
@@ -189,8 +203,6 @@ public partial class TypeChecker
         {
             TypeCheckExpression(forExpression.IncrementExpression);
         }
-
-        _loopDepth--;
 
         foreach (var (variable, variableInstantiation) in uninstantiatedVariables)
         {
@@ -208,10 +220,11 @@ public partial class TypeChecker
 
     private ITypeReference TypeCheckWhileExpression(WhileExpression whileExpression)
     {
+        using var _ = PushScope(loopExpression: whileExpression);
         if (whileExpression.Check is not null)
         {
-            TypeCheckExpression(whileExpression.Check);
             whileExpression.Check.ValueUseful = true;
+            TypeCheckExpression(whileExpression.Check);
             ExpectExpressionType(Boolean(), whileExpression.Check);
         }
 
@@ -229,16 +242,12 @@ public partial class TypeChecker
             variable.Instantiated = true;
         }
 
-        _loopDepth++;
-
         ITypeReference bodyType = Unit();
 
         if (whileExpression.Body is not null)
         {
             bodyType = TypeCheckExpression(whileExpression.Body);
         }
-
-        _loopDepth--;
 
         foreach (var (variable, variableInstantiation) in uninstantiatedVariables)
         {

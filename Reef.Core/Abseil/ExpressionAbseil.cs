@@ -12,7 +12,7 @@ public partial class ProgramAbseil
     private uint _controlFlowDepth;
     private readonly Stack<LoopBasicBlocks> _loopBasicBlocksStack = [];
 
-    private record LoopBasicBlocks(BasicBlockId Beginning, BasicBlockId After);
+    private record LoopBasicBlocks(BasicBlockId ContinueTo, BasicBlockId BreakTo);
 
     private interface IExpressionResult
     {
@@ -38,7 +38,8 @@ public partial class ProgramAbseil
                 binaryOperatorExpression, destination),
             BlockExpression blockExpression => LowerBlock(blockExpression, destination),
             GrabExpression grabExpression => LowerGrab(grabExpression, destination),
-            WhileExpression whileExpression => LowerWhile(whileExpression),
+            WhileExpression whileExpression => LowerWhile(whileExpression, destination),
+            ForExpression forExpression => LowerFor(forExpression, destination),
             BreakExpression => LowerBreak(),
             ContinueExpression => LowerContinue(),
             IfExpressionExpression ifExpressionExpression => LowerIf(ifExpressionExpression, destination),
@@ -256,7 +257,7 @@ public partial class ProgramAbseil
     private IExpressionResult LowerContinue()
     {
         var loopBasicBlocks = _loopBasicBlocksStack.Peek();
-        _basicBlocks[^1].Terminator = new GoTo(loopBasicBlocks.Beginning);
+        _basicBlocks[^1].Terminator = new GoTo(loopBasicBlocks.ContinueTo);
         GetNextEmptyBasicBlock();
 
         return new OperandResult(new UnitConstant());
@@ -265,13 +266,67 @@ public partial class ProgramAbseil
     private IExpressionResult LowerBreak()
     {
         var loopBasicBlocks = _loopBasicBlocksStack.Peek();
-        _basicBlocks[^1].Terminator = new GoTo(loopBasicBlocks.After);
+        _basicBlocks[^1].Terminator = new GoTo(loopBasicBlocks.BreakTo);
         GetNextEmptyBasicBlock();
 
         return new OperandResult(new UnitConstant());
     }
 
-    private IExpressionResult LowerWhile(WhileExpression expression)
+    private IExpressionResult LowerFor(ForExpression expression, IPlace? destination)
+    {
+        if (expression.InitializerExpression is not null)
+        {
+            LowerExpression(expression.InitializerExpression, destination: null);
+        }
+
+        var beginningBasicBlockId = GetNextEmptyBasicBlock();
+        var afterBasicBlockId = new BasicBlockId("after");
+        var bodyBasicBlockId = new BasicBlockId("body");
+        var bodyEndBasicBlockId = new BasicBlockId("body");
+
+        _controlFlowDepth++;
+        _loopBasicBlocksStack.Push(new LoopBasicBlocks(ContinueTo: bodyEndBasicBlockId, BreakTo: afterBasicBlockId));
+
+        var checkValue = expression.CheckExpression is null
+            ? new BoolConstant(true)
+            : LowerExpression(expression.CheckExpression, null).ToOperand();
+
+        _basicBlocks[^1].Terminator = new SwitchInt(
+            checkValue,
+            new Dictionary<int, BasicBlockId>
+            {
+                { 0, afterBasicBlockId }
+            },
+            bodyBasicBlockId);
+
+        bodyBasicBlockId.Id = GetNextEmptyBasicBlock().Id;
+        var bodyResult = LowerExpression(expression.Body.NotNull(), null);
+
+        bodyEndBasicBlockId.Id = GetNextEmptyBasicBlock().Id;
+
+        if (expression.IncrementExpression is not null)
+        {
+            LowerExpression(expression.IncrementExpression, null);
+        }
+
+        _basicBlocks[^1].Terminator = new GoTo(beginningBasicBlockId);
+
+        afterBasicBlockId.Id = GetNextEmptyBasicBlock().Id;
+
+        _controlFlowDepth--;
+        _loopBasicBlocksStack.Pop();
+
+        if (destination is not null)
+        {
+            _basicBlockStatements.Add(new Assign(
+                destination,
+                new Use(bodyResult.ToOperand())));
+        }
+
+        return bodyResult;
+    }
+
+    private IExpressionResult LowerWhile(WhileExpression expression, IPlace? destination)
     {
         var beginningBasicBlockId = GetNextEmptyBasicBlock();
         var afterBasicBlockId = new BasicBlockId("after");
@@ -291,7 +346,7 @@ public partial class ProgramAbseil
             bodyBasicBlockId);
 
         bodyBasicBlockId.Id = GetNextEmptyBasicBlock().Id;
-        LowerExpression(expression.Body.NotNull(), null);
+        var bodyResult = LowerExpression(expression.Body.NotNull(), null);
 
         _basicBlocks[^1].Terminator = new GoTo(beginningBasicBlockId);
 
@@ -299,7 +354,15 @@ public partial class ProgramAbseil
 
         _controlFlowDepth--;
         _loopBasicBlocksStack.Pop();
-        return new OperandResult(new UnitConstant());
+
+        if (destination is not null)
+        {
+            _basicBlockStatements.Add(new Assign(
+                destination,
+                new Use(bodyResult.ToOperand())));
+        }
+
+        return bodyResult;
     }
 
     private IExpressionResult LowerIf(IfExpressionExpression expression, IPlace? destination)

@@ -341,6 +341,7 @@ public partial class TypeChecker
                         ],
                         UseAll: false))
             ],
+            null,
             null));
 
         SetupSignatures();
@@ -397,8 +398,8 @@ public partial class TypeChecker
                             throw new InvalidOperationException("Expected field initializer for static field");
                         }
 
-                        var valueType = TypeCheckExpression(field.InitializerValue);
                         field.InitializerValue.ValueUseful = true;
+                        var valueType = TypeCheckExpression(field.InitializerValue);
 
                         ExpectType(valueType, fieldTypeReference, field.InitializerValue.SourceRange);
 
@@ -637,8 +638,8 @@ public partial class TypeChecker
                 }
             case { Value: { } value, Type: var type, MutabilityModifier: var mutModifier }:
                 {
-                    var valueType = TypeCheckExpression(value);
                     value.ValueUseful = true;
+                    var valueType = TypeCheckExpression(value);
                     ITypeReference variableType;
                     if (type is not null)
                     {

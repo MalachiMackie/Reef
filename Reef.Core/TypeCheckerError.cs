@@ -506,6 +506,22 @@ public record TypeCheckerError
             new SourceRange(name.SourceSpan, name.SourceSpan),
             $"Definition name \"Self\" is reserved");
     }
+
+    public static TypeCheckerError ContinueUsedInValueLoop(SourceRange sourceRange)
+    {
+        return new(
+            TypeCheckerErrorType.ContinueUsedInValueLoop,
+            sourceRange,
+            $"Continue cannot be used in loop that 'grab's a value");
+    }
+
+    public static TypeCheckerError BreakUsedInValueLoop(SourceRange sourceRange)
+    {
+        return new(
+            TypeCheckerErrorType.BreakUsedInValueLoop,
+            sourceRange,
+            $"Break cannot be used in loop that 'grab's a value");
+    }
 }
 
 public enum TypeCheckerErrorType
@@ -577,6 +593,8 @@ public enum TypeCheckerErrorType
     GrabNotInBlock,
     NonIndexableType,
     UninitializableType,
-    DefinitionNameCannotBeSelf
+    DefinitionNameCannotBeSelf,
+    ContinueUsedInValueLoop,
+    BreakUsedInValueLoop
 
 }

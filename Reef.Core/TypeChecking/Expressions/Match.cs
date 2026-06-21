@@ -29,10 +29,7 @@ public partial class TypeChecker
                 ExpectMutableExpression(matchExpression.Value);
             }
 
-            if (arm.Expression is not null)
-            {
-                arm.Expression.ValueUseful = true;
-            }
+            arm.Expression?.ValueUseful = true;
 
             var armType = arm.Expression is null
                 ? UnknownType.Instance

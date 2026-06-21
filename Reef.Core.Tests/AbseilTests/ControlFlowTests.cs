@@ -1,4 +1,3 @@
-using Reef.Core.Abseil;
 using Reef.Core.LoweredExpressions;
 using static Reef.Core.Tests.LoweredProgramHelpers;
 
@@ -23,88 +22,67 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
     public async Task Single()
     {
         var source = """
-                            fn SomeFn(): boxed result::<i32, i64>
-                            {
-                                return error(1);
-                            }
-
-                            fn OtherFn(): boxed result::<i64, i64>
-                            {
-                                var a = SomeFn()?;
-                                return ok(1);
-                            }
-                            """;
+                        var a = for (var i = 0; i < 10; i = i + 1)
+                        {
+                            grab i;
+                        };
+                        """;
         var expectedProgram = LoweredProgram(ModuleId,
             methods: [
-                Method(new DefId(ModuleId, $"{ModuleId}:::SomeFn"), "SomeFn",
-                                        [
-                                            new BasicBlock(
-                                                new BasicBlockId("bb0"),
-                                                [],
-                                                new MethodCall(
-                                                    new LoweredFunctionReference(
-                                                        DefId.Result_Create_Error,
-                                                        [Int32T, Int64T]),
-                                                    [new IntConstant(1, 8)],
-                                                    new Local("_returnValue"),
-                                                    new BasicBlockId("bb1"))),
-                                            new BasicBlock(new BasicBlockId("bb1"), [], new Return())
-                                        ],
-                                        returnType: new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference( DefId.Result, [Int32T, Int64T])))),
-                                    Method(new DefId(ModuleId, $"{ModuleId}:::OtherFn"), "OtherFn",
-                                        [
-                                            new BasicBlock(
-                                                new BasicBlockId("bb0"),
-                                                [],
-                                                new MethodCall(
-                                                    new LoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}:::SomeFn"), []),
-                                                    [],
-                                                    new Local("_local1"),
-                                                    new BasicBlockId("bb1"))),
-                                            new BasicBlock(
-                                                new BasicBlockId("bb1"),
-                                                [],
-                                                new SwitchInt(
-                                                    new Copy(
-                                                        new Field(
-                                                            new Field(new Deref(new Local("_local1")), "Value", "_classVariant"),
-                                                            "_variantIdentifier",
-                                                            "Ok")),
-                                                    new Dictionary<int, BasicBlockId>
-                                                    {
-                                                        { 0, new BasicBlockId("bb3") }
-                                                    },
-                                                    new BasicBlockId("bb2"))),
-                                            new BasicBlock(
-                                                new BasicBlockId("bb2"),
-                                                [],
-                                                new MethodCall(
-                                                    new LoweredFunctionReference(
-                                                        DefId.Result_Create_Error,
-                                                        [Int64T, Int64T]),
-                                                    [new Copy(new Field(new Field(new Deref(new Local("_local1")), "Value", "_classVariant"), "Item0", "Error"))],
-                                                    new Local("_returnValue"),
-                                                    new BasicBlockId("bb4"))),
-                                            new BasicBlock(
-                                                new BasicBlockId("bb3"),
-                                                [
-                                                    new Assign(new Local("_local0"), new Use(new Copy(new Field(new Field(new Deref(new Local("_local1")), "Value", "_classVariant"), "Item0", "Ok"))))
-                                                ],
-                                                new MethodCall(
-                                                    new LoweredFunctionReference(
-                                                        DefId.Result_Create_Ok,
-                                                        [Int64T, Int64T]),
-                                                    [new IntConstant(1, 8)],
-                                                    new Local("_returnValue"),
-                                                    new BasicBlockId("bb4"))),
-                                            new BasicBlock(
-                                                new BasicBlockId("bb4"), [], new Return())
-                                        ],
-                                        locals: [
-                                            new MethodLocal("_local0", "a", Int32T),
-                                            new MethodLocal("_local1", null, new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference( DefId.Result, [Int32T, Int64T])))),
-                                        ],
-                                        returnType: new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference( DefId.Result, [Int64T, Int64T]))))
+                Method(
+                                    new DefId(ModuleId, $"{ModuleId}:::_Main"),
+                                    "_Main",
+                                    [
+                                        new BasicBlock(
+                                            BB0,
+                                            [
+                                                new Assign(Local0, new Use(new IntConstant(0, 4))),
+                                            ],
+                                            new GoTo(BB1)),
+                                        new BasicBlock(
+                                            BB1,
+                                            [
+                                                new Assign(
+                                                    Local2,
+                                                    new BinaryOperation(
+                                                        new Copy(Local0),
+                                                        new IntConstant(10, 4),
+                                                        BinaryOperationKind.LessThan))
+                                            ],
+                                            new SwitchInt(
+                                                new Copy(Local2),
+                                                new()
+                                                {
+                                                    { 0, BB3 },
+                                                }, BB2)
+                                        ),
+                                        new BasicBlock(
+                                            BB2,
+                                            [
+                                                new Assign(
+                                                    Local0,
+                                                    new BinaryOperation(
+                                                        new Copy(Local0),
+                                                        new IntConstant(1, 4),
+                                                        BinaryOperationKind.Add))
+                                            ],
+                                            new GoTo(BB1)),
+                                        new BasicBlock(
+                                            BB3,
+                                            [
+                                                new Assign(
+                                                    Local1,
+                                                    new Use(new Copy(Local0)))
+                                            ],
+                                            new GoTo(BB4)),
+                                        new BasicBlock(BB4, [], new Return())
+                                    ],
+                                    locals: [
+                                        new MethodLocal("_local0", "i", Int32T),
+                                        new MethodLocal("_local1", "a", Int32T),
+                                        new MethodLocal("_local2", null, BooleanT),
+                                    ],
+                                    returnType: Unit)
             ]);
 
         var program = await CreateProgram(ModuleId, source);
@@ -500,6 +478,186 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                              locals: [new MethodLocal("_local0", "a", Int32T)])
                      ])
              },
+            {
+                "basic for loop",
+                """
+                for (var i = 0; i < 10; i = i + 1)
+                {
+                    print_u32(i);
+                }
+                """,
+                LoweredProgram(ModuleId,
+                    methods: [
+                        Method(
+                            new DefId(ModuleId, $"{ModuleId}:::_Main"),
+                            "_Main",
+                            [
+                                new BasicBlock(
+                                    BB0,
+                                    [
+                                        new Assign(Local0, new Use(new UIntConstant(0, 4))),
+                                    ],
+                                    new GoTo(BB1)),
+                                new BasicBlock(
+                                    BB1,
+                                    [
+                                        new Assign(
+                                            Local1,
+                                            new BinaryOperation(
+                                                new Copy(Local0),
+                                                new UIntConstant(10, 4),
+                                                BinaryOperationKind.LessThan))
+                                    ],
+                                    new SwitchInt(
+                                        new Copy(Local1),
+                                        new()
+                                        {
+                                            { 0, BB4 },
+                                        }, BB2)
+                                ),
+                                new BasicBlock(
+                                    BB2,
+                                    [],
+                                    new MethodCall(
+                                        new LoweredFunctionReference(DefId.PrintU32, []),
+                                        [new Copy(Local0)],
+                                        Local2,
+                                        BB3)),
+                                new BasicBlock(
+                                    BB3,
+                                    [
+                                        new Assign(
+                                            Local0,
+                                            new BinaryOperation(
+                                                new Copy(Local0),
+                                                new UIntConstant(1, 4),
+                                                BinaryOperationKind.Add))
+                                    ],
+                                    new GoTo(BB1)),
+                                new BasicBlock(
+                                    BB4,
+                                    [],
+                                    new Return())
+                            ],
+                            locals: [
+                                new MethodLocal("_local0", "i", UInt32T),
+                                new MethodLocal("_local1", null, BooleanT),
+                                new MethodLocal("_local2", null, Unit),
+                            ],
+                            returnType: Unit)
+                    ])
+            },
+            {
+                "for loop with grab",
+                """
+                var a = for (var i = 0; i < 10; i = i + 1)
+                {
+                    grab i;
+                };
+                """,
+                LoweredProgram(ModuleId,
+                    methods: [
+                        Method(
+                            new DefId(ModuleId, $"{ModuleId}:::_Main"),
+                            "_Main",
+                            [
+                                new BasicBlock(
+                                    BB0,
+                                    [
+                                        new Assign(Local0, new Use(new IntConstant(0, 4))),
+                                    ],
+                                    new GoTo(BB1)),
+                                new BasicBlock(
+                                    BB1,
+                                    [
+                                        new Assign(
+                                            Local2,
+                                            new BinaryOperation(
+                                                new Copy(Local0),
+                                                new IntConstant(10, 4),
+                                                BinaryOperationKind.LessThan))
+                                    ],
+                                    new SwitchInt(
+                                        new Copy(Local2),
+                                        new()
+                                        {
+                                            { 0, BB3 },
+                                        }, BB2)
+                                ),
+                                new BasicBlock(
+                                    BB2,
+                                    [
+                                        new Assign(
+                                            Local0,
+                                            new BinaryOperation(
+                                                new Copy(Local0),
+                                                new IntConstant(1, 4),
+                                                BinaryOperationKind.Add))
+                                    ],
+                                    new GoTo(BB1)),
+                                new BasicBlock(
+                                    BB3,
+                                    [
+                                        new Assign(
+                                            Local1,
+                                            new Use(new Copy(Local0)))
+                                    ],
+                                    new GoTo(BB4)),
+                                new BasicBlock(BB4, [], new Return())
+                            ],
+                            locals: [
+                                new MethodLocal("_local0", "i", Int32T),
+                                new MethodLocal("_local1", "a", Int32T),
+                                new MethodLocal("_local2", null, BooleanT),
+                            ],
+                            returnType: Unit)
+                    ])
+            },
+            {
+                "basic infinite for loop",
+                """
+                for (;;)
+                {
+                    print_string("hi");
+                }
+                """,
+                LoweredProgram(ModuleId,
+                    methods: [
+                        Method(
+                            new DefId(ModuleId, $"{ModuleId}:::_Main"),
+                            "_Main",
+                            [
+                                new BasicBlock(
+                                    BB0,
+                                    [],
+                                    new SwitchInt(
+                                        new BoolConstant(true),
+                                        new(){ { 0, BB3 } },
+                                        BB1)),
+                                new BasicBlock(
+                                    BB1,
+                                    [],
+                                    new MethodCall(
+                                        new LoweredFunctionReference(DefId.PrintString, []),
+                                        [new StringConstant("hi")],
+                                        Local0,
+                                        BB2)
+                                ),
+                                new BasicBlock(
+                                    BB2,
+                                    [],
+                                    new GoTo(BB0)),
+                                new BasicBlock(
+                                    BB3,
+                                    [],
+                                    new Return()),
+                            ],
+                            locals: [
+                                new MethodLocal("_local0", null, Unit),
+                            ],
+                            returnType: Unit)
+                    ])
+                },
              {
                  "basic while",
                  """

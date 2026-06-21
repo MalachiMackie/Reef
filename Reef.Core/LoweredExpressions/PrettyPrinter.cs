@@ -10,9 +10,7 @@ public class PrettyPrinter(LoweredProgram module)
     private uint _indentationLevel;
 
     public static string PrettyPrintLoweredProgram(
-            LoweredProgram module,
-            bool parensAroundExpressions = true,
-            bool printValueUseful = true)
+            LoweredProgram module)
     {
         var printer = new PrettyPrinter(module);
 

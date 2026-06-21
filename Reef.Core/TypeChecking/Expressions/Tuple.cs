@@ -8,6 +8,7 @@ public partial class TypeChecker
     {
         if (tuple.Values.Count == 1)
         {
+            tuple.Values[0].ValueUseful = true;
             return TypeCheckExpression(tuple.Values[0]);
         }
 

@@ -45,12 +45,12 @@ public class TestBase
         return [.. results.Select(x => x.Value.Module.NotNull()).Concat(importedModules)];
     }
 
-    protected void PrintPrograms(LoweredProgram expected, LoweredProgram actual, bool parensAroundExpressions = true, bool printValueUseful = true)
+    protected void PrintPrograms(LoweredProgram expected, LoweredProgram actual)
     {
         TestOutput.WriteLine("Expected Program:");
-        TestOutput.WriteLine(PrettyPrinter.PrettyPrintLoweredProgram(expected, parensAroundExpressions, printValueUseful));
+        TestOutput.WriteLine(PrettyPrinter.PrettyPrintLoweredProgram(expected));
         TestOutput.WriteLine("----------------------------------------");
         TestOutput.WriteLine("Actual Program:");
-        TestOutput.WriteLine(PrettyPrinter.PrettyPrintLoweredProgram(actual, parensAroundExpressions, printValueUseful));
+        TestOutput.WriteLine(PrettyPrinter.PrettyPrintLoweredProgram(actual));
     }
 }

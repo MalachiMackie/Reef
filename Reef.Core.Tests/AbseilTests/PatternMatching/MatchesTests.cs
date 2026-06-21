@@ -14,7 +14,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
         var program = await CreateProgram(ModuleId, source);
         var loweredProgram = Lower(program, ModuleId);
 
-        PrintPrograms(expectedProgram, loweredProgram, false, false);
+        PrintPrograms(expectedProgram, loweredProgram);
 
         loweredProgram.Should().BeEquivalentTo(expectedProgram);
     }

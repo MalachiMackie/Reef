@@ -3735,6 +3735,94 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
         return new TheoryData<string, Dictionary<string, (string contents, IReadOnlyList<TypeCheckerError> expectedErrors)>>
         {
             {
+                "value for expression uses continue",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            var a = for(;;)
+                            {
+                                if (true)
+                                {
+                                    continue;
+                                }
+                                grab 1;
+                            };
+                            """,
+                            [TypeCheckerError.ContinueUsedInValueLoop(SourceRange.Default)]
+                        )
+                    }
+                }
+            },
+            {
+                "value for expression uses break",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            var a = for(;;)
+                            {
+                                if (true)
+                                {
+                                    break;
+                                }
+                                grab 1;
+                            };
+                            """,
+                            [TypeCheckerError.BreakUsedInValueLoop(SourceRange.Default)]
+                        )
+                    }
+                }
+            },
+            {
+                "value while expression uses continue",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            var a = while(true)
+                            {
+                                if (true)
+                                {
+                                    continue;
+                                }
+                                grab 1;
+                            };
+                            """,
+                            [TypeCheckerError.ContinueUsedInValueLoop(SourceRange.Default)]
+                        )
+                    }
+                }
+            },
+            {
+                "value while expression uses break",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            var a = while(true)
+                            {
+                                if (true)
+                                {
+                                    break;
+                                }
+                                grab 1;
+                            };
+                            """,
+                            [TypeCheckerError.BreakUsedInValueLoop(SourceRange.Default)]
+                        )
+                    }
+                }
+            },
+            {
                 "for loop incorrect check expression type",
                 new()
                 {

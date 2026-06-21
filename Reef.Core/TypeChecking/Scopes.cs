@@ -83,7 +83,8 @@ public partial class TypeChecker
         ModuleId? moduleId = null,
         IReadOnlyList<FunctionSignature>? functionSignatures = null,
         IReadOnlyList<ModuleImport>? moduleImports = null,
-        Block? block = null)
+        Block? block = null,
+        IExpression? loopExpression = null)
     {
         var currentScope = _typeCheckingScopes.Peek();
 
@@ -97,7 +98,8 @@ public partial class TypeChecker
             defId ?? currentScope.CurrentDefId,
             moduleId ?? currentScope.ModuleId,
             moduleImports ?? [],
-            block));
+            block,
+            loopExpression ?? currentScope.LoopExpression));
 
         return new ScopeDisposable(PopScope);
     }
@@ -114,9 +116,10 @@ public partial class TypeChecker
         DefId? CurrentDefId,
         ModuleId? ModuleId,
         IReadOnlyList<ModuleImport> ModuleImports,
-        Block? Block)
+        Block? Block,
+        IExpression? LoopExpression)
     {
-        private Dictionary<string, IVariable> CurrentScopeVariables { get; } = new();
+        private Dictionary<string, IVariable> CurrentScopeVariables { get; } = [];
         public GrabExpression? GrabExpression { get; set; }
 
         public IVariable GetVariable(string name)

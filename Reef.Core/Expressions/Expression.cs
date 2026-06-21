@@ -298,28 +298,18 @@ public record IfExpressionExpression(IfExpression IfExpression, SourceRange Sour
         IfExpression is { Body.Diverges: true, ElseBody.Diverges: true }
         && IfExpression.ElseIfs.All(x => x.Body is { Diverges: true });
 
-    private bool _valueUseful;
     public bool ValueUseful
     {
-        get => _valueUseful;
+        get;
         set
         {
-            _valueUseful = value;
-            if (IfExpression.Body is not null)
-            {
-                IfExpression.Body.ValueUseful = value;
-            }
+            field = value;
+            IfExpression.Body?.ValueUseful = value;
             foreach (var elseIf in IfExpression.ElseIfs)
             {
-                if (elseIf.Body is not null)
-                {
-                    elseIf.Body.ValueUseful = value;
-                }
+                elseIf.Body?.ValueUseful = value;
             }
-            if (IfExpression.ElseBody is not null)
-            {
-                IfExpression.ElseBody.ValueUseful = value;
-            }
+            IfExpression.ElseBody?.ValueUseful = value;
         }
     }
 
@@ -344,7 +334,15 @@ public record ForExpression(
 
     public bool Diverges => new[] { InitializerExpression, CheckExpression, IncrementExpression, Body }.Any(x => x is { Diverges: true });
 
-    public bool ValueUseful { get; set; }
+    public bool ValueUseful
+    {
+        get;
+        set
+        {
+            field = value;
+            Body?.ValueUseful = value;
+        }
+    }
 
     public override string ToString()
     {

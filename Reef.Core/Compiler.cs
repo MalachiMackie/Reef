@@ -82,7 +82,7 @@ public class Compiler
         {
             await File.WriteAllTextAsync(
                 Path.Join(buildDirectory, $"{programName}.ir"),
-                PrettyPrinter.PrettyPrintLoweredProgram(loweredProgram, false, false),
+                PrettyPrinter.PrettyPrintLoweredProgram(loweredProgram),
                 ct);
         }
 
@@ -161,7 +161,7 @@ public class Compiler
         {
             await File.WriteAllTextAsync(
                 Path.Join(buildDirectory, $"{programName}.ir"),
-                PrettyPrinter.PrettyPrintLoweredProgram(loweredProgram, false, false),
+                PrettyPrinter.PrettyPrintLoweredProgram(loweredProgram),
                 ct);
         }
 

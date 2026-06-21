@@ -98,6 +98,113 @@ public class ControlFlowTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task WhileLoopWithGrab()
+    {
+        await SetupTest(
+            """
+            var b = 0;
+            var a = while (b < 5) {
+                b = b + 1;
+                print_u32(b);
+                grab b;
+            };
+
+            print_u32(a + 1);
+            """
+        );
+
+        var result = await Run();
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal("123456", result.StandardOutput);
+    }
+
+    [Fact]
+    public async Task ForLoop()
+    {
+        await SetupTest(
+            """
+            for (var i = 0; i < 10; i = i + 1)
+            {
+                print_u32(i);
+            }
+            """
+        );
+
+        var result = await Run();
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal("0123456789", result.StandardOutput);
+    }
+
+    [Fact]
+    public async Task ForLoopWithBreak()
+    {
+        await SetupTest(
+            """
+            var i = 0;
+            for (;;)
+            {
+                if (i > 4)
+                {
+                    break;
+                }
+
+                print_u32(i);
+
+                i = i + 1;
+            }
+            """
+        );
+
+        var result = await Run();
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal("01234", result.StandardOutput);
+    }
+
+    [Fact]
+    public async Task ForLoopWithContinue()
+    {
+        await SetupTest(
+            """
+            for (var i = 0; i < 10; i = i + 1)
+            {
+                if (i < 5)
+                {
+                    continue;
+                }
+                print_u32(i);
+            }
+            """
+        );
+
+        var result = await Run();
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal("56789", result.StandardOutput);
+    }
+
+    [Fact]
+    public async Task ForLoopWithGrab()
+    {
+        await SetupTest(
+            """
+            var b = for (var i = 0; i < 10; i = i + 1)
+            {
+                grab i;
+            };
+            print_u32(b);
+            """
+        );
+
+        var result = await Run();
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal("10", result.StandardOutput);
+    }
+
+    [Fact]
     public async Task WhileWithBreakAndContinue()
     {
         await SetupTest(
