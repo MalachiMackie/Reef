@@ -1185,6 +1185,66 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                             Unit)
                     ])
             },
+            {
+                "variable increment",
+                """
+                var a = 1;
+                var b = 2 + a++;
+                """,
+                LoweredProgram(ModuleId,
+                    methods: [
+                        Method(
+                            new DefId(ModuleId, $"{ModuleId}:::_Main"),
+                            "_Main",
+                            [
+                                new BasicBlock(
+                                    BB0,
+                                    [
+                                        new Assign(Local0, new Use(new IntConstant(1, 4))),
+                                        new Assign(Local2, new Use(new Copy(Local0))),
+                                        new Assign(Local0, new BinaryOperation(new Copy(Local0), new IntConstant(1, 4), BinaryOperationKind.Add)),
+                                        new Assign(Local1, new BinaryOperation(new IntConstant(2, 4), new Copy(Local2), BinaryOperationKind.Add))
+                                    ],
+                                    new GoTo(BB1)
+                                ),
+                                new BasicBlock(BB1, [], new Return())
+                            ],
+                            Unit,
+                            locals: [
+                                new MethodLocal("_local0", "a", Int32T),
+                                new MethodLocal("_local1", "b", Int32T),
+                                new MethodLocal("_local2", null, Int32T),
+                            ])])
+            },
+            {
+                "variable increment into variable",
+                """
+                var a = 1;
+                var b = a++;
+                """,
+                LoweredProgram(ModuleId,
+                    methods: [
+                        Method(
+                            new DefId(ModuleId, $"{ModuleId}:::_Main"),
+                            "_Main",
+                            [
+                                new BasicBlock(
+                                    BB0,
+                                    [
+                                        new Assign(Local0, new Use(new IntConstant(1, 4))),
+                                        new Assign(Local1, new Use(new Copy(Local0))),
+                                        new Assign(Local0, new BinaryOperation(new Copy(Local0), new IntConstant(1, 4), BinaryOperationKind.Add)),
+                                    ],
+                                    new GoTo(BB1)
+                                ),
+                                new BasicBlock(BB1, [], new Return())
+                            ],
+                            Unit,
+                            locals: [
+                                new MethodLocal("_local0", "a", Int32T),
+                                new MethodLocal("_local1", "b", Int32T),
+                            ])])
+            }
         };
     }
 }

@@ -124,6 +124,44 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     "main.rf",
                     """
+                    var a: bool = 1 <= 2;
+                    """
+                },
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    var a: bool = 1 >= 2;
+                    """
+                },
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    var a = 1;
+                    var b: u32 = a++;
+                    """
+                },
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    var a = 1;
+                    var b: u32 = a--;
+                    """
+                },
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
                     for (var i = 0; i < 10; i = i + 1)
                     {}
                     """
@@ -3734,6 +3772,100 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
     {
         return new TheoryData<string, Dictionary<string, (string contents, IReadOnlyList<TypeCheckerError> expectedErrors)>>
         {
+            {
+                "Increment on non mutable value",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            class MyClass{pub field a: u32}
+                            var value = new MyClass{a = 1};
+                            value.a++;
+                            """,
+                            [TypeCheckerError.NonMutableMemberAssignment(MemberAccess(VariableAccessor("value"), "a"))]
+                        )
+                    }
+                }
+            },
+            {
+                "Decrement on non mutable value",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            class MyClass{pub field a: u32}
+                            var value = new MyClass{a = 1};
+                            value.a++;
+                            """,
+                            [TypeCheckerError.NonMutableMemberAssignment(MemberAccess(VariableAccessor("value"), "a"))]
+                        )
+                    }
+                }
+            },
+            {
+                "Incorrect value for less than or equal",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            var a = 1 <= "";
+                            """,
+                            [TypeCheckerError.MismatchedTypes(SourceRange.Default, UnspecifiedSizedIntType, String)]
+                        )
+                    }
+                }
+            },
+            {
+                "Incorrect value for greater than or equal",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            var a = 1 >= "";
+                            """,
+                            [TypeCheckerError.MismatchedTypes(SourceRange.Default, UnspecifiedSizedIntType, String)]
+                        )
+                    }
+                }
+            },
+            {
+                "Incorrect value for increment",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            var a = ""++;
+                            """,
+                            [TypeCheckerError.MismatchedTypes(SourceRange.Default, [Int64, Int32, Int16, Int8, UInt64, UInt32, UInt16, UInt8], String)]
+                        )
+                    }
+                }
+            },
+            {
+                "Incorrect value for decrement",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            var a = ""--;
+                            """,
+                            [TypeCheckerError.MismatchedTypes(SourceRange.Default, [Int64, Int32, Int16, Int8, UInt64, UInt32, UInt16, UInt8], String)]
+                        )
+                    }
+                }
+            },
             {
                 "value for expression uses continue",
                 new()

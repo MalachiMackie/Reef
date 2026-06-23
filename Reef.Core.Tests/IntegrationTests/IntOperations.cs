@@ -65,6 +65,40 @@ public class IntOperations : IntegrationTestBase
         result.StandardOutput.Should().Be("-1");
     }
 
+    [Fact]
+    public async Task Increment()
+    {
+        await SetupTest(
+            """
+            var a = 1;
+            var b = a++;
+            print_u32(a);
+            print_u32(b);
+            """
+        );
+
+        var result = await Run();
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal("21", result.StandardOutput);
+    }
+
+    [Fact]
+    public async Task Decrement()
+    {
+        await SetupTest(
+            """
+            var a = 3;
+            var b = a--;
+            print_u32(a);
+            print_u32(b);
+            """
+        );
+
+        var result = await Run();
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal("23", result.StandardOutput);
+    }
+
     [Theory]
     [MemberData(nameof(IntTypes))]
     public async Task IntEquals(string typeSpecifier)

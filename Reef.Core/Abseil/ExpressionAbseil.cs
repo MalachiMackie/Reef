@@ -2378,6 +2378,14 @@ public partial class ProgramAbseil
         {
             return LowerFallOut(unaryOperatorExpression.UnaryOperator.Operand.NotNull(), destination);
         }
+        if (unaryOperatorExpression.UnaryOperator.OperatorType == UnaryOperatorType.Decrement)
+        {
+            return LowerDecrement(unaryOperatorExpression.UnaryOperator.Operand.NotNull(), destination);
+        }
+        if (unaryOperatorExpression.UnaryOperator.OperatorType == UnaryOperatorType.Increment)
+        {
+            return LowerIncrement(unaryOperatorExpression.UnaryOperator.Operand.NotNull(), destination);
+        }
 
         var valueOperand = LowerExpression(unaryOperatorExpression.UnaryOperator.Operand.NotNull(), destination: null).NotNull();
 
@@ -2397,6 +2405,106 @@ public partial class ProgramAbseil
                     UnaryOperatorType.Negate => UnaryOperationKind.Negate,
                     _ => throw new UnreachableException()
                 })));
+
+        return new PlaceResult(destination);
+    }
+
+    private IExpressionResult LowerDecrement(IExpression operand, IPlace? destination)
+    {
+        /*
+        {
+            var b = a;
+            a = a - 1;
+            grab b;
+        }
+        */
+
+        var type = GetTypeReference(operand.ResolvedType.NotNull());
+        var isSigned = IsIntSigned(operand.ResolvedType);
+        var size = GetIntSize(operand.ResolvedType);
+
+        var constant = isSigned
+            ? (IOperand)new IntConstant(1, ByteSize: size)
+            : new UIntConstant(1, ByteSize: size);
+
+        var operandResult = LowerExpression(operand, destination: null);
+
+        if (destination is null)
+        {
+            var localName = $"_local{_locals.Count}";
+            var local = new MethodLocal(localName, null, type);
+            _locals.Add(local);
+
+            destination = new Local(localName);
+        }
+
+        _basicBlockStatements.Add(new Assign(destination, new Use(operandResult.ToOperand())));
+
+        if (operandResult is PlaceResult(var place))
+        {
+            _basicBlockStatements.Add(
+                new Assign(
+                    place,
+                    new BinaryOperation(
+                        new Copy(place),
+                        constant,
+                        BinaryOperationKind.Subtract)));
+        }
+        else
+        {
+            // I think?
+            throw new UnreachableException();
+        }
+
+        return new PlaceResult(destination);
+    }
+
+    private IExpressionResult LowerIncrement(IExpression operand, IPlace? destination)
+    {
+        /*
+        {
+            var b = a;
+            a = a + 1;
+            grab b;
+        }
+        */
+
+        var type = GetTypeReference(operand.ResolvedType.NotNull());
+        var isSigned = IsIntSigned(operand.ResolvedType);
+        var size = GetIntSize(operand.ResolvedType);
+
+        var constant = isSigned
+            ? (IOperand)new IntConstant(1, ByteSize: size)
+            : new UIntConstant(1, ByteSize: size);
+
+        var operandResult = LowerExpression(operand, destination: null);
+
+        if (destination is null)
+        {
+            var localName = $"_local{_locals.Count}";
+            var local = new MethodLocal(localName, null, type);
+            _locals.Add(local);
+
+            destination = new Local(localName);
+        }
+
+        _basicBlockStatements.Add(new Assign(destination, new Use(operandResult.ToOperand())));
+
+        if (operandResult is PlaceResult(var place))
+        {
+            _basicBlockStatements.Add(
+                new Assign(
+                    place,
+                    new BinaryOperation(
+                        new Copy(place),
+                        constant,
+                        BinaryOperationKind.Add)));
+        }
+        else
+        {
+            // I think?
+            throw new UnreachableException();
+        }
 
         return new PlaceResult(destination);
     }
@@ -2821,7 +2929,7 @@ public partial class ProgramAbseil
         return result;
     }
 
-    private IExpressionResult LowerBinaryExpression(BinaryOperatorExpression binaryOperatorExpression, IPlace? destination)
+    private PlaceResult LowerBinaryExpression(BinaryOperatorExpression binaryOperatorExpression, IPlace? destination)
     {
         if (binaryOperatorExpression.BinaryOperator.OperatorType == BinaryOperatorType.ValueAssignment)
         {
@@ -2923,7 +3031,9 @@ public partial class ProgramAbseil
                     var binaryOperatorKind = binaryOperatorExpression.BinaryOperator.OperatorType switch
                     {
                         BinaryOperatorType.LessThan => BinaryOperationKind.LessThan,
+                        BinaryOperatorType.LessThanOrEqual => BinaryOperationKind.LessThanOrEqual,
                         BinaryOperatorType.GreaterThan => BinaryOperationKind.GreaterThan,
+                        BinaryOperatorType.GreaterThanOrEqual => BinaryOperationKind.GreaterThanOrEqual,
                         BinaryOperatorType.Plus => BinaryOperationKind.Add,
                         BinaryOperatorType.Minus => BinaryOperationKind.Subtract,
                         BinaryOperatorType.Multiply => BinaryOperationKind.Multiply,

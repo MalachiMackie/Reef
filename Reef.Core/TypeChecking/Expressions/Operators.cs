@@ -16,7 +16,9 @@ public partial class TypeChecker
         switch (@operator.OperatorType)
         {
             case BinaryOperatorType.LessThan:
+            case BinaryOperatorType.LessThanOrEqual:
             case BinaryOperatorType.GreaterThan:
+            case BinaryOperatorType.GreaterThanOrEqual:
                 {
                     if (@operator.Left is not null)
                         TypeCheckExpression(@operator.Left);
@@ -166,8 +168,35 @@ public partial class TypeChecker
             UnaryOperatorType.FallOut => TypeCheckFallout(unaryOperator.Operand, unaryExpression),
             UnaryOperatorType.Not => TypeCheckNot(unaryOperator.Operand),
             UnaryOperatorType.Negate => TypeCheckNegate(unaryOperator.Operand),
+            UnaryOperatorType.Increment or UnaryOperatorType.Decrement => TypeCheckIncrementDecrement(unaryOperator.Operand),
             _ => throw new UnreachableException($"{unaryOperator.OperatorType}")
         };
+    }
+
+    private ITypeReference TypeCheckIncrementDecrement(IExpression? expression)
+    {
+        if (expression is not null)
+        {
+            TypeCheckExpression(expression);
+
+            if (ExpectExpressionType(IntTypes(), expression))
+            {
+                if (expression is ValueAccessorExpression)
+                {
+                    // if we're accessing a raw value (either a constant or a variable),
+                    //  then we're not mutating anything, we're reassigning
+                    ExpectAssignableExpression(expression);
+                }
+                else
+                {
+                    ExpectMutableExpression(expression);
+                }
+            }
+
+        }
+
+
+        return expression?.ResolvedType ?? UnknownType.Instance;
     }
 
     private ITypeReference TypeCheckNegate(IExpression? expression)

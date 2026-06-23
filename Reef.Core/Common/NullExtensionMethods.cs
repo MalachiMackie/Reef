@@ -7,7 +7,7 @@ namespace Reef.Core.Common;
 public static class NullExtensionMethods
 {
     [return: NotNull]
-    public static T NotNull<T>(this T? item, [CallerArgumentExpression(nameof(item))] string paramName = "",
+    public static T NotNull<T>([NotNull] this T? item, [CallerArgumentExpression(nameof(item))] string paramName = "",
         string? expectedReason = null)
         where T : class
     {
