@@ -50,6 +50,18 @@ public static class ExpressionHelpers
             Token.QuestionMark(SourceSpan.Default)));
     }
 
+    public static UnaryOperatorExpression Increment(IExpression? value)
+    {
+        return new UnaryOperatorExpression(new UnaryOperator(UnaryOperatorType.Increment, value,
+            Token.DoublePlus(SourceSpan.Default)));
+    }
+
+    public static UnaryOperatorExpression Decrement(IExpression? value)
+    {
+        return new UnaryOperatorExpression(new UnaryOperator(UnaryOperatorType.Decrement, value,
+            Token.DoubleDash(SourceSpan.Default)));
+    }
+
     public static UnaryOperatorExpression Not(IExpression? value)
     {
         return UnaryOperatorExpression(UnaryOperatorType.Not, value);
@@ -543,6 +555,8 @@ public static class ExpressionHelpers
                 UnaryOperatorType.FallOut => Token.QuestionMark(SourceSpan.Default),
                 UnaryOperatorType.Not => Token.Bang(SourceSpan.Default),
                 UnaryOperatorType.Negate => Token.Dash(SourceSpan.Default),
+                UnaryOperatorType.Increment => Token.DoublePlus(SourceSpan.Default),
+                UnaryOperatorType.Decrement => Token.DoubleDash(SourceSpan.Default),
                 _ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
             }));
     }
@@ -557,7 +571,9 @@ public static class ExpressionHelpers
             type switch
             {
                 BinaryOperatorType.LessThan => Token.LeftAngleBracket(SourceSpan.Default),
+                BinaryOperatorType.LessThanOrEqual => Token.LeftAngleBracketEquals(SourceSpan.Default),
                 BinaryOperatorType.GreaterThan => Token.RightAngleBracket(SourceSpan.Default),
+                BinaryOperatorType.GreaterThanOrEqual => Token.RightAngleBracketEquals(SourceSpan.Default),
                 BinaryOperatorType.Plus => Token.Plus(SourceSpan.Default),
                 BinaryOperatorType.Minus => Token.Dash(SourceSpan.Default),
                 BinaryOperatorType.Multiply => Token.Star(SourceSpan.Default),

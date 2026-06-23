@@ -344,8 +344,10 @@ public static class PopExpressionTestCases
                         "b"),
                     SourceRange.Default)
             ),
-
-
+            ("a <= b", BinaryOperatorExpression(BinaryOperatorType.LessThanOrEqual, VariableAccessor("a"), VariableAccessor("b"))),
+            ("a >= b", BinaryOperatorExpression(BinaryOperatorType.GreaterThanOrEqual, VariableAccessor("a"), VariableAccessor("b"))),
+            ("a++", Increment(VariableAccessor("a"))),
+            ("a--", Decrement(VariableAccessor("a"))),
             // value access expressions
             ("a",
                 VariableAccessor("a")),
@@ -942,6 +944,36 @@ public static class PopExpressionTestCases
                         VariableAccessor("b")),
                     VariableAccessor("c"))
             ),
+            ( // greater or equal to
+                "a > b >= c",
+                BinaryOperatorExpression(BinaryOperatorType.GreaterThanOrEqual,
+                    BinaryOperatorExpression(BinaryOperatorType.GreaterThan,
+                        VariableAccessor("a"),
+                        VariableAccessor("b")),
+                    VariableAccessor("c"))
+            ),
+            ( // less or equal to
+                "a > b <= c",
+                BinaryOperatorExpression(BinaryOperatorType.LessThanOrEqual,
+                    BinaryOperatorExpression(BinaryOperatorType.GreaterThan,
+                        VariableAccessor("a"),
+                        VariableAccessor("b")),
+                    VariableAccessor("c"))
+            ),
+            ( // increment
+                "a > b++",
+                BinaryOperatorExpression(BinaryOperatorType.GreaterThan,
+                    VariableAccessor("a"),
+                    UnaryOperatorExpression(UnaryOperatorType.Increment,
+                        VariableAccessor("b")))
+            ),
+            ( // decrement
+                "a > b--",
+                BinaryOperatorExpression(BinaryOperatorType.GreaterThan,
+                    VariableAccessor("a"),
+                    UnaryOperatorExpression(UnaryOperatorType.Decrement,
+                        VariableAccessor("b")))
+            ),
             // __Less than
             ( // greater than
                 "a < b > c",
@@ -1112,6 +1144,36 @@ public static class PopExpressionTestCases
                     BinaryOperatorType.LessThan,
                     VariableAccessor("a"),
                     UnaryOperatorExpression(UnaryOperatorType.Negate, VariableAccessor("b")))
+            ),
+            ( // greater or equal to
+                "a < b >= c",
+                BinaryOperatorExpression(BinaryOperatorType.GreaterThanOrEqual,
+                    BinaryOperatorExpression(BinaryOperatorType.LessThan,
+                        VariableAccessor("a"),
+                        VariableAccessor("b")),
+                    VariableAccessor("c"))
+            ),
+            ( // less or equal to
+                "a < b <= c",
+                BinaryOperatorExpression(BinaryOperatorType.LessThanOrEqual,
+                    BinaryOperatorExpression(BinaryOperatorType.LessThan,
+                        VariableAccessor("a"),
+                        VariableAccessor("b")),
+                    VariableAccessor("c"))
+            ),
+            ( // increment
+                "a < b++",
+                BinaryOperatorExpression(BinaryOperatorType.LessThan,
+                    VariableAccessor("a"),
+                    UnaryOperatorExpression(UnaryOperatorType.Increment,
+                        VariableAccessor("b")))
+            ),
+            ( // decrement
+                "a < b--",
+                BinaryOperatorExpression(BinaryOperatorType.LessThan,
+                    VariableAccessor("a"),
+                    UnaryOperatorExpression(UnaryOperatorType.Decrement,
+                        VariableAccessor("b")))
             ),
             // __multiply
             ( // greater than
@@ -1284,6 +1346,36 @@ public static class PopExpressionTestCases
                     VariableAccessor("a"),
                     UnaryOperatorExpression(UnaryOperatorType.Negate, VariableAccessor("b")))
             ),
+            ( // greater or equal to
+                "a * b >= c",
+                BinaryOperatorExpression(BinaryOperatorType.GreaterThanOrEqual,
+                    BinaryOperatorExpression(BinaryOperatorType.Multiply,
+                        VariableAccessor("a"),
+                        VariableAccessor("b")),
+                    VariableAccessor("c"))
+            ),
+            ( // less or equal to
+                "a * b <= c",
+                BinaryOperatorExpression(BinaryOperatorType.LessThanOrEqual,
+                    BinaryOperatorExpression(BinaryOperatorType.Multiply,
+                        VariableAccessor("a"),
+                        VariableAccessor("b")),
+                    VariableAccessor("c"))
+            ),
+            ( // increment
+                "a * b++",
+                BinaryOperatorExpression(BinaryOperatorType.Multiply,
+                    VariableAccessor("a"),
+                    UnaryOperatorExpression(UnaryOperatorType.Increment,
+                        VariableAccessor("b")))
+            ),
+            ( // decrement
+                "a * b--",
+                BinaryOperatorExpression(BinaryOperatorType.Multiply,
+                    VariableAccessor("a"),
+                    UnaryOperatorExpression(UnaryOperatorType.Decrement,
+                        VariableAccessor("b")))
+            ),
             // __divide
             ( // greater than
                 "a / b > c",
@@ -1454,6 +1546,36 @@ public static class PopExpressionTestCases
                     BinaryOperatorType.Divide,
                     VariableAccessor("a"),
                     UnaryOperatorExpression(UnaryOperatorType.Negate, VariableAccessor("b")))
+            ),
+            ( // greater or equal to
+                "a / b >= c",
+                BinaryOperatorExpression(BinaryOperatorType.GreaterThanOrEqual,
+                    BinaryOperatorExpression(BinaryOperatorType.Divide,
+                        VariableAccessor("a"),
+                        VariableAccessor("b")),
+                    VariableAccessor("c"))
+            ),
+            ( // less or equal to
+                "a / b <= c",
+                BinaryOperatorExpression(BinaryOperatorType.LessThanOrEqual,
+                    BinaryOperatorExpression(BinaryOperatorType.Divide,
+                        VariableAccessor("a"),
+                        VariableAccessor("b")),
+                    VariableAccessor("c"))
+            ),
+            ( // increment
+                "a / b++",
+                BinaryOperatorExpression(BinaryOperatorType.Divide,
+                    VariableAccessor("a"),
+                    UnaryOperatorExpression(UnaryOperatorType.Increment,
+                        VariableAccessor("b")))
+            ),
+            ( // decrement
+                "a / b--",
+                BinaryOperatorExpression(BinaryOperatorType.Divide,
+                    VariableAccessor("a"),
+                    UnaryOperatorExpression(UnaryOperatorType.Decrement,
+                        VariableAccessor("b")))
             ),
             // __plus
             ( // greater than
@@ -1626,6 +1748,36 @@ public static class PopExpressionTestCases
                     VariableAccessor("a"),
                     UnaryOperatorExpression(UnaryOperatorType.Negate, VariableAccessor("b")))
             ),
+            ( // greater or equal to
+                "a + b >= c",
+                BinaryOperatorExpression(BinaryOperatorType.GreaterThanOrEqual,
+                    BinaryOperatorExpression(BinaryOperatorType.Plus,
+                        VariableAccessor("a"),
+                        VariableAccessor("b")),
+                    VariableAccessor("c"))
+            ),
+            ( // less or equal to
+                "a + b <= c",
+                BinaryOperatorExpression(BinaryOperatorType.LessThanOrEqual,
+                    BinaryOperatorExpression(BinaryOperatorType.Plus,
+                        VariableAccessor("a"),
+                        VariableAccessor("b")),
+                    VariableAccessor("c"))
+            ),
+            ( // increment
+                "a + b++",
+                BinaryOperatorExpression(BinaryOperatorType.Plus,
+                    VariableAccessor("a"),
+                    UnaryOperatorExpression(UnaryOperatorType.Increment,
+                        VariableAccessor("b")))
+            ),
+            ( // decrement
+                "a + b--",
+                BinaryOperatorExpression(BinaryOperatorType.Plus,
+                    VariableAccessor("a"),
+                    UnaryOperatorExpression(UnaryOperatorType.Decrement,
+                        VariableAccessor("b")))
+            ),
             // __minus
             ( // greater than
                 "a - b > c",
@@ -1797,6 +1949,36 @@ public static class PopExpressionTestCases
                     VariableAccessor("a"),
                     UnaryOperatorExpression(UnaryOperatorType.Negate, VariableAccessor("b")))
             ),
+            ( // greater or equal to
+                "a - b >= c",
+                BinaryOperatorExpression(BinaryOperatorType.GreaterThanOrEqual,
+                    BinaryOperatorExpression(BinaryOperatorType.Minus,
+                        VariableAccessor("a"),
+                        VariableAccessor("b")),
+                    VariableAccessor("c"))
+            ),
+            ( // less or equal to
+                "a - b <= c",
+                BinaryOperatorExpression(BinaryOperatorType.LessThanOrEqual,
+                    BinaryOperatorExpression(BinaryOperatorType.Minus,
+                        VariableAccessor("a"),
+                        VariableAccessor("b")),
+                    VariableAccessor("c"))
+            ),
+            ( // increment
+                "a - b++",
+                BinaryOperatorExpression(BinaryOperatorType.Minus,
+                    VariableAccessor("a"),
+                    UnaryOperatorExpression(UnaryOperatorType.Increment,
+                        VariableAccessor("b")))
+            ),
+            ( // decrement
+                "a - b--",
+                BinaryOperatorExpression(BinaryOperatorType.Minus,
+                    VariableAccessor("a"),
+                    UnaryOperatorExpression(UnaryOperatorType.Decrement,
+                        VariableAccessor("b")))
+            ),
             // __FallOut
             ( // fallout
                 "a??",
@@ -1940,6 +2122,32 @@ public static class PopExpressionTestCases
             ( // negate
                 "-a?",
                 Negate(FallOut(VariableAccessor("a")))
+            ),
+            ( // greater or equal to
+                "a? >= b",
+                BinaryOperatorExpression(BinaryOperatorType.GreaterThanOrEqual,
+                    UnaryOperatorExpression(UnaryOperatorType.FallOut,
+                        VariableAccessor("a")),
+                    VariableAccessor("b"))
+            ),
+            ( // less or equal to
+                "a? <= b",
+                BinaryOperatorExpression(BinaryOperatorType.LessThanOrEqual,
+                    UnaryOperatorExpression(UnaryOperatorType.FallOut,
+                        VariableAccessor("a")),
+                    VariableAccessor("b"))
+            ),
+            ( // increment
+                "a?++",
+                UnaryOperatorExpression(UnaryOperatorType.Increment,
+                    UnaryOperatorExpression(UnaryOperatorType.FallOut,
+                        VariableAccessor("a")))
+            ),
+            ( // decrement
+                "a?--",
+                UnaryOperatorExpression(UnaryOperatorType.Decrement,
+                    UnaryOperatorExpression(UnaryOperatorType.FallOut,
+                        VariableAccessor("a")))
             ),
             // __ value assignment
             ( // greater than
@@ -2090,6 +2298,36 @@ public static class PopExpressionTestCases
                     BinaryOperatorType.ValueAssignment,
                     VariableAccessor("a"),
                     UnaryOperatorExpression(UnaryOperatorType.Negate, VariableAccessor("b")))
+            ),
+            ( // greater or equal to
+                "a = b >= c",
+                BinaryOperatorExpression(BinaryOperatorType.ValueAssignment,
+                    VariableAccessor("a"),
+                    BinaryOperatorExpression(BinaryOperatorType.GreaterThanOrEqual,
+                        VariableAccessor("b"),
+                        VariableAccessor("c")))
+            ),
+            ( // less or equal to
+                "a = b <= c",
+                BinaryOperatorExpression(BinaryOperatorType.ValueAssignment,
+                    VariableAccessor("a"),
+                    BinaryOperatorExpression(BinaryOperatorType.LessThanOrEqual,
+                        VariableAccessor("b"),
+                        VariableAccessor("c")))
+            ),
+            ( // increment
+                "a = b++",
+                BinaryOperatorExpression(BinaryOperatorType.ValueAssignment,
+                    VariableAccessor("a"),
+                    UnaryOperatorExpression(UnaryOperatorType.Increment,
+                        VariableAccessor("b")))
+            ),
+            ( // decrement
+                "a = b--",
+                BinaryOperatorExpression(BinaryOperatorType.ValueAssignment,
+                    VariableAccessor("a"),
+                    UnaryOperatorExpression(UnaryOperatorType.Decrement,
+                        VariableAccessor("b")))
             ),
             // __ equality check
             ( // greater than
@@ -2262,6 +2500,36 @@ public static class PopExpressionTestCases
                     VariableAccessor("a"),
                     UnaryOperatorExpression(UnaryOperatorType.Negate, VariableAccessor("b")))
             ),
+            ( // greater or equal to
+                "a == b >= c",
+                BinaryOperatorExpression(BinaryOperatorType.EqualityCheck,
+                    VariableAccessor("a"),
+                    BinaryOperatorExpression(BinaryOperatorType.GreaterThanOrEqual,
+                        VariableAccessor("b"),
+                        VariableAccessor("c")))
+            ),
+            ( // less or equal to
+                "a == b <= c",
+                BinaryOperatorExpression(BinaryOperatorType.EqualityCheck,
+                    VariableAccessor("a"),
+                    BinaryOperatorExpression(BinaryOperatorType.LessThanOrEqual,
+                        VariableAccessor("b"),
+                        VariableAccessor("c")))
+            ),
+            ( // increment
+                "a == b++",
+                BinaryOperatorExpression(BinaryOperatorType.EqualityCheck,
+                    VariableAccessor("a"),
+                    UnaryOperatorExpression(UnaryOperatorType.Increment,
+                        VariableAccessor("b")))
+            ),
+            ( // decrement
+                "a == b--",
+                BinaryOperatorExpression(BinaryOperatorType.EqualityCheck,
+                    VariableAccessor("a"),
+                    UnaryOperatorExpression(UnaryOperatorType.Decrement,
+                        VariableAccessor("b")))
+            ),
             // __ negative equality check
             ( // greater than
                 "a != b > c",
@@ -2433,6 +2701,36 @@ public static class PopExpressionTestCases
                     VariableAccessor("a"),
                     UnaryOperatorExpression(UnaryOperatorType.Negate, VariableAccessor("b")))
             ),
+            ( // greater or equal to
+                "a != b >= c",
+                BinaryOperatorExpression(BinaryOperatorType.NegativeEqualityCheck,
+                    VariableAccessor("a"),
+                    BinaryOperatorExpression(BinaryOperatorType.GreaterThanOrEqual,
+                        VariableAccessor("b"),
+                        VariableAccessor("c")))
+            ),
+            ( // less or equal to
+                "a != b <= c",
+                BinaryOperatorExpression(BinaryOperatorType.NegativeEqualityCheck,
+                    VariableAccessor("a"),
+                    BinaryOperatorExpression(BinaryOperatorType.LessThanOrEqual,
+                        VariableAccessor("b"),
+                        VariableAccessor("c")))
+            ),
+            ( // increment
+                "a != b++",
+                BinaryOperatorExpression(BinaryOperatorType.NegativeEqualityCheck,
+                    VariableAccessor("a"),
+                    UnaryOperatorExpression(UnaryOperatorType.Increment,
+                        VariableAccessor("b")))
+            ),
+            ( // decrement
+                "a != b--",
+                BinaryOperatorExpression(BinaryOperatorType.NegativeEqualityCheck,
+                    VariableAccessor("a"),
+                    UnaryOperatorExpression(UnaryOperatorType.Decrement,
+                        VariableAccessor("b")))
+            ),
             // __Member Access
             ( // greater than
                 "a.b > c",
@@ -2560,6 +2858,30 @@ public static class PopExpressionTestCases
                     MemberAccess(
                         VariableAccessor("a"), "b"))
             ),
+            ( // greater or equal to
+                "a.b >= c",
+                BinaryOperatorExpression(BinaryOperatorType.GreaterThanOrEqual,
+                    MemberAccess(
+                        VariableAccessor("a"), "b"),
+                    VariableAccessor("c")
+                )
+            ),
+            ( // less or equal to
+                "a.b <= c",
+                BinaryOperatorExpression(BinaryOperatorType.LessThanOrEqual,
+                    MemberAccess(VariableAccessor("a"), "b"),
+                    VariableAccessor("c"))
+            ),
+            ( // increment
+                "a.b++",
+                UnaryOperatorExpression(UnaryOperatorType.Increment,
+                    MemberAccess(VariableAccessor("a"), "b"))
+            ),
+            ( // decrement
+                "a.b--",
+                UnaryOperatorExpression(UnaryOperatorType.Decrement,
+                    MemberAccess(VariableAccessor("a"), "b"))
+            ),
             // __Static Member Access
             ( // greater than
                 "a::b > c",
@@ -2683,6 +3005,30 @@ public static class PopExpressionTestCases
             ( // negate
                 "-a::b",
                 UnaryOperatorExpression(UnaryOperatorType.Negate,
+                    StaticMemberAccess(NamedTypeIdentifier("a"), "b"))
+            ),
+            ( // greater or equal to
+                "a::b >= c",
+                BinaryOperatorExpression(BinaryOperatorType.GreaterThanOrEqual,
+                    StaticMemberAccess(
+                        NamedTypeIdentifier("a"), "b"),
+                    VariableAccessor("c")
+                )
+            ),
+            ( // less or equal to
+                "a::b <= c",
+                BinaryOperatorExpression(BinaryOperatorType.LessThanOrEqual,
+                    StaticMemberAccess(NamedTypeIdentifier("a"), "b"),
+                    VariableAccessor("c"))
+            ),
+            ( // increment
+                "a::b++",
+                UnaryOperatorExpression(UnaryOperatorType.Increment,
+                    StaticMemberAccess(NamedTypeIdentifier("a"), "b"))
+            ),
+            ( // decrement
+                "a::b--",
+                UnaryOperatorExpression(UnaryOperatorType.Decrement,
                     StaticMemberAccess(NamedTypeIdentifier("a"), "b"))
             ),
             // __Not
@@ -2829,6 +3175,32 @@ public static class PopExpressionTestCases
                 "!-a",
                 Not(Negate(VariableAccessor("a")))
             ),
+            ( // greater or equal to
+                "!a >= b",
+                BinaryOperatorExpression(BinaryOperatorType.GreaterThanOrEqual,
+                    UnaryOperatorExpression(UnaryOperatorType.Not,
+                        VariableAccessor("a")),
+                    VariableAccessor("b"))
+            ),
+            ( // less or equal to
+                "!a <= b",
+                BinaryOperatorExpression(BinaryOperatorType.LessThanOrEqual,
+                    UnaryOperatorExpression(UnaryOperatorType.Not,
+                        VariableAccessor("a")),
+                    VariableAccessor("b"))
+            ),
+            ( // increment
+                "!a++",
+                UnaryOperatorExpression(UnaryOperatorType.Not,
+                    UnaryOperatorExpression(UnaryOperatorType.Increment,
+                        VariableAccessor("a")))
+            ),
+            ( // decrement
+                "!a--",
+                UnaryOperatorExpression(UnaryOperatorType.Not,
+                    UnaryOperatorExpression(UnaryOperatorType.Decrement,
+                        VariableAccessor("a")))
+            ),
             // __And
             ( // fallout
                 "a && !b",
@@ -2950,6 +3322,36 @@ public static class PopExpressionTestCases
                     BinaryOperatorType.BooleanAnd,
                     VariableAccessor("a"),
                     Negate(VariableAccessor("b")))
+            ),
+            ( // greater or equal to
+                "a && b >= c",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanAnd,
+                    VariableAccessor("a"),
+                    BinaryOperatorExpression(BinaryOperatorType.GreaterThanOrEqual,
+                        VariableAccessor("b"),
+                        VariableAccessor("c")))
+            ),
+            ( // less or equal to
+                "a && b <= c",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanAnd,
+                    VariableAccessor("a"),
+                    BinaryOperatorExpression(BinaryOperatorType.LessThanOrEqual,
+                        VariableAccessor("b"),
+                        VariableAccessor("c")))
+            ),
+            ( // increment
+                "a && b++",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanAnd,
+                    VariableAccessor("a"),
+                    UnaryOperatorExpression(UnaryOperatorType.Increment,
+                        VariableAccessor("b")))
+            ),
+            ( // decrement
+                "a && b--",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanAnd,
+                    VariableAccessor("a"),
+                    UnaryOperatorExpression(UnaryOperatorType.Decrement,
+                        VariableAccessor("b")))
             ),
             // __Or
             ( // fallout
@@ -3073,6 +3475,36 @@ public static class PopExpressionTestCases
                     VariableAccessor("a"),
                     Negate(VariableAccessor("b")))
             ),
+            ( // greater or equal to
+                "a || b >= c",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
+                    VariableAccessor("a"),
+                    BinaryOperatorExpression(BinaryOperatorType.GreaterThanOrEqual,
+                        VariableAccessor("b"),
+                        VariableAccessor("c")))
+            ),
+            ( // less or equal to
+                "a || b <= c",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
+                    VariableAccessor("a"),
+                    BinaryOperatorExpression(BinaryOperatorType.LessThanOrEqual,
+                        VariableAccessor("b"),
+                        VariableAccessor("c")))
+            ),
+            ( // increment
+                "a || b++",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
+                    VariableAccessor("a"),
+                    UnaryOperatorExpression(UnaryOperatorType.Increment,
+                        VariableAccessor("b")))
+            ),
+            ( // decrement
+                "a || b--",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
+                    VariableAccessor("a"),
+                    UnaryOperatorExpression(UnaryOperatorType.Decrement,
+                        VariableAccessor("b")))
+            ),
             // __Negate
             ( // fallout
                 "-a?",
@@ -3124,7 +3556,7 @@ public static class PopExpressionTestCases
                 BinaryOperatorExpression(BinaryOperatorType.ValueAssignment,
                     Negate(VariableAccessor("a")),
                     VariableAccessor("b"))
-),
+            ),
             ( // equality check
                 "-a == b",
                 BinaryOperatorExpression(BinaryOperatorType.EqualityCheck,
@@ -3160,9 +3592,776 @@ public static class PopExpressionTestCases
                     VariableAccessor("b"))
             ),
             ( // negate
-                "--a",
+                "- -a",
                 Negate(Negate(VariableAccessor("a")))
-            )
+            ),
+            ( // greater or equal to
+                "-a >= b",
+                BinaryOperatorExpression(BinaryOperatorType.GreaterThanOrEqual,
+                    UnaryOperatorExpression(UnaryOperatorType.Negate,
+                        VariableAccessor("a")),
+                    VariableAccessor("b"))
+            ),
+            ( // less or equal to
+                "-a <= b",
+                BinaryOperatorExpression(BinaryOperatorType.LessThanOrEqual,
+                    UnaryOperatorExpression(UnaryOperatorType.Negate,
+                        VariableAccessor("a")),
+                    VariableAccessor("b"))
+            ),
+            ( // increment
+                "-a++",
+                UnaryOperatorExpression(UnaryOperatorType.Negate,
+                    UnaryOperatorExpression(UnaryOperatorType.Increment,
+                        VariableAccessor("a")))
+            ),
+            ( // decrement
+                "-a--",
+                UnaryOperatorExpression(UnaryOperatorType.Negate,
+                    UnaryOperatorExpression(UnaryOperatorType.Decrement,
+                        VariableAccessor("a")))
+            ),
+            // __greater than or equal
+            ( // greater than
+                "a >= b > c",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.GreaterThan,
+                    new BinaryOperatorExpression(new BinaryOperator(
+                        BinaryOperatorType.GreaterThanOrEqual,
+                        VariableAccessor("a"),
+                        VariableAccessor("b"),
+                        Token.RightAngleBracketEquals(SourceSpan.Default))),
+                    VariableAccessor("c"),
+                    Token.RightAngleBracket(SourceSpan.Default)))
+            ),
+            ( // less than
+                "a >= b < c",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.LessThan,
+                    new BinaryOperatorExpression(new BinaryOperator(
+                        BinaryOperatorType.GreaterThanOrEqual,
+                        VariableAccessor("a"),
+                        VariableAccessor("b"),
+                        Token.RightAngleBracketEquals(SourceSpan.Default))),
+                    VariableAccessor("c"),
+                    Token.LeftAngleBracket(SourceSpan.Default)))
+            ),
+            ( // multiply
+                "a >= b * c",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.GreaterThanOrEqual,
+                    VariableAccessor("a"),
+                    new BinaryOperatorExpression(new BinaryOperator(
+                        BinaryOperatorType.Multiply,
+                        VariableAccessor("b"),
+                        VariableAccessor("c"),
+                        Token.Star(SourceSpan.Default))),
+                    Token.RightAngleBracketEquals(SourceSpan.Default)))
+            ),
+            ( // divide
+                "a >= b / c",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.GreaterThanOrEqual,
+                    VariableAccessor("a"),
+                    new BinaryOperatorExpression(new BinaryOperator(
+                        BinaryOperatorType.Divide,
+                        VariableAccessor("b"),
+                        VariableAccessor("c"),
+                        Token.ForwardSlash(SourceSpan.Default))),
+                    Token.RightAngleBracketEquals(SourceSpan.Default)))
+            ),
+            ( // plus
+                "a >= b + c",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.GreaterThanOrEqual,
+                    VariableAccessor("a"),
+                    new BinaryOperatorExpression(new BinaryOperator(
+                        BinaryOperatorType.Plus,
+                        VariableAccessor("b"),
+                        VariableAccessor("c"),
+                        Token.Plus(SourceSpan.Default))),
+                    Token.RightAngleBracketEquals(SourceSpan.Default)))
+            ),
+            ( // minus
+                "a >= b - c",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.GreaterThanOrEqual,
+                    VariableAccessor("a"),
+                    new BinaryOperatorExpression(new BinaryOperator(
+                        BinaryOperatorType.Minus,
+                        VariableAccessor("b"),
+                        VariableAccessor("c"),
+                        Token.Dash(SourceSpan.Default))),
+                    Token.RightAngleBracketEquals(SourceSpan.Default)))
+            ),
+            ( // fallOut
+                "a >= b?",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.GreaterThanOrEqual,
+                    VariableAccessor("a"),
+                    new UnaryOperatorExpression(new UnaryOperator(
+                        UnaryOperatorType.FallOut,
+                        VariableAccessor("b"),
+                        Token.QuestionMark(SourceSpan.Default))),
+                    Token.RightAngleBracketEquals(SourceSpan.Default)))
+            ),
+            ( // value assignment check
+                "a >= b = c",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.ValueAssignment,
+                    new BinaryOperatorExpression(new BinaryOperator(
+                        BinaryOperatorType.GreaterThanOrEqual,
+                        VariableAccessor("a"),
+                        VariableAccessor("b"),
+                        Token.RightAngleBracketEquals(SourceSpan.Default))),
+                    VariableAccessor("c"),
+                    Token.Equals(SourceSpan.Default)))
+            ),
+            ( // equality check
+                "a >= b == c",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.EqualityCheck,
+                    new BinaryOperatorExpression(new BinaryOperator(
+                        BinaryOperatorType.GreaterThanOrEqual,
+                        VariableAccessor("a"),
+                        VariableAccessor("b"),
+                        Token.RightAngleBracketEquals(SourceSpan.Default))),
+                    VariableAccessor("c"),
+                    Token.DoubleEquals(SourceSpan.Default)))
+            ),
+            ( // negative equality check
+                "a >= b != c",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.NegativeEqualityCheck,
+                    new BinaryOperatorExpression(new BinaryOperator(
+                        BinaryOperatorType.GreaterThanOrEqual,
+                        VariableAccessor("a"),
+                        VariableAccessor("b"),
+                        Token.RightAngleBracketEquals(SourceSpan.Default))),
+                    VariableAccessor("c"),
+                    Token.NotEquals(SourceSpan.Default)))
+            ),
+            ( // member access
+                "a >= b.c",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.GreaterThanOrEqual,
+                    VariableAccessor("a"),
+                    new MemberAccessExpression(new MemberAccess(
+                        VariableAccessor("b"),
+                        Identifier("c"), null)),
+                    Token.RightAngleBracketEquals(SourceSpan.Default)))
+            ),
+            ( // static member access
+                "a >= b::c",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.GreaterThanOrEqual,
+                    VariableAccessor("a"),
+                    new StaticMemberAccessExpression(new StaticMemberAccess(
+                        NamedTypeIdentifier("b"),
+                        Identifier("c"), null)),
+                    Token.RightAngleBracketEquals(SourceSpan.Default)))
+            ),
+            ( // not
+                "a >= !b",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.GreaterThanOrEqual,
+                    VariableAccessor("a"),
+                    new UnaryOperatorExpression(new UnaryOperator(
+                        UnaryOperatorType.Not,
+                        VariableAccessor("b"),
+                        Token.Bang(SourceSpan.Default))),
+                    Token.RightAngleBracketEquals(SourceSpan.Default)))
+            ),
+            ( // negate
+                "a >= -b",
+                BinaryOperatorExpression(
+                    BinaryOperatorType.GreaterThanOrEqual,
+                    VariableAccessor("a"),
+                    UnaryOperatorExpression(UnaryOperatorType.Negate, VariableAccessor("b")))
+            ),
+            ( // and
+                "a >= b && c",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanAnd,
+                    BinaryOperatorExpression(BinaryOperatorType.GreaterThanOrEqual,
+                        VariableAccessor("a"),
+                        VariableAccessor("b")),
+                    VariableAccessor("c"))
+            ),
+            ( // or
+                "a >= b || c",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
+                    BinaryOperatorExpression(BinaryOperatorType.GreaterThanOrEqual,
+                        VariableAccessor("a"),
+                        VariableAccessor("b")),
+                    VariableAccessor("c"))
+            ),
+            ( // greater or equal to
+                "a >= b >= c",
+                BinaryOperatorExpression(BinaryOperatorType.GreaterThanOrEqual,
+                    BinaryOperatorExpression(BinaryOperatorType.GreaterThanOrEqual,
+                        VariableAccessor("a"),
+                        VariableAccessor("b")),
+                    VariableAccessor("c"))
+            ),
+            ( // less or equal to
+                "a >= b <= c",
+                BinaryOperatorExpression(BinaryOperatorType.LessThanOrEqual,
+                    BinaryOperatorExpression(BinaryOperatorType.GreaterThanOrEqual,
+                        VariableAccessor("a"),
+                        VariableAccessor("b")),
+                    VariableAccessor("c"))
+            ),
+            ( // increment
+                "a >= b++",
+                BinaryOperatorExpression(BinaryOperatorType.GreaterThanOrEqual,
+                    VariableAccessor("a"),
+                    UnaryOperatorExpression(UnaryOperatorType.Increment,
+                        VariableAccessor("b")))
+            ),
+            ( // decrement
+                "a >= b--",
+                BinaryOperatorExpression(BinaryOperatorType.GreaterThanOrEqual,
+                    VariableAccessor("a"),
+                    UnaryOperatorExpression(UnaryOperatorType.Decrement,
+                        VariableAccessor("b")))
+            ),
+            // __Less than or equal
+            ( // greater than
+                "a <= b > c",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.GreaterThan,
+                    new BinaryOperatorExpression(new BinaryOperator(
+                        BinaryOperatorType.LessThanOrEqual,
+                        VariableAccessor("a"),
+                        VariableAccessor("b"),
+                        Token.LeftAngleBracketEquals(SourceSpan.Default))),
+                    VariableAccessor("c"),
+                    Token.RightAngleBracket(SourceSpan.Default)))
+            ),
+            ( // less than
+                "a <= b < c",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.LessThan,
+                    new BinaryOperatorExpression(new BinaryOperator(
+                        BinaryOperatorType.LessThanOrEqual,
+                        VariableAccessor("a"),
+                        VariableAccessor("b"),
+                        Token.LeftAngleBracketEquals(SourceSpan.Default))),
+                    VariableAccessor("c"),
+                    Token.LeftAngleBracket(SourceSpan.Default)))
+            ),
+            ( // multiply
+                "a <= b * c",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.LessThanOrEqual,
+                    VariableAccessor("a"),
+                    new BinaryOperatorExpression(new BinaryOperator(
+                        BinaryOperatorType.Multiply,
+                        VariableAccessor("b"),
+                        VariableAccessor("c"),
+                        Token.Star(SourceSpan.Default))),
+                    Token.LeftAngleBracketEquals(SourceSpan.Default)))
+            ),
+            ( // divide
+                "a <= b / c",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.LessThanOrEqual,
+                    VariableAccessor("a"),
+                    new BinaryOperatorExpression(new BinaryOperator(
+                        BinaryOperatorType.Divide,
+                        VariableAccessor("b"),
+                        VariableAccessor("c"),
+                        Token.ForwardSlash(SourceSpan.Default))),
+                    Token.LeftAngleBracketEquals(SourceSpan.Default)))
+            ),
+            ( // plus
+                "a <= b + c",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.LessThanOrEqual,
+                    VariableAccessor("a"),
+                    new BinaryOperatorExpression(new BinaryOperator(
+                        BinaryOperatorType.Plus,
+                        VariableAccessor("b"),
+                        VariableAccessor("c"),
+                        Token.Plus(SourceSpan.Default))),
+                    Token.LeftAngleBracketEquals(SourceSpan.Default)))
+            ),
+            ( // minus
+                "a <= b - c",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.LessThanOrEqual,
+                    VariableAccessor("a"),
+                    new BinaryOperatorExpression(new BinaryOperator(
+                        BinaryOperatorType.Minus,
+                        VariableAccessor("b"),
+                        VariableAccessor("c"),
+                        Token.Dash(SourceSpan.Default))),
+                    Token.LeftAngleBracketEquals(SourceSpan.Default)))
+            ),
+            ( // fallOut
+                "a <= b?",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.LessThanOrEqual,
+                    VariableAccessor("a"),
+                    new UnaryOperatorExpression(new UnaryOperator(
+                        UnaryOperatorType.FallOut,
+                        VariableAccessor("b"),
+                        Token.QuestionMark(SourceSpan.Default))),
+                    Token.LeftAngleBracketEquals(SourceSpan.Default)))
+            ),
+            ("a <= b = c",
+                new BinaryOperatorExpression(new BinaryOperator(BinaryOperatorType.ValueAssignment,
+                    new BinaryOperatorExpression(
+                        new BinaryOperator(
+                            BinaryOperatorType.LessThanOrEqual,
+                            VariableAccessor("a"),
+                            VariableAccessor("b"),
+                            Token.LeftAngleBracketEquals(SourceSpan.Default))),
+                    VariableAccessor("c"), Token.Equals(SourceSpan.Default)))),
+            ( // equality check
+                "a <= b == c",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.EqualityCheck,
+                    new BinaryOperatorExpression(new BinaryOperator(
+                        BinaryOperatorType.LessThanOrEqual,
+                        VariableAccessor("a"),
+                        VariableAccessor("b"),
+                        Token.LeftAngleBracketEquals(SourceSpan.Default))),
+                    VariableAccessor("c"),
+                    Token.DoubleEquals(SourceSpan.Default)))
+            ),
+            ( // negative equality check
+                "a <= b != c",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.NegativeEqualityCheck,
+                    new BinaryOperatorExpression(new BinaryOperator(
+                        BinaryOperatorType.LessThanOrEqual,
+                        VariableAccessor("a"),
+                        VariableAccessor("b"),
+                        Token.LeftAngleBracketEquals(SourceSpan.Default))),
+                    VariableAccessor("c"),
+                    Token.NotEquals(SourceSpan.Default)))
+            ),
+            ( // member access
+                "a <= b.c",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.LessThanOrEqual,
+                    VariableAccessor("a"),
+                    new MemberAccessExpression(new MemberAccess(
+                        VariableAccessor("b"),
+                        Identifier("c"), null)),
+                    Token.LeftAngleBracketEquals(SourceSpan.Default)))
+            ),
+            ( // static member access
+                "a <= b::c",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.LessThanOrEqual,
+                    VariableAccessor("a"),
+                    new StaticMemberAccessExpression(new StaticMemberAccess(
+                        NamedTypeIdentifier("b"),
+                        Identifier("c"), null)),
+                    Token.LeftAngleBracketEquals(SourceSpan.Default)))
+            ),
+            ( // not
+                "a <= !b",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.LessThanOrEqual,
+                    VariableAccessor("a"),
+                    new UnaryOperatorExpression(new UnaryOperator(
+                        UnaryOperatorType.Not,
+                        VariableAccessor("b"),
+                        Token.Bang(SourceSpan.Default))),
+                    Token.LeftAngleBracketEquals(SourceSpan.Default)))
+            ),
+            ( // and
+                "a <= b && c",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanAnd,
+                    BinaryOperatorExpression(BinaryOperatorType.LessThanOrEqual,
+                        VariableAccessor("a"),
+                        VariableAccessor("b")),
+                    VariableAccessor("c"))
+            ),
+            ( // or
+                "a <= b || c",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
+                    BinaryOperatorExpression(BinaryOperatorType.LessThanOrEqual,
+                        VariableAccessor("a"),
+                        VariableAccessor("b")),
+                    VariableAccessor("c"))
+            ),
+            ( // negate
+                "a <= -b",
+                BinaryOperatorExpression(
+                    BinaryOperatorType.LessThanOrEqual,
+                    VariableAccessor("a"),
+                    UnaryOperatorExpression(UnaryOperatorType.Negate, VariableAccessor("b")))
+            ),
+            ( // greater or equal to
+                "a <= b >= c",
+                BinaryOperatorExpression(BinaryOperatorType.GreaterThanOrEqual,
+                    BinaryOperatorExpression(BinaryOperatorType.LessThanOrEqual,
+                        VariableAccessor("a"),
+                        VariableAccessor("b")),
+                    VariableAccessor("c"))
+            ),
+            ( // less or equal to
+                "a <= b <= c",
+                BinaryOperatorExpression(BinaryOperatorType.LessThanOrEqual,
+                    BinaryOperatorExpression(BinaryOperatorType.LessThanOrEqual,
+                        VariableAccessor("a"),
+                        VariableAccessor("b")),
+                    VariableAccessor("c"))
+            ),
+            ( // increment
+                "a <= b++",
+                BinaryOperatorExpression(BinaryOperatorType.LessThanOrEqual,
+                    VariableAccessor("a"),
+                    UnaryOperatorExpression(UnaryOperatorType.Increment,
+                        VariableAccessor("b")))
+            ),
+            ( // decrement
+                "a <= b--",
+                BinaryOperatorExpression(BinaryOperatorType.LessThanOrEqual,
+                    VariableAccessor("a"),
+                    UnaryOperatorExpression(UnaryOperatorType.Decrement,
+                        VariableAccessor("b")))
+            ),
+            // __Increment
+            ( // fallout
+                "a++?",
+                new UnaryOperatorExpression(new UnaryOperator(
+                    UnaryOperatorType.FallOut,
+                    new UnaryOperatorExpression(new UnaryOperator(
+                        UnaryOperatorType.Increment,
+                        VariableAccessor("a"),
+                        Token.DoublePlus(SourceSpan.Default))),
+                    Token.QuestionMark(SourceSpan.Default)))
+            ),
+            ( // less than
+                "a++ < b",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.LessThan,
+                    new UnaryOperatorExpression(new UnaryOperator(
+                        UnaryOperatorType.Increment,
+                        VariableAccessor("a"),
+                        Token.DoublePlus(SourceSpan.Default))),
+                    VariableAccessor("b"),
+                    Token.LeftAngleBracket(SourceSpan.Default)))
+            ),
+            ( // greater than
+                "a++ > b",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.GreaterThan,
+                    new UnaryOperatorExpression(new UnaryOperator(
+                        UnaryOperatorType.Increment,
+                        VariableAccessor("a"),
+                        Token.DoublePlus(SourceSpan.Default))),
+                    VariableAccessor("b"),
+                    Token.RightAngleBracket(SourceSpan.Default)))
+            ),
+            ( // plus
+                "a++ + b",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.Plus,
+                    new UnaryOperatorExpression(new UnaryOperator(
+                        UnaryOperatorType.Increment,
+                        VariableAccessor("a"),
+                        Token.DoublePlus(SourceSpan.Default))),
+                    VariableAccessor("b"),
+                    Token.Plus(SourceSpan.Default)))
+            ),
+            ( // minus
+                "a++ - b",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.Minus,
+                    new UnaryOperatorExpression(new UnaryOperator(
+                        UnaryOperatorType.Increment,
+                        VariableAccessor("a"),
+                        Token.DoublePlus(SourceSpan.Default))),
+                    VariableAccessor("b"),
+                    Token.Dash(SourceSpan.Default)))
+            ),
+            ( // multiply
+                "a++ * b",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.Multiply,
+                    new UnaryOperatorExpression(new UnaryOperator(
+                        UnaryOperatorType.Increment,
+                        VariableAccessor("a"),
+                        Token.DoublePlus(SourceSpan.Default))),
+                    VariableAccessor("b"),
+                    Token.Star(SourceSpan.Default)))
+            ),
+            ( // divide
+                "a++ / b",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.Divide,
+                    new UnaryOperatorExpression(new UnaryOperator(
+                        UnaryOperatorType.Increment,
+                        VariableAccessor("a"),
+                        Token.DoublePlus(SourceSpan.Default))),
+                    VariableAccessor("b"),
+                    Token.ForwardSlash(SourceSpan.Default)))
+            ),
+            ( // assignment
+                "a++ = c",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.ValueAssignment,
+                    new UnaryOperatorExpression(new UnaryOperator(
+                        UnaryOperatorType.Increment,
+                        VariableAccessor("a"),
+                        Token.DoublePlus(SourceSpan.Default))),
+                    VariableAccessor("c"),
+                    Token.Equals(SourceSpan.Default)))),
+            ( // equality check
+                "a++ == c",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.EqualityCheck,
+                    new UnaryOperatorExpression(new UnaryOperator(
+                        UnaryOperatorType.Increment,
+                        VariableAccessor("a"),
+                        Token.DoublePlus(SourceSpan.Default))),
+                    VariableAccessor("c"),
+                    Token.DoubleEquals(SourceSpan.Default)))
+            ),
+            ( // negative equality check
+                "a++ != c",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.NegativeEqualityCheck,
+                    new UnaryOperatorExpression(new UnaryOperator(
+                        UnaryOperatorType.Increment,
+                        VariableAccessor("a"),
+                        Token.DoublePlus(SourceSpan.Default))),
+                    VariableAccessor("c"),
+                    Token.NotEquals(SourceSpan.Default)))
+            ),
+            ( // member access
+                "a++.c",
+                new MemberAccessExpression(new MemberAccess(
+                    new UnaryOperatorExpression(new UnaryOperator(
+                        UnaryOperatorType.Increment,
+                        VariableAccessor("a"),
+                        Token.DoublePlus(SourceSpan.Default))),
+                    Identifier("c"), null))
+            ),
+            ( // not
+                "!b++",
+                new UnaryOperatorExpression(new UnaryOperator(
+                    UnaryOperatorType.Not,
+                    new UnaryOperatorExpression(new UnaryOperator(
+                        UnaryOperatorType.Increment,
+                        VariableAccessor("b"),
+                        Token.DoublePlus(SourceSpan.Default))),
+                    Token.Bang(SourceSpan.Default)))
+            ),
+            ( // and
+                "a++ && b",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanAnd,
+                    Increment(VariableAccessor("a")),
+                    VariableAccessor("b"))
+            ),
+            ( // or
+                "a++ || b",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
+                    Increment(VariableAccessor("a")),
+                    VariableAccessor("b"))
+            ),
+            ( // negate
+                "-a++",
+                Negate(Increment(VariableAccessor("a")))
+            ),
+            ( // greater or equal to
+                "a++ >= b",
+                BinaryOperatorExpression(BinaryOperatorType.GreaterThanOrEqual,
+                    Increment(VariableAccessor("a")),
+                    VariableAccessor("b"))
+            ),
+            ( // less or equal to
+                "a++ <= b",
+                BinaryOperatorExpression(BinaryOperatorType.LessThanOrEqual,
+                    Increment(VariableAccessor("a")),
+                    VariableAccessor("b"))
+            ),
+            ( // increment
+                "a++++",
+                UnaryOperatorExpression(UnaryOperatorType.Increment,
+                    UnaryOperatorExpression(UnaryOperatorType.Increment,
+                        VariableAccessor("a")))
+            ),
+            ( // decrement
+                "a++--",
+                UnaryOperatorExpression(UnaryOperatorType.Decrement,
+                    UnaryOperatorExpression(UnaryOperatorType.Increment,
+                        VariableAccessor("a")))
+            ),
+            // __Decrement
+            ( // fallout
+                "a--?",
+                new UnaryOperatorExpression(new UnaryOperator(
+                    UnaryOperatorType.FallOut,
+                    new UnaryOperatorExpression(new UnaryOperator(
+                        UnaryOperatorType.Decrement,
+                        VariableAccessor("a"),
+                        Token.DoubleDash(SourceSpan.Default))),
+                    Token.QuestionMark(SourceSpan.Default)))
+            ),
+            ( // less than
+                "a-- < b",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.LessThan,
+                    new UnaryOperatorExpression(new UnaryOperator(
+                        UnaryOperatorType.Decrement,
+                        VariableAccessor("a"),
+                        Token.DoubleDash(SourceSpan.Default))),
+                    VariableAccessor("b"),
+                    Token.LeftAngleBracket(SourceSpan.Default)))
+            ),
+            ( // greater than
+                "a-- > b",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.GreaterThan,
+                    new UnaryOperatorExpression(new UnaryOperator(
+                        UnaryOperatorType.Decrement,
+                        VariableAccessor("a"),
+                        Token.DoubleDash(SourceSpan.Default))),
+                    VariableAccessor("b"),
+                    Token.RightAngleBracket(SourceSpan.Default)))
+            ),
+            ( // plus
+                "a-- + b",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.Plus,
+                    new UnaryOperatorExpression(new UnaryOperator(
+                        UnaryOperatorType.Decrement,
+                        VariableAccessor("a"),
+                        Token.DoubleDash(SourceSpan.Default))),
+                    VariableAccessor("b"),
+                    Token.Plus(SourceSpan.Default)))
+            ),
+            ( // minus
+                "a-- - b",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.Minus,
+                    new UnaryOperatorExpression(new UnaryOperator(
+                        UnaryOperatorType.Decrement,
+                        VariableAccessor("a"),
+                        Token.DoubleDash(SourceSpan.Default))),
+                    VariableAccessor("b"),
+                    Token.Dash(SourceSpan.Default)))
+            ),
+            ( // multiply
+                "a-- * b",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.Multiply,
+                    new UnaryOperatorExpression(new UnaryOperator(
+                        UnaryOperatorType.Decrement,
+                        VariableAccessor("a"),
+                        Token.DoubleDash(SourceSpan.Default))),
+                    VariableAccessor("b"),
+                    Token.Star(SourceSpan.Default)))
+            ),
+            ( // divide
+                "a-- / b",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.Divide,
+                    new UnaryOperatorExpression(new UnaryOperator(
+                        UnaryOperatorType.Decrement,
+                        VariableAccessor("a"),
+                        Token.DoubleDash(SourceSpan.Default))),
+                    VariableAccessor("b"),
+                    Token.ForwardSlash(SourceSpan.Default)))
+            ),
+            ( // assignment
+                "a-- = c",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.ValueAssignment,
+                    new UnaryOperatorExpression(new UnaryOperator(
+                        UnaryOperatorType.Decrement,
+                        VariableAccessor("a"),
+                        Token.DoubleDash(SourceSpan.Default))),
+                    VariableAccessor("c"),
+                    Token.Equals(SourceSpan.Default)))),
+            ( // equality check
+                "a-- == c",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.EqualityCheck,
+                    new UnaryOperatorExpression(new UnaryOperator(
+                        UnaryOperatorType.Decrement,
+                        VariableAccessor("a"),
+                        Token.DoubleDash(SourceSpan.Default))),
+                    VariableAccessor("c"),
+                    Token.DoubleEquals(SourceSpan.Default)))
+            ),
+            ( // negative equality check
+                "a-- != c",
+                new BinaryOperatorExpression(new BinaryOperator(
+                    BinaryOperatorType.NegativeEqualityCheck,
+                    new UnaryOperatorExpression(new UnaryOperator(
+                        UnaryOperatorType.Decrement,
+                        VariableAccessor("a"),
+                        Token.DoubleDash(SourceSpan.Default))),
+                    VariableAccessor("c"),
+                    Token.NotEquals(SourceSpan.Default)))
+            ),
+            ( // member access
+                "a--.c",
+                new MemberAccessExpression(new MemberAccess(
+                    new UnaryOperatorExpression(new UnaryOperator(
+                        UnaryOperatorType.Decrement,
+                        VariableAccessor("a"),
+                        Token.DoubleDash(SourceSpan.Default))),
+                    Identifier("c"), null))
+            ),
+            ( // not
+                "!b--",
+                new UnaryOperatorExpression(new UnaryOperator(
+                    UnaryOperatorType.Not,
+                    new UnaryOperatorExpression(new UnaryOperator(
+                        UnaryOperatorType.Decrement,
+                        VariableAccessor("b"),
+                        Token.DoubleDash(SourceSpan.Default))),
+                    Token.Bang(SourceSpan.Default)))
+            ),
+            ( // and
+                "a-- && b",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanAnd,
+                    Decrement(VariableAccessor("a")),
+                    VariableAccessor("b"))
+            ),
+            ( // or
+                "a-- || b",
+                BinaryOperatorExpression(BinaryOperatorType.BooleanOr,
+                    Decrement(VariableAccessor("a")),
+                    VariableAccessor("b"))
+            ),
+            ( // negate
+                "-a--",
+                Negate(Decrement(VariableAccessor("a")))
+            ),
+            ( // greater or equal to
+                "a-- >= b",
+                BinaryOperatorExpression(BinaryOperatorType.GreaterThanOrEqual,
+                    Decrement(VariableAccessor("a")),
+                    VariableAccessor("b"))
+            ),
+            ( // less or equal to
+                "a-- <= b",
+                BinaryOperatorExpression(BinaryOperatorType.LessThanOrEqual,
+                    Decrement(VariableAccessor("a")),
+                    VariableAccessor("b"))
+            ),
+            ( // increment
+                "a--++",
+                UnaryOperatorExpression(UnaryOperatorType.Increment,
+                    UnaryOperatorExpression(UnaryOperatorType.Decrement,
+                        VariableAccessor("a")))
+            ),
+            ( // decrement
+                "a----",
+                UnaryOperatorExpression(UnaryOperatorType.Decrement,
+                    UnaryOperatorExpression(UnaryOperatorType.Decrement,
+                        VariableAccessor("a")))
+            ),
         }.Select(x => (x.Source, (IEnumerable<Token>)Tokenizer.Tokenize(x.Source).Tokens, x.ExpectedExpression))];
     }
 }

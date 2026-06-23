@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Reef.Core.Tests.IntegrationTests.Helpers;
 
+[Trait("Category", "IntegrationTest")]
 public class IntegrationTestBase
 {
     protected static async Task SetupTest(

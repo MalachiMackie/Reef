@@ -3267,6 +3267,8 @@ public sealed class Parser : IDisposable
             TokenType.QuestionMark => UnaryOperatorType.FallOut,
             TokenType.Bang => UnaryOperatorType.Not,
             TokenType.Dash => UnaryOperatorType.Negate,
+            TokenType.DoubleDash => UnaryOperatorType.Decrement,
+            TokenType.DoublePlus => UnaryOperatorType.Increment,
             _ => null
         };
 
@@ -3279,7 +3281,9 @@ public sealed class Parser : IDisposable
         operatorType = type switch
         {
             TokenType.RightAngleBracket => BinaryOperatorType.GreaterThan,
+            TokenType.RightAngleBracketEquals => BinaryOperatorType.GreaterThanOrEqual,
             TokenType.LeftAngleBracket => BinaryOperatorType.LessThan,
+            TokenType.LeftAngleBracketEquals => BinaryOperatorType.LessThanOrEqual,
             TokenType.Star => BinaryOperatorType.Multiply,
             TokenType.ForwardSlash => BinaryOperatorType.Divide,
             TokenType.Plus => BinaryOperatorType.Plus,
@@ -3304,7 +3308,9 @@ public sealed class Parser : IDisposable
             BinaryOperatorType.Plus => 6,
             BinaryOperatorType.Minus => 6,
             BinaryOperatorType.GreaterThan => 5,
+            BinaryOperatorType.GreaterThanOrEqual => 5,
             BinaryOperatorType.LessThan => 5,
+            BinaryOperatorType.LessThanOrEqual => 5,
             BinaryOperatorType.EqualityCheck => 4,
             BinaryOperatorType.NegativeEqualityCheck => 4,
             BinaryOperatorType.BooleanAnd => 2,
@@ -3320,6 +3326,8 @@ public sealed class Parser : IDisposable
         return operatorType switch
         {
             UnaryOperatorType.FallOut => 11,
+            UnaryOperatorType.Increment => 11,
+            UnaryOperatorType.Decrement => 11,
             UnaryOperatorType.Negate => 8,
             UnaryOperatorType.Not => 8,
             _ => throw new InvalidEnumArgumentException(nameof(operatorType), (int)operatorType,

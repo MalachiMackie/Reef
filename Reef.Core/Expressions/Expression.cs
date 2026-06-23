@@ -701,7 +701,9 @@ public record FieldInitializer(StringToken FieldName, IExpression? Value)
 public enum BinaryOperatorType
 {
     LessThan,
+    LessThanOrEqual,
     GreaterThan,
+    GreaterThanOrEqual,
     Plus,
     Minus,
     Multiply,
@@ -723,7 +725,9 @@ public enum UnaryOperatorType
 {
     FallOut,
     Not,
-    Negate
+    Negate,
+    Increment,
+    Decrement,
 }
 
 public enum ExpressionType
