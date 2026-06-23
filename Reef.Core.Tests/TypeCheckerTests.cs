@@ -124,6 +124,15 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     "main.rf",
                     """
+                    var a: bool = 'a' == 'b';
+                    """
+                },
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
                     var a: bool = 1 <= 2;
                     """
                 },

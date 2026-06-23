@@ -60,7 +60,7 @@ public partial class TypeChecker
                     if (@operator.Right is not null)
                         TypeCheckExpression(@operator.Right);
 
-                    if (ExpectExpressionType([.. IntTypes(), Boolean()], @operator.Left))
+                    if (ExpectExpressionType([.. IntTypes(), Boolean(), Char()], @operator.Left))
                     {
                         ExpectExpressionType(@operator.Left.NotNull().ResolvedType.NotNull(), @operator.Right);
                     }

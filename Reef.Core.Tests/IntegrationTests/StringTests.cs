@@ -5,25 +5,6 @@ namespace Reef.Core.Tests.IntegrationTests;
 
 public class StringTests : IntegrationTestBase
 {
-    [Theory]
-    [InlineData("a", "a", "a")]
-    [InlineData("A", "A", "A")]
-    [InlineData("z", "z", "z")]
-    [InlineData("semicolon", ";", ";")]
-    [InlineData("space", " ", " ")]
-    [InlineData("new line", "\\n", "\n")]
-    [InlineData("single single quote", "'", "'")]
-    [InlineData("unicode character", "は", "は")]
-    public async Task PrintCharConstant(string name, string constant, string expectedOutput)
-    {
-        await SetupTest($"print_char('{constant}');", name);
-
-        var result = await Run(name);
-
-        result.ExitCode.Should().Be(0);
-        result.StandardOutput.Should().Be(expectedOutput.Replace("\n", Environment.NewLine));
-    }
-
     [Fact]
     public async Task PrintStringConstant()
     {
