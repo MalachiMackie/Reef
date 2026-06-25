@@ -101,6 +101,9 @@ pub extern fn allocate(size_bytes: u64): mut rawPointer
 pub extern fn allocate_new_string(length: u64): mut string
 pub extern fn copy_string(destination: string, source: string, source_offset: u64)
 
+pub extern fn ref_equals<T>(left: T, right: T): bool
+    where T : boxed
+
 pub unboxed class BoxedValue<TValue> {
     pub field ObjectHeader: ObjectHeader,
     pub field Value: TValue,
@@ -124,7 +127,7 @@ pub unboxed class string_slice {
         });
     }
 
-    pub fn to_string(): mut string {
+    pub fn to_string(): string {
         if (length == 0) {
             return "";
         }
@@ -134,17 +137,44 @@ pub unboxed class string_slice {
 
         return result;
     }
+
+    pub fn char_at(at: u64): option::<char>
+    {
+        return original_string.char_at(at + offset);
+    }
+
+    pub fn eq_string(str: string): bool
+    {
+        if (str.length != length) {
+            return false;
+        }
+        if (length == 0) {
+            return true;
+        }
+        if (offset == 0 && length == str.length) {
+            return original_string.eq(str);
+        }
+
+        for (var i = 0; i < length; i++) {
+            if (char_at(i) != str.char_at(i)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
 }
 
 // private global function for easy ffi naming
 extern fn string_chars(str: string): [char]
+extern fn string_char_at(str: string, at: u64): char
 
 pub class string {
     // If these are renamed or reordered, serialization within AssemblyLine needs to be updated wherever we write strings
     pub field length: u64,
     pub field start_byte: u8,
 
-    pub fn slice(start: u64, length: u64): result::<string_slice, string> {
+    pub fn slice(start: u64, slice_length: u64): result::<string_slice, string> {
         if (start + length > length) {
             return error("String slice out of bounds");
         }
@@ -152,12 +182,71 @@ pub class string {
         return ok(new string_slice {
             original_string = this,
             offset = start,
-            length = length
+            length = slice_length
         });
     }
 
     pub fn chars(): [char] {
         return string_chars(this);
+    }
+
+    pub fn as_slice(): string_slice {
+        return new string_slice {
+            original_string = this,
+            offset = 0,
+            length = length,
+        };
+    }
+
+    pub fn char_at(at: u64): option::<char>
+    {
+        if (length < at)
+        {
+            return option::None;
+        }
+
+        return option::Some(string_char_at(this, at));
+    }
+
+    pub fn eq(other: string): bool
+    {
+        if (ref_equals(this, other)) {
+            return true;
+        }
+        if (other.length != length)
+        {
+            return false;
+        }
+        if (length == 0)
+        {
+            return true;
+        }
+        if (start_byte != other.start_byte)
+        {
+            return false;
+        }
+        for (var i = 0; i < length; i++)
+        {
+            if (char_at(i) != other.char_at(i)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    pub fn starts_with_slice(other_slice: string_slice): bool {
+        if (other_slice.length > length) {
+            return false;
+        }
+
+        for (var i = 0; i < other_slice.length; i++) {
+            if (other_slice.char_at(i) != char_at(i)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }
 
@@ -263,11 +352,19 @@ pub unboxed union option<TValue> {
             Self::Some(var value) => value,
         };
     }
+
+    pub fn ok_or<TError>(err: TError): result::<TValue, TError> {
+        return match (this)
+        {
+            Self::Some(var value) => ok(value),
+            Self::None => error(err),
+        };
+    }
 }
 
 pub unboxed union result<TValue, TError> {
     Ok(TValue),
-    Error(TError)
+    Error(TError),
 }
 
 pub unboxed class ObjectHeader {

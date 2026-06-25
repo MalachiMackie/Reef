@@ -33,6 +33,8 @@ typedef double max_align_t;
 #define PACK( __Declaration__ ) __pragma( pack(push, 1) ) __Declaration__ __pragma( pack(pop))
 #endif
 
+
+
 typedef uint32_t TypeId;
 
 typedef PACK(struct {
@@ -50,6 +52,7 @@ typedef PACK(struct {
     string str;
 }) StringBoxedValue;
 
+void panic();
 void print_i8(int8_t num);
 void print_i16(int16_t num);
 void print_i32(int32_t num);
@@ -364,6 +367,36 @@ void* allocate(uint64_t size);
 
 int utf8_decode_char(const char *in, uint32_t *utf);
 
+reef_char utf8_decode_string_at(string *str, uint64_t at)
+{
+    if (str->length == 0)
+    {
+        panic();
+        return 0;
+    }
+
+    char *chars = str->chars;
+
+    uint64_t bytes_i = 0;
+    uint64_t chars_i = 0;
+    uint32_t ch;
+    while (chars[bytes_i])
+    {
+        int bytes_used = utf8_decode_char(chars + bytes_i, &ch);
+
+        if (chars_i == at)
+        {
+            return ch;
+        }
+
+        chars_i++;
+        bytes_i += bytes_used;
+    }
+
+    panic();
+    return ch;
+}
+
 void utf8_decode_string(string *str, reef_char* destination)
 {
     if (str->length == 0)
@@ -467,6 +500,17 @@ int utf8_decode_char(const char *in, uint32_t *utf)
 invalid:
     *utf = 0xFFFD; // Unicode replacement character
     return 0;
+}
+
+reef_char string_char_at(StringBoxedValue *str, uint64_t char_at)
+{
+    if (char_at >= str->str.length)
+    {
+        panic();
+    }
+
+
+    return utf8_decode_string_at(&str->str, char_at);
 }
 
 BoxedCharArray* string_chars(StringBoxedValue *str)
@@ -1179,6 +1223,10 @@ void panic() {
     struct {uint64_t num;} *p = NULL;
 
     uint64_t x = p->num;
+}
+
+bool ref_equals(void *left, void *right) {
+    return left == right;
 }
 
 extern uint64_t unhandled_exception_continue;

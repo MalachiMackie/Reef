@@ -3,35 +3,135 @@ use :::main:::{token:::*, helpers:::linked_list};
 pub fn tokenize(source: string): linked_list::<Token> {
     var mut tokens = linked_list::create();
 
-    tokens.add(Token::Fn);
+    var slice = source.as_slice();
 
-    //var mut i = 0;
-    //while (i < source.Length) {
-    //    print_u64(i);
-    //    i = i + 1;
-    //}
+    if (eat_token(slice) matches result::Ok(var token)) {
+        tokens.add(token);
+
+        return tokens;
+    }
 
     return tokens;
+}
+
+fn eat_token(slice: string_slice): result::<Token, string>
+{
+    // todo: trimming
+
+    var mut possible_matches_result = get_possible_matches(slice);
+    var mut possible_matches = possible_matches_result.types;
+    var possible_matches_count = possible_matches_result.count;
+    if (possible_matches_count == 0)
+    {
+        return error("invalid token");
+    }
+
+    var mut not_tokens = [unboxed; option::None; 4];
+    var not_tokens_count = 0;
+    for (var i = 1; i < slice.length; i++) {
+        var part: string_slice = slice.slice(0, i + 1)?;
+        for (
+            var j = 0;
+            j < possible_matches.length && possible_matches[j] matches option::Some(var token_type);
+            j++
+        ) {
+            if (!is_potentially_valid(part, token_type))
+            {
+                not_tokens[not_tokens_count++] = option::Some(j);
+            }
+        }
+
+        if (not_tokens_count == possible_matches_count) {
+            return resolve_token(part, possible_matches);
+        }
+
+        for (
+            var j = 0;
+            j < not_tokens_count && not_tokens[j] matches option::Some(var index);
+            j++
+        ) {
+            possible_matches_count--;
+            possible_matches[index] = option::None;
+        }
+    }
+
+    return resolve_token(slice, possible_matches);
+}
+
+
+fn resolve_token(slice: string_slice, possible_matches: unboxed [option::<TokenType>; 4]): result::<Token, string>
+{
+    for (var i = 0; i < possible_matches.length && possible_matches[i] matches option::Some(var type); i++) {
+        // skip identifier so that other tokens take precedent
+        if (type matches TokenType::Identifier) {
+            continue;
+        }
+
+        if (try_match(slice, type) matches option::Some(var resolved))
+        {
+            return ok(resolved);
+        }
+    }
+
+    return try_match(slice, TokenType::Identifier).ok_or("Invalid Token");
+}
+
+unboxed class PossibleMatches {
+    pub mut field types: unboxed [option::<TokenType>; 4],
+    pub field count: u64,
+}
+
+fn get_possible_matches(slice: string_slice): mut PossibleMatches
+{
+    var mut options = [unboxed; option::None; 4];
+    var i = 0;
+    if (slice.char_at(0) matches option::Some(var first_char)) {
+        if (first_char == 'p') {
+            options[i++] = option::Some(TokenType::Pub);
+        }
+        else if (first_char == 'f') {
+            options[i++] = option::Some(TokenType::Fn);
+        }
+    }
+
+    return new PossibleMatches { types = options, count = i };
+}
+
+fn is_potentially_valid(slice: string_slice, type: TokenType): bool {
+    return match (type) {
+        TokenType::Pub => "pub".starts_with_slice(slice),
+        TokenType::Fn => "fn".starts_with_slice(slice),
+        _ => false
+    };
+}
+
+fn try_match(slice: string_slice, type: TokenType): option::<Token>
+{
+    return match (type) {
+        TokenType::Pub => if (slice.eq_string("pub")) option::Some(Token::Pub) else option::None,
+        TokenType::Fn => if (slice.eq_string("fn")) option::Some(Token::Fn) else option::None,
+        _ => option::None,
+    };
 }
 
 #[test]
 pub fn tokenize_keywords() {
     var tests = [
-        ("fn", Token::Fn),
         ("pub", Token::Pub),
+        ("fn", Token::Fn),
     ];
 
     var failed_tests = 0;
 
-    var i = 0;
-    while (i < tests.Length) {
+    for (var i = 0; i < tests.length; i++) {
         var test_data = tests[i];
         var source = test_data.Item0;
         var expected_token = test_data.Item1;
-        var result = tokenize(test_data.Item0);
 
-        print_string("testing: ");
-        print_string(source);
+        var result = tokenize(source);
+
+        print_string("expected token: ");
+        print_string(expected_token.to_string());
         print_string("\n");
 
         if (result.get(0) matches option::Some(var found_token)) {
@@ -46,8 +146,6 @@ pub fn tokenize_keywords() {
             print_string("no token was found\n");
             failed_tests = failed_tests + 1;
         }
-
-        i = i + 1;
     }
 
     if (failed_tests > 0) {

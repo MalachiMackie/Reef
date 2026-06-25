@@ -6,12 +6,14 @@ class LinkedListNode<TValue> {
 
     pub static fn create(capacity: u64): mut LinkedListNode::<TValue> {
         var mut value = option::None;
-        return new LinkedListNode::<TValue> {
+        var mut node = new LinkedListNode::<TValue> {
             length = 0,
             capacity = capacity,
             next = option::None,
             value = fill_dynamic_array(capacity, value),
         };
+
+        return node;
     }
 }
 
@@ -46,7 +48,6 @@ pub class linked_list<TValue> {
         }
 
         var node_i = i - previous_capacity;
-
         return node.value[node_i];
     }
 
@@ -66,7 +67,7 @@ pub class linked_list<TValue> {
         }
 
         if (node.length == node.capacity) {
-            print_string("1");
+            print_string("todo\n");
             todo!;
         }
 
@@ -76,10 +77,12 @@ pub class linked_list<TValue> {
     }
 
     pub static fn create(): mut linked_list::<TValue> {
-        return new linked_list::<TValue> {
+        var mut value = new linked_list::<TValue> {
             length = 0,
             inner_array = LinkedListNode::create(4),
             capacity = 4,
         };
+
+        return value;
     }
 }
