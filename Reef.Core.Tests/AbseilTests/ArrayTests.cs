@@ -130,7 +130,7 @@ public class ArrayTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                             Local0,
                                             new CreateArray(new LoweredArray(Int32T, 3))),
                                         new Assign(
-                                            new Field(Local0, "Length", "_classVariant"),
+                                            new Field(Local0, "length", "_classVariant"),
                                             new Use(new UIntConstant(3, 8))
                                         ),
                                         new Assign(
@@ -294,7 +294,7 @@ public class ArrayTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                             Local0,
                                             new CreateArray(new LoweredArray(Int32T, 3))),
                                         new Assign(
-                                            new Field(Local0, "Length", "_classVariant"),
+                                            new Field(Local0, "length", "_classVariant"),
                                             new Use(new UIntConstant(3, 8))
                                         ),
                                         new Assign(
@@ -406,7 +406,7 @@ public class ArrayTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                             new CreateArray(
                                                 new LoweredArray(Int32T, 4))),
                                         new Assign(
-                                            new Field(Local0, "Length", "_classVariant"),
+                                            new Field(Local0, "length", "_classVariant"),
                                             new Use(new UIntConstant(4, 8))
                                         ),
                                         new Assign(

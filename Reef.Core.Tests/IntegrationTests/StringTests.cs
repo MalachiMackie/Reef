@@ -24,7 +24,7 @@ public class StringTests : IntegrationTestBase
             var str = "Hello World!";
             var chars = str.chars();
             var i = 0;
-            while (i < chars.Length)
+            while (i < chars.length)
             {
                 print_char(chars[i]);
                 print_string("\n");
@@ -74,7 +74,7 @@ public class StringTests : IntegrationTestBase
             var str = "こんにちは";
             var chars = str.chars();
             var i = 0;
-            while (i < chars.Length)
+            while (i < chars.length)
             {
                 print_char(chars[i]);
                 print_string("\n");
@@ -99,7 +99,7 @@ public class StringTests : IntegrationTestBase
     [Fact]
     public async Task PrintUnicodeStringLength()
     {
-        await SetupTest("""print_u64("こんにちは".Length);""");
+        await SetupTest("""print_u64("こんにちは".length);""");
 
         var result = await Run();
 

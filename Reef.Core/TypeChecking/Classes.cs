@@ -21,7 +21,7 @@ public partial class TypeChecker
         }
         public required IReadOnlyList<FunctionSignature> Functions
         {
-            get => Initialized ? field : throw new InvalidOperationException("Signature is not initialized");
+            get => Initialized ? field : throw new InvalidOperationException($"{Name} Signature is not initialized");
             init;
         }
         public required string Name { get; init; }

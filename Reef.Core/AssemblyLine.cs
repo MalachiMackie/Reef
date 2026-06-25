@@ -264,7 +264,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         parametersBytesWritten += WriteObjectHeaderBlob(parametersSubSegment, parametersArrayType, currentTypeArguments);
 
         PadAlignment(ref parametersBytesWritten, parametersSubSegment, 8);
-        parametersSubSegment.AppendLine($"        ; MethodInfo[{methodId}].Parameters.ObjectHeader.Value.Length:");
+        parametersSubSegment.AppendLine($"        ; MethodInfo[{methodId}].Parameters.ObjectHeader.Value.length:");
         parametersSubSegment.AppendLine($"        dq 0x{method.ParameterLocals.Count:X}");
         parametersBytesWritten += 8;
 
@@ -324,7 +324,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         localsBytesWritten += WriteObjectHeaderBlob(localsSubSegment, localsArrayType, currentTypeArguments);
 
         PadAlignment(ref localsBytesWritten, localsSubSegment, 8);
-        localsSubSegment.AppendLine($"        ; MethodInfo[{methodId}].Locals.ObjectHeader.Value.Length:");
+        localsSubSegment.AppendLine($"        ; MethodInfo[{methodId}].Locals.ObjectHeader.Value.length:");
         localsSubSegment.AppendLine($"        dq {method.Locals.Count}");
         localsBytesWritten += 8;
 
@@ -763,7 +763,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                         staticFieldsBytesWritten += WriteObjectHeaderBlob(staticFieldsSubSegment, staticFieldsType, currentTypeArguments);
                         PadAlignment(ref staticFieldsBytesWritten, staticFieldsSubSegment, 8);
 
-                        staticFieldsSubSegment.AppendLine("        ; Length");
+                        staticFieldsSubSegment.AppendLine("        ; length");
                         staticFieldsSubSegment.AppendLine($"        dq 0x{dataType.StaticFields.Count:X}");
                         staticFieldsBytesWritten += 8;
 
@@ -810,7 +810,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                         fieldsBytesWritten += WriteObjectHeaderBlob(fieldsSubSegment, fieldsType, currentTypeArguments);
                         PadAlignment(ref fieldsBytesWritten, fieldsSubSegment, 8);
 
-                        fieldsSubSegment.AppendLine($"        ; Length");
+                        fieldsSubSegment.AppendLine($"        ; length");
                         fieldsSubSegment.AppendLine($"        dq 0x{dataType.Variants[0].Fields.Count:X}");
                         fieldsBytesWritten += 8;
 
@@ -940,7 +940,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                         staticFieldsBytesWritten += WriteObjectHeaderBlob(staticFieldsSubSegment, staticFieldsType, currentTypeArguments);
                         PadAlignment(ref staticFieldsBytesWritten, staticFieldsSubSegment, 8);
 
-                        staticFieldsSubSegment.AppendLine($"        ; Length");
+                        staticFieldsSubSegment.AppendLine($"        ; length");
                         staticFieldsSubSegment.AppendLine($"        dq 0x{dataType.StaticFields.Count:X}");
                         staticFieldsBytesWritten += 8;
 
@@ -985,7 +985,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                         variantsBytesWritten += WriteObjectHeaderBlob(variantsSubSegment, variantsFieldType, currentTypeArguments);
                         PadAlignment(ref variantsBytesWritten, variantsSubSegment, 8);
 
-                        variantsSubSegment.AppendLine("        ; Length");
+                        variantsSubSegment.AppendLine("        ; length");
                         variantsSubSegment.AppendLine($"        dq 0x{dataType.Variants.Count:X}");
                         variantsBytesWritten += 8;
 
@@ -1016,7 +1016,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                             fieldsBytesWritten += WriteObjectHeaderBlob(fieldsSubSegment, variantInfoFieldsType, currentTypeArguments);
                             PadAlignment(ref fieldsBytesWritten, fieldsSubSegment, 8);
 
-                            fieldsSubSegment.AppendLine($"        ; Length");
+                            fieldsSubSegment.AppendLine($"        ; length");
                             fieldsSubSegment.AppendLine($"        dq 0x{variant.Fields.Count:X}");
                             fieldsBytesWritten += 8;
 
@@ -1142,8 +1142,8 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                     _typeInfoDataSubSegment.AppendLine($"        dd 0x{GetTypeId(elementType, currentTypeArguments):X}");
                     bytesWritten += 4;
 
-                    PadAlignment(ref bytesWritten, _typeInfoDataSubSegment, arrayVariantFieldOffsets["Length"].Alignment);
-                    _typeInfoDataSubSegment.AppendLine("        ; TypeInfo.Length");
+                    PadAlignment(ref bytesWritten, _typeInfoDataSubSegment, arrayVariantFieldOffsets["length"].Alignment);
+                    _typeInfoDataSubSegment.AppendLine("        ; TypeInfo.length");
                     _typeInfoDataSubSegment.AppendLine($"        dq 0x{array.Length ?? 0:X}");
                     bytesWritten += 8;
 
@@ -1682,7 +1682,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                                 new VariantSizeInfo(
                                     null,
                                     new Dictionary<string, FieldSize>{
-                                        { "Length", new FieldSize(0, 8, 8) },
+                                        { "length", new FieldSize(0, 8, 8) },
                                         { "Items", new FieldSize(8, null, 1) },
                                     })
                             }
@@ -2107,7 +2107,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
 
                     if (ownerType is LoweredArray)
                     {
-                        Debug.Assert(field.FieldName == "Length");
+                        Debug.Assert(field.FieldName == "length");
                         return new LoweredConcreteTypeReference(
                             DefId.UInt64,
                             []
@@ -3484,9 +3484,9 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
 
         if (ownerType is LoweredArray loweredArray)
         {
-            if (field.FieldName != "Length")
+            if (field.FieldName != "length")
             {
-                throw new UnreachableException("Length is the only supported array field");
+                throw new UnreachableException("length is the only supported array field");
             }
 
             return ownerPlace;

@@ -189,7 +189,7 @@ public class Tokenizer
 
         if (allNull)
         {
-            return new EatTokenResult(null, false, true);
+            throw new UnreachableException();
         }
 
         SetNextPosition(startPosition, trimmedChars);

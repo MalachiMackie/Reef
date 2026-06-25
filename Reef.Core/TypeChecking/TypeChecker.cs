@@ -843,43 +843,12 @@ public partial class TypeChecker
         {
             return false;
         }
-        if (actual.ResolvedType is null)
-        {
-            throw new InvalidOperationException("Expected should have been type checked first before expecting it's value type");
-        }
 
-        return actual switch
-        {
-            MatchExpression matchExpression => ExpectMatchExpressionType(matchExpression),
-            BlockExpression blockExpression => ExpectBlockExpressionType(blockExpression),
-            IfExpressionExpression ifExpressionExpression => ExpectIfExpressionType(ifExpressionExpression),
-            // these expression types are considered to provide their own types, rather than deferring to inner expressions
-            BinaryOperatorExpression or MatchesExpression or MemberAccessExpression or MethodCallExpression
-                or MethodReturnExpression or ObjectInitializerExpression or StaticMemberAccessExpression
-                or TupleExpression or UnaryOperatorExpression or UnionClassVariantInitializerExpression
-                or ValueAccessorExpression or VariableDeclarationExpression => ExpectType(actual.ResolvedType!,
-                    expected, actual.SourceRange, reportError),
-            _ => throw new UnreachableException(actual.GetType().ToString())
-        };
-
-        bool ExpectIfExpressionType(IfExpressionExpression ifExpression)
-        {
-            return ExpectType(ifExpression.ResolvedType!, expected, SourceRange.Default, reportError);
-            // todo: tail expression
-        }
-
-        bool ExpectBlockExpressionType(BlockExpression blockExpression)
-        {
-            return ExpectType(blockExpression.ResolvedType!, expected, SourceRange.Default, reportError);
-            // todo: tail expression
-        }
-
-        bool ExpectMatchExpressionType(MatchExpression matchExpression)
-        {
-            return ExpectType(matchExpression.ResolvedType!, expected, SourceRange.Default, reportError);
-            // todo: tail expression
-        }
-
+        return ExpectType(
+            actual.ResolvedType.NotNull($"{nameof(expected)} should have been type checked first before expecting it's value type"),
+            expected,
+            actual.SourceRange,
+            reportError);
     }
 
     private void ExpectExpressionType(ITypeReference expected, IExpression? actual, bool reportError = true)

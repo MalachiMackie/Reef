@@ -115,7 +115,7 @@ public partial class ProgramAbseil
                     index.ToOperand(),
                     arrayType.Length is not null
                         ? new UIntConstant(arrayType.Length.Value, 8)
-                        : new Copy(new Field(collectionPlace, "Length", ClassVariantName)),
+                        : new Copy(new Field(collectionPlace, "length", ClassVariantName)),
                     BinaryOperationKind.LessThan)));
 
         var nextBasicBlockId = new BasicBlockId($"bb{_basicBlocks.Count}");
@@ -165,7 +165,7 @@ public partial class ProgramAbseil
         }
 
         _basicBlockStatements.Add(new Assign(
-            new Field(newDestination, "Length", ClassVariantName),
+            new Field(newDestination, "length", ClassVariantName),
             new Use(new UIntConstant(arrayType.Length.Value, 8))
         ));
 
@@ -195,7 +195,7 @@ public partial class ProgramAbseil
         }
 
         _basicBlockStatements.Add(new Assign(
-            new Field(newDestination, "Length", ClassVariantName),
+            new Field(newDestination, "length", ClassVariantName),
             new Use(new UIntConstant(arrayType.Length.Value, 8))
         ));
 

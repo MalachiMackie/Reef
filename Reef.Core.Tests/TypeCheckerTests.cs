@@ -82,21 +82,13 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
         var sourceFiles = new Dictionary<string, (string, IReadOnlyList<TypeCheckerError> expectedErrors)>()
                             {
                                 {
-                                    "main.rf", ("""
-                                                class MyClass {
-                                                    pub field MyField: string,
-                                                    field OtherField: bool,
-
-                                                    pub static fn Create(): MyClass {
-                                                        return new MyClass {
-                                                            MyField = "",
-                                                            OtherField = true
-                                                        };
-                                                    }
-                                                }
-                                                var a = MyClass::Create();
-                                                var b: bool = a matches MyClass { MyField: string, OtherField: _ };
-                                                """, [TypeCheckerError.PrivateMemberReferenced(Identifier("OtherField"))])
+                                    "main.rf",
+                                    (
+                                        """
+                                        [].abc.cde;
+                                        """,
+                                        [TypeCheckerError.UnknownTypeMember(Identifier("abc"), "array")]
+                                    )
                                 }
                             };
 
@@ -3781,6 +3773,52 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
     {
         return new TheoryData<string, Dictionary<string, (string contents, IReadOnlyList<TypeCheckerError> expectedErrors)>>
         {
+            {
+                "Access unknown field on unknown field on array",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            [].abc.cde;
+                            """,
+                            [TypeCheckerError.UnknownTypeMember(Identifier("abc"), "array")]
+                        )
+                    }
+                }
+            },
+            {
+                "Access unknown field on int",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            var a: u64 = 1;
+                            a.abc;
+                            """,
+                            [TypeCheckerError.UnknownTypeMember(Identifier("abc"), "u64")]
+                        )
+                    }
+                }
+            },
+            {
+                "Access unknown field on unknown field on unspecified sized int",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            1.abc.cde;
+                            """,
+                            [TypeCheckerError.UnknownTypeMember(Identifier("abc"), "unspecified sized int")]
+                        )
+                    }
+                }
+            },
             {
                 "Increment on non mutable value",
                 new()
@@ -9396,13 +9434,4 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
         };
     }
 
-    private static GenericTypeReference GenericTypeReference(string name)
-    {
-        return new GenericTypeReference
-        {
-            GenericName = name,
-            OwnerType = null!,
-            InstantiatedFrom = null!
-        };
-    }
 }

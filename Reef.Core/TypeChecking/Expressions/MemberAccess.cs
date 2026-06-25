@@ -28,13 +28,14 @@ public partial class TypeChecker
                     ownerExpression);
             case ArrayType:
                 {
-                    if (memberAccessExpression.MemberAccess.MemberName is not (null or { StringValue: "Length" }))
-                    {
-                        AddError(TypeCheckerError.UnknownField(memberAccessExpression.MemberAccess.MemberName, "array"));
-                    }
-
                     memberAccessExpression.MemberAccess.MemberType = MemberType.Field;
                     memberAccessExpression.MemberAccess.OwnerType = ownerType;
+                    if (memberAccessExpression.MemberAccess.MemberName is not (null or { StringValue: "length" }))
+                    {
+                        AddError(TypeCheckerError.UnknownTypeMember(memberAccessExpression.MemberAccess.MemberName, "array"));
+                        return UnknownType.Instance;
+                    }
+
                     return InstantiatedClass.UInt64;
                 }
             case InstantiatedUnion instantiatedUnion:
@@ -48,6 +49,20 @@ public partial class TypeChecker
                 return UnknownType.Instance;
             case UnknownInferredType:
                 return UnknownType.Instance;
+            case UnspecifiedSizedIntType { ResolvedIntType: var resolvedIntType }:
+                {
+                    if (resolvedIntType is not null)
+                    {
+                        return TypeCheckClassMemberAccess(resolvedIntType, memberAccessExpression, stringToken, typeArgumentsIdentifiers, ownerExpression);
+                    }
+
+                    // todo: this may actually have members, need to figure that out
+                    if (memberAccessExpression.MemberAccess.MemberName is not null)
+                    {
+                        AddError(TypeCheckerError.UnknownTypeMember(memberAccessExpression.MemberAccess.MemberName, "unspecified sized int"));
+                    }
+                    return UnknownType.Instance;
+                }
             default:
                 throw new InvalidOperationException(ownerType.GetType().ToString());
         }

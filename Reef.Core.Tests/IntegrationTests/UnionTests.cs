@@ -24,7 +24,7 @@ public class UnionTests : IntegrationTestBase
             var values = [unboxed; a, b, c];
 
             var i = 0;
-            while (i < values.Length)
+            while (i < values.length)
             {
                 match (values[i]) {
                     MyUnion::A => print_string("MyUnion::A"),

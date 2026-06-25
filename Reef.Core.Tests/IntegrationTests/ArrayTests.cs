@@ -158,10 +158,10 @@ public class ArrayTests : IntegrationTestBase
             var c: unboxed [string; 0] = [unboxed;];
             var d: [string; 0] = [];
 
-            print_u64(a.Length);
-            print_u64(b.Length);
-            print_u64(c.Length);
-            print_u64(d.Length);
+            print_u64(a.length);
+            print_u64(b.length);
+            print_u64(c.length);
+            print_u64(d.length);
             """
         );
 
