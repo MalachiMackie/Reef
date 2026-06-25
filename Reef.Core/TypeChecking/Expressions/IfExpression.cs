@@ -80,9 +80,11 @@ public partial class TypeChecker
             variable.Instantiated = true;
         }
 
+        ITypeReference expectedBranchType = Unit();
+
         if (ifExpression.Body is not null)
         {
-            TypeCheckExpression(ifExpression.Body);
+            expectedBranchType = TypeCheckExpression(ifExpression.Body);
         }
 
         foreach (var (variable, variableInstantiation) in uninstantiatedVariables)
@@ -114,6 +116,7 @@ public partial class TypeChecker
             if (elseIf.Body is not null)
             {
                 TypeCheckExpression(elseIf.Body);
+                ExpectExpressionType(expectedBranchType, elseIf.Body);
             }
 
             foreach (var (variable, variableInstantiation) in uninstantiatedVariables)
@@ -132,6 +135,7 @@ public partial class TypeChecker
         {
             using var __ = PushScope();
             TypeCheckExpression(ifExpression.ElseBody);
+            ExpectExpressionType(expectedBranchType, ifExpression.ElseBody);
 
             foreach (var (variable, variableInstantiation) in uninstantiatedVariables)
             {
@@ -150,12 +154,6 @@ public partial class TypeChecker
                                                                       variableInstantiation.InstantiatedInEachElseIf);
         }
 
-        if (ifExpression is { Body.ResolvedType: { } bodyResolvedType, ElseBody.ResolvedType: { } elseResolvedType }
-            && ExpectType(bodyResolvedType, elseResolvedType, SourceRange.Default, reportError: false, assignInferredTypes: false))
-        {
-            return bodyResolvedType;
-        }
-
-        return Unit();
+        return expectedBranchType;
     }
 }

@@ -336,7 +336,7 @@ public partial class TypeChecker
 
                             var typeField = new TypeField
                             {
-                                Name = field.Name.StringValue,
+                                NameToken = field.Name,
                                 Type = type,
                                 IsMutable = field.MutabilityModifier is { Modifier.Type: TokenType.Mut },
                                 IsStatic = false,
@@ -380,7 +380,7 @@ public partial class TypeChecker
                     field.ResolvedType = type;
                     var typeField = new TypeField
                     {
-                        Name = field.Name.StringValue,
+                        NameToken = field.Name,
                         Type = type,
                         IsMutable = field.MutabilityModifier is { Modifier.Type: TokenType.Mut },
                         IsPublic = field.AccessModifier is { Token.Type: TokenType.Pub },
@@ -397,6 +397,24 @@ public partial class TypeChecker
                 }
                 classSignature.Initialized = true;
             }
+
+            foreach (var (signature, functions) in classes.Select(x => ((ITypeSignature)x.Signature, x.Functions)).Concat(unions.Select(x => ((ITypeSignature)x.Signature, x.Functions))))
+            {
+                using var _ = PushScope(currentTypeSignature: signature);
+
+                foreach (var function in functions)
+                {
+                    using var ___ = PushScope(currentFunctionSignature: function);
+                    foreach (var param in function.Parameters.Values)
+                    {
+                        if (!IsVariableNameAvailable(param.Name.StringValue, out var conflictingToken))
+                        {
+                            AddError(TypeCheckerError.DuplicateVariableDeclaration(param.Name, conflictingToken));
+                        }
+                    }
+                }
+            }
+
         }
 
         foreach (var (moduleId, module) in _modules)

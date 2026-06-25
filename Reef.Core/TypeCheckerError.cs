@@ -236,20 +236,20 @@ public record TypeCheckerError
             $"Cannot access static member on '{staticMemberAccess.StaticMemberAccess.Type}' which is a generic type");
     }
 
-    public static TypeCheckerError StaticMemberAccessOnInstanceMember(SourceRange sourceRange)
+    public static TypeCheckerError StaticMemberAccessOnInstanceMember(SourceRange sourceRange, string memberName)
     {
         return new(
             TypeCheckerErrorType.StaticMemberAccessOnInstanceMember,
             sourceRange,
-            "Cannot access instance member via static member access");
+            $"Cannot access instance member {memberName} via static member access");
     }
 
-    public static TypeCheckerError InstanceMemberAccessOnStaticMember(SourceRange sourceRange)
+    public static TypeCheckerError InstanceMemberAccessOnStaticMember(SourceRange sourceRange, string memberName)
     {
         return new(
             TypeCheckerErrorType.InstanceMemberAccessOnStaticMember,
             sourceRange,
-            "Cannot access static member via instance member access");
+            $"Cannot access static member {memberName} via instance member access");
     }
 
     public static TypeCheckerError DuplicateTypeParameter(StringToken parameterIdentifier)
@@ -353,12 +353,12 @@ public record TypeCheckerError
             $"Cannot reference static field {identifier.StringValue} in class pattern");
     }
 
-    public static TypeCheckerError DuplicateVariableDeclaration(StringToken identifier)
+    public static TypeCheckerError DuplicateVariableDeclaration(StringToken identifier, Token conflictingWith)
     {
         return new(
             TypeCheckerErrorType.DuplicateVariableDeclaration,
             new SourceRange(identifier.SourceSpan, identifier.SourceSpan),
-            $"Variable {identifier.StringValue} has already been declared");
+            $"Variable {identifier.StringValue} conflicts with '{conflictingWith}'");
     }
 
     public static TypeCheckerError IfExpressionValueUsedWithoutElseBranch(SourceRange sourceRange)

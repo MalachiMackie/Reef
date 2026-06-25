@@ -619,11 +619,11 @@ public partial class TypeChecker
         VariableDeclarationExpression expression)
     {
         var varName = expression.VariableDeclaration.VariableNameToken;
-        var isVariableDefined = VariableIsDefined(varName.StringValue);
-        if (isVariableDefined)
+        var isVariableAvailable = IsVariableNameAvailable(varName.StringValue, out var conflictingToken);
+        if (!isVariableAvailable)
         {
             // todo: variable shadowing?
-            AddError(TypeCheckerError.DuplicateVariableDeclaration(varName));
+            AddError(TypeCheckerError.DuplicateVariableDeclaration(varName, conflictingToken.NotNull()));
         }
 
         LocalVariable? variable = null;
@@ -663,7 +663,7 @@ public partial class TypeChecker
                 }
         }
 
-        if (variable is not null && !isVariableDefined)
+        if (variable is not null && isVariableAvailable)
         {
             AddScopedVariable(varName.StringValue, variable);
         }
@@ -1982,7 +1982,8 @@ public partial class TypeChecker
     public record TypeField
     {
         public required ITypeReference Type { get; init; }
-        public required string Name { get; init; }
+        public required StringToken NameToken { get; init; }
+        public string Name => NameToken.StringValue;
         public required bool IsStatic { get; init; }
         public required bool IsPublic { get; init; }
         public required bool IsMutable { get; init; }

@@ -69,9 +69,53 @@ public partial class TypeChecker
         _typeCheckingScopes.Peek().AddVariable(name, variable);
     }
 
-    private bool VariableIsDefined(string name)
+    private bool IsVariableNameAvailable(string name, [NotNullWhen(false)] out Token? conflictingToken)
     {
-        return _typeCheckingScopes.Peek().ContainsVariable(name);
+        if (_typeCheckingScopes.Peek().TryGetVariable(name, out var variable))
+        {
+            conflictingToken = variable.Name;
+            return false;
+        }
+
+        if (CurrentTypeSignature is ClassSignature classSignature)
+        {
+            var inStaticFunction = CurrentFunctionSignature is { IsStatic: true };
+
+            var fn = classSignature.Functions.FirstOrDefault(x => x.Name == name);
+            var field = classSignature.Fields.FirstOrDefault(x => x.Name == name);
+
+            conflictingToken = fn?.NameToken ?? field?.NameToken;
+
+            return (fn, field) switch
+            {
+                (null, null) => true,
+                // variable name is available if we are in a static function but the found
+                // member is not available in a static context (ie an instance field or function)
+                ({ IsStatic: false }, _) or
+                (_, { IsStatic: false }) => inStaticFunction,
+                // at least one was not null, so not available
+                _ => false
+            };
+        }
+        else if (CurrentTypeSignature is UnionSignature unionSignature)
+        {
+            var inStaticFunction = CurrentFunctionSignature is { IsStatic: true };
+
+            var fn = unionSignature.Functions.FirstOrDefault(x => x.Name == name);
+
+            conflictingToken = fn?.NameToken;
+
+            return fn switch
+            {
+                null => true,
+                { IsStatic: false } => inStaticFunction,
+                _ => false
+            };
+        }
+
+        conflictingToken = null;
+
+        return true;
     }
 
     private ScopeDisposable PushScope(

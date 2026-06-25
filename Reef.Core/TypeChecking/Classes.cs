@@ -158,7 +158,7 @@ public partial class TypeChecker
                     IsMutable = false,
                     IsPublic = true,
                     IsStatic = false,
-                    Name = "length",
+                    NameToken = Token.Identifier("length", SourceSpan.Default),
                     StaticInitializer = null,
                     Type = InstantiatedClass.UInt64
                 }
@@ -177,7 +177,7 @@ public partial class TypeChecker
                     IsMutable = false,
                     IsPublic = true,
                     IsStatic = false,
-                    Name = "length",
+                    NameToken = Token.Identifier("length", SourceSpan.Default),
                     StaticInitializer = null,
                     Type = InstantiatedClass.UInt64
                 }
@@ -253,7 +253,7 @@ public partial class TypeChecker
                                 IsMutable = field.IsMutable,
                                 IsPublic = field.IsPublic,
                                 IsStatic = field.IsStatic,
-                                Name = field.Name,
+                                NameToken = field.NameToken,
                                 StaticInitializer = field.StaticInitializer,
                                 Type = InstantiateTypeReference(field.Type, TypeArguments, [])
                             })];

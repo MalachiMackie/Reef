@@ -116,6 +116,38 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     "main.rf",
                     """
+                    var a = if (true) option::Some("") else option::None;
+                    """
+                },
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    var a = if (true) option::Some("") else option::<string>::None;
+                    """
+                },
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    class MyClass {
+                        pub field my_field: u64,
+
+                        pub static fn some_fn(my_field: string) {
+                        }
+                    }
+                    """
+                },
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
                     var a: bool = 'a' == 'b';
                     """
                 },
@@ -3774,6 +3806,147 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
         return new TheoryData<string, Dictionary<string, (string contents, IReadOnlyList<TypeCheckerError> expectedErrors)>>
         {
             {
+                "parameter name conflicts with function",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            class MyClass{
+                                pub fn other_fn(){}
+
+                                pub fn some_fn(other_fn: string) {
+                                }
+                            }
+                            """,
+                            [TypeCheckerError.DuplicateVariableDeclaration(Identifier("other_fn"), Identifier("other_fn"))]
+                        )
+                    }
+                }
+            },
+            {
+                "incompatible type arguments in if branche",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            var a = if (true) option::Some("") else option::<u64>::None;
+                            """,
+                            [TypeCheckerError.MismatchedTypes(
+                                SourceRange.Default,
+                                new TestUnionReference(DefId.Option, [("TValue", String)]),
+                                new TestUnionReference(DefId.Option, [("TValue", UInt64)]))]
+                        )
+                    }
+                }
+            },
+            {
+                "variable name conflicts with function",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            class MyClass{
+                                pub fn other_fn(){}
+
+                                pub fn some_fn() {
+                                    var other_fn = "";
+                                }
+                            }
+                            """,
+                            [TypeCheckerError.DuplicateVariableDeclaration(Identifier("other_fn"), Identifier("other_fn"))]
+                        )
+                    }
+                }
+            },
+            {
+                "variable name conflicts with union function",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            union MyUnion{
+                                pub fn other_fn(){}
+
+                                pub fn some_fn() {
+                                    var other_fn = "";
+                                }
+                            }
+                            """,
+                            [TypeCheckerError.DuplicateVariableDeclaration(Identifier("other_fn"), Identifier("other_fn"))]
+                        )
+                    }
+                }
+            },
+            {
+                "parameter name conflicts with field",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            class MyClass{
+                                pub field my_field: u64,
+
+                                pub fn some_fn(my_field: string) {
+                                }
+                            }
+                            """,
+                            [TypeCheckerError.DuplicateVariableDeclaration(Identifier("my_field"), Identifier("my_field"))]
+                        )
+                    }
+                }
+            },
+            {
+                "static fn parameter name conflicts with static field",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            class MyClass{
+                                pub static field my_field: u64 = 1,
+
+                                pub static fn some_fn(my_field: string) {
+                                }
+                            }
+                            """,
+                            [TypeCheckerError.DuplicateVariableDeclaration(Identifier("my_field"), Identifier("my_field"))]
+                        )
+                    }
+                }
+            },
+            {
+                "variable name conflicts with field",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            class MyClass{
+                                pub field my_field: u64,
+
+                                pub fn some_fn() {
+                                    var my_field = "";
+                                }
+                            }
+                            """,
+                            [TypeCheckerError.DuplicateVariableDeclaration(Identifier("my_field"), Identifier("my_field"))]
+                        )
+                    }
+                }
+            },
+            {
                 "Access unknown field on unknown field on array",
                 new()
                 {
@@ -5181,7 +5354,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                         "main.rf", ("""
                                    var a = "";
                                    var a = "";
-                                   """, [TypeCheckerError.DuplicateVariableDeclaration(Identifier("a"))])
+                                   """, [TypeCheckerError.DuplicateVariableDeclaration(Identifier("a"), Identifier("a"))])
                     }
                 }
 
@@ -5702,7 +5875,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                                    class MyClass{pub static fn MyFn(){}}
                                    var a = new MyClass{};
                                    a.MyFn();
-                                   """, [TypeCheckerError.InstanceMemberAccessOnStaticMember(SourceRange.Default)])
+                                   """, [TypeCheckerError.InstanceMemberAccessOnStaticMember(SourceRange.Default, "MyFn")])
                     }
                 }
 
@@ -5716,7 +5889,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                                    class MyClass{pub static field MyField: string = ""}
                                    var a = new MyClass{};
                                    a.MyField;
-                                   """, [TypeCheckerError.InstanceMemberAccessOnStaticMember(SourceRange.Default)])
+                                   """, [TypeCheckerError.InstanceMemberAccessOnStaticMember(SourceRange.Default, "MyField")])
                     }
                 }
 
@@ -5730,7 +5903,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                                    union MyUnion { A, pub static fn MyFn(){} }
                                    var a = MyUnion::A;
                                    a.MyFn();
-                                   """, [TypeCheckerError.InstanceMemberAccessOnStaticMember(SourceRange.Default)])
+                                   """, [TypeCheckerError.InstanceMemberAccessOnStaticMember(SourceRange.Default, "MyFn")])
                     }
                 }
 
@@ -5743,7 +5916,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                         "main.rf", ("""
                                    class MyClass {pub fn MyFn(){}}
                                    MyClass::MyFn();
-                                   """, [TypeCheckerError.StaticMemberAccessOnInstanceMember(SourceRange.Default)])
+                                   """, [TypeCheckerError.StaticMemberAccessOnInstanceMember(SourceRange.Default, "MyFn")])
                     }
                 }
 
@@ -5756,7 +5929,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                         "main.rf", ("""
                                    class MyClass {pub field MyField: string}
                                    var a = MyClass::MyField;
-                                   """, [TypeCheckerError.StaticMemberAccessOnInstanceMember(SourceRange.Default)])
+                                   """, [TypeCheckerError.StaticMemberAccessOnInstanceMember(SourceRange.Default, "MyField")])
                     }
                 }
 
@@ -5769,7 +5942,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                         "main.rf", ("""
                                    union MyUnion {A, pub fn MyFn(){}}
                                    MyUnion::MyFn();
-                                   """, [TypeCheckerError.StaticMemberAccessOnInstanceMember(SourceRange.Default)])
+                                   """, [TypeCheckerError.StaticMemberAccessOnInstanceMember(SourceRange.Default, "MyFn")])
                     }
                 }
 

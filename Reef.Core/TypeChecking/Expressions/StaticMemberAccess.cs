@@ -43,7 +43,7 @@ public partial class TypeChecker
 
                         if (!field.IsStatic)
                         {
-                            AddError(TypeCheckerError.StaticMemberAccessOnInstanceMember(staticMemberAccessExpression.SourceRange));
+                            AddError(TypeCheckerError.StaticMemberAccessOnInstanceMember(staticMemberAccessExpression.SourceRange, memberName));
                         }
 
                         return field.Type;
@@ -62,7 +62,7 @@ public partial class TypeChecker
 
                     if (!function.IsStatic)
                     {
-                        AddError(TypeCheckerError.StaticMemberAccessOnInstanceMember(staticMemberAccessExpression.SourceRange));
+                        AddError(TypeCheckerError.StaticMemberAccessOnInstanceMember(staticMemberAccessExpression.SourceRange, memberName));
                     }
 
                     staticMemberAccess.MemberType = MemberType.Function;
@@ -119,7 +119,7 @@ public partial class TypeChecker
 
                     if (!function.IsStatic)
                     {
-                        AddError(TypeCheckerError.StaticMemberAccessOnInstanceMember(staticMemberAccessExpression.SourceRange));
+                        AddError(TypeCheckerError.StaticMemberAccessOnInstanceMember(staticMemberAccessExpression.SourceRange, memberName));
                     }
 
                     staticMemberAccess.MemberType = MemberType.Function;

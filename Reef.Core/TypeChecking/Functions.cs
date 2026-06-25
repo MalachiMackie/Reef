@@ -96,6 +96,7 @@ public partial class TypeChecker
             {
                 AddError(TypeCheckerError.TypeParameterConflictsWithType(typeParameter));
             }
+
             var constraints = new List<ITypeConstraint>();
             var placeholder = new GenericPlaceholder
             {

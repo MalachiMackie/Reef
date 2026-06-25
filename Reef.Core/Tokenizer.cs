@@ -709,7 +709,7 @@ public class Tokenizer
 
         static bool Matches(ReadOnlySpan<char> source, ReadOnlySpan<char> expected)
         {
-            return expected.StartsWith(source) && source.Length <= expected.Length;
+            return expected.StartsWith(source);
         }
     }
 
