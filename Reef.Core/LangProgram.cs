@@ -182,6 +182,16 @@ public record ArrayTypeIdentifier(
     }
 }
 
+public record VariantOfTypeIdentifier(NamedTypeIdentifier? Type, SourceRange SourceRange) : ITypeIdentifier
+{
+    public override string ToString()
+    {
+        return Type is null
+            ? "variantOf"
+            : $"variantOf {Type}";
+    }
+}
+
 public record NamedTypeIdentifier(
     StringToken Identifier,
     IReadOnlyList<ITypeIdentifier> TypeArguments,

@@ -10,6 +10,35 @@ public static class ParseTestCases
         return [.. new (string Source, LangModule ExpectedProgram)[]
         {
             (
+                "var x: variantOf MyUnion;",
+                Program("ParseTestCases",
+                    expressions: [
+                        VariableDeclaration(
+                            "x",
+                            type: VariantOf(NamedTypeIdentifier("MyUnion"))
+                        )])
+            ),
+            (
+                "var x: variantOf MyUnion::<string>;",
+                Program("ParseTestCases",
+                    expressions: [
+                        VariableDeclaration(
+                            "x",
+                            type: VariantOf(NamedTypeIdentifier("MyUnion", [StringType()]))
+                        )])
+            ),
+            (
+                "var x = variantOf MyUnion::<string>::A;",
+                Program("ParseTestCases",
+                    expressions: [
+                        VariableDeclaration(
+                            "x",
+                            value: StaticMemberAccess(
+                                VariantOf(NamedTypeIdentifier("MyUnion", [StringType()])),
+                                "A")
+                        )])
+            ),
+            (
                 "for (var i = 0; i < 10; i = i + 1){}",
                 Program("ParseTestCases",
                     expressions: [

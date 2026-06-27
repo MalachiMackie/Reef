@@ -338,6 +338,7 @@ public class Tokenizer
             TokenType.While when source is "while" => Token.While(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Where when source is "where" => Token.Where(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Unboxed when source is "unboxed" => Token.Unboxed(new SourceSpan(position, (ushort)source.Length)),
+            TokenType.VariantOf when source is "variantOf" => Token.VariantOf(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Extern when source is "extern" => Token.Extern(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Grab when source is "grab" => Token.Grab(new SourceSpan(position, (ushort)source.Length)),
             TokenType.For when source is "for" => Token.For(new SourceSpan(position, (ushort)source.Length)),
@@ -489,6 +490,7 @@ public class Tokenizer
                 break;
             case 'v':
                 tokens[i++] = TokenType.Var;
+                tokens[i++] = TokenType.VariantOf;
                 break;
             case '=':
                 tokens[i++] = TokenType.Equals;
@@ -602,6 +604,7 @@ public class Tokenizer
             TokenType.RightParenthesis => Matches(source, ")"),
             TokenType.Todo => Matches(source, "todo!"),
             TokenType.Attribute => Matches(source, "attribute"),
+            TokenType.VariantOf => Matches(source, "variantOf"),
             TokenType.Use => Matches(source, "use"),
             TokenType.Extern => Matches(source, "extern"),
             TokenType.Where => Matches(source, "where"),

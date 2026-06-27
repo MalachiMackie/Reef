@@ -70,5 +70,5 @@ public enum TokenType
     DoublePlus,
     LeftAngleBracketEquals,
     RightAngleBracketEquals,
-
+    VariantOf,
 }

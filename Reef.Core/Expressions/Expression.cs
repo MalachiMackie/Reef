@@ -92,7 +92,7 @@ public record MemberAccess(IExpression Owner, StringToken? MemberName, IReadOnly
     public TypeChecker.InstantiatedFunction? InstantiatedFunction { get; set; }
 }
 
-public record StaticMemberAccess(NamedTypeIdentifier Type, StringToken? MemberName, IReadOnlyList<ITypeIdentifier>? TypeArguments)
+public record StaticMemberAccess(ITypeIdentifier Type, StringToken? MemberName, IReadOnlyList<ITypeIdentifier>? TypeArguments)
 {
     public MemberType? MemberType { get; set; }
     public TypeChecker.InstantiatedFunction? InstantiatedFunction { get; set; }

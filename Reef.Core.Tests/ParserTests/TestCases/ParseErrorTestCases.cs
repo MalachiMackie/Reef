@@ -9,6 +9,48 @@ public static class ParseErrorTestCases
         IEnumerable<(string, LangModule, IEnumerable<ParserError>)> data =
         [
             (
+                "var x: variantOf;",
+                Program("ParseErrorTestCases",
+                    expressions: [
+                        VariableDeclaration(
+                            "x",
+                            type: VariantOf())
+                    ]),
+                [ParserError.ExpectedType(Token.Semicolon(SourceSpan.Default))]
+            ),
+            (
+                "var x: variantOf ();",
+                Program("ParseErrorTestCases",
+                    expressions: [
+                        VariableDeclaration(
+                            "x",
+                            type: VariantOf())
+                    ]),
+                [
+                    ParserError.VariantOfNonNamedTypeIdentifier(SourceRange.Default)
+                ]
+            ),
+            (
+                "var x: variantOf::<string>",
+                Program("ParseErrorTestCases",
+                    expressions: [
+                        VariableDeclaration(
+                            "x",
+                            type: VariantOf()),
+                        BinaryOperatorExpression(Expressions.BinaryOperatorType.GreaterThan, VariableAccessor("string"), null)
+                    ]),
+                [
+                    ParserError.ExpectedType(Token.Turbofish(SourceSpan.Default)),
+                    ParserError.ExpectedToken(Token.Turbofish(SourceSpan.Default), TokenType.Semicolon),
+                    ParserError.ExpectedTokenOrExpression(
+                        Token.Turbofish(SourceSpan.Default),
+                        TokenType.Pub, TokenType.Fn, TokenType.Class, TokenType.Static, TokenType.Union,
+                        TokenType.Unboxed, TokenType.Boxed, TokenType.Use, TokenType.Extern, TokenType.Attribute),
+                    ParserError.ExpectedExpression(null),
+                    ParserError.ExpectedToken(null, TokenType.Semicolon),
+                ]
+            ),
+            (
                 "for (;true;)",
                 Program("ParseErrorTestCases",
                     expressions: [

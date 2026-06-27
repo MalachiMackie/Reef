@@ -116,6 +116,29 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     "main.rf",
                     """
+                    union MyUnion
+                    {
+                        A,
+                        B(string),
+                        C
+                    }
+
+                    var x: variantOf MyUnion = variantOf MyUnion::A;
+
+                    var b = match (x)
+                    {
+                        variantOf MyUnion::A => 0,
+                        variantOf MyUnion::B => 1,
+                        variantOf MyUnion::C => 2,
+                    };
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
                     var a = if (true) option::Some("") else option::None;
                     """
                 },

@@ -139,6 +139,24 @@ public record ParserError
             "Char literal cannot be empty");
     }
 
+    public static ParserError VariantOfNonNamedTypeIdentifier(SourceRange sourceRange)
+    {
+        return new ParserError(
+            ParserErrorType.VariantOfWithBoxingSpecifier,
+            sourceRange,
+            "variantOf must be for a named type identifier"
+        );
+    }
+
+    public static ParserError VariantOfWithBoxingSpecifier(SourceRange sourceRange)
+    {
+        return new ParserError(
+            ParserErrorType.VariantOfWithBoxingSpecifier,
+            sourceRange,
+            "variantOf type cannot have a boxing specifier"
+        );
+    }
+
     public static ParserError CharLiteralTooLong(StringToken token)
     {
         return new ParserError(
@@ -176,5 +194,5 @@ public enum ParserErrorType
     EmptyCharLiteral,
     CharLiteralTooLong,
     ForLoopIncorrectNumberOfExpressions,
-
+    VariantOfWithBoxingSpecifier,
 }

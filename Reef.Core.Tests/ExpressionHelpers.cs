@@ -358,7 +358,7 @@ public static class ExpressionHelpers
         return new MethodCallExpression(new MethodCall(method, arguments), SourceRange.Default);
     }
 
-    public static StaticMemberAccessExpression StaticMemberAccess(NamedTypeIdentifier type, string? memberName, IReadOnlyList<ITypeIdentifier>? typeArguments = null)
+    public static StaticMemberAccessExpression StaticMemberAccess(ITypeIdentifier type, string? memberName, IReadOnlyList<ITypeIdentifier>? typeArguments = null)
     {
         return new StaticMemberAccessExpression(new StaticMemberAccess(type, memberName is null ? null : Token.Identifier(memberName, SourceSpan.Default), typeArguments));
     }
@@ -467,6 +467,11 @@ public static class ExpressionHelpers
             SourceRange.Default);
     }
 
+    public static VariantOfTypeIdentifier VariantOf(NamedTypeIdentifier? type = null)
+    {
+        return new VariantOfTypeIdentifier(type, SourceRange.Default);
+    }
+
     public static NamedTypeIdentifier NamedTypeIdentifier(
         string typeName,
         IReadOnlyList<ITypeIdentifier>? typeArguments = null,
@@ -562,7 +567,7 @@ public static class ExpressionHelpers
     }
 
     public static BinaryOperatorExpression BinaryOperatorExpression(BinaryOperatorType type, IExpression left,
-        IExpression right)
+        IExpression? right)
     {
         return new BinaryOperatorExpression(new BinaryOperator(
             type,

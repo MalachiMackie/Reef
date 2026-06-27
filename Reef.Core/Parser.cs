@@ -1502,6 +1502,7 @@ public sealed class Parser : IDisposable
 
     private ITypeIdentifier? GetTypeIdentifier(Token? boxingSpecifier = null)
     {
+        var start = Current;
         return Current switch
         {
             StringToken { Type: TokenType.Identifier, StringValue: "Fn" } stringToken => GetFunctionTypeIdentifier(boxingSpecifier is null ? null : new BoxingModifier(boxingSpecifier), stringToken),
@@ -1509,8 +1510,29 @@ public sealed class Parser : IDisposable
             StringToken { Type: TokenType.Identifier } or { Type: TokenType.TripleColon } => GetNamedTypeIdentifier(boxingSpecifier),
             { Type: TokenType.LeftParenthesis } => GetTupleTypeIdentifier(boxingSpecifier),
             { Type: TokenType.LeftSquareBracket } => GetArrayTypeIdentifier(boxingSpecifier),
+            { Type: TokenType.VariantOf } => GetVariantOfTypeIdentifier(boxingSpecifier),
             _ => DefaultCase()
         };
+
+        ITypeIdentifier? GetVariantOfTypeIdentifier(Token? boxingSpecifier)
+        {
+            if (boxingSpecifier is not null)
+            {
+                _errors.Add(ParserError.VariantOfWithBoxingSpecifier(boxingSpecifier.SourceSpan.ToRange()));
+            }
+
+            if (!ExpectNextTypeIdentifier(out var type))
+            {
+                return new VariantOfTypeIdentifier(null, start.SourceSpan.ToRange());
+            }
+
+            if (type is not NamedTypeIdentifier)
+            {
+                _errors.Add(ParserError.VariantOfNonNamedTypeIdentifier(type.SourceRange));
+            }
+
+            return new VariantOfTypeIdentifier(type as NamedTypeIdentifier, type.SourceRange with { Start = start.SourceSpan });
+        }
 
         ITypeIdentifier? BoxingSpecifier()
         {
@@ -1799,7 +1821,7 @@ public sealed class Parser : IDisposable
             TokenType.Todo or TokenType.Identifier or TokenType.TripleColon => GetVariableAccess(),
             TokenType.Matches => GetMatchesExpression(previousExpression),
             TokenType.Match => GetMatchExpression(),
-            TokenType.Unboxed or TokenType.Boxed => GetTypeIdentifierExpression(),
+            TokenType.Unboxed or TokenType.Boxed or TokenType.VariantOf => GetTypeIdentifierExpression(),
             _ when TryGetBinaryOperatorType(Current.Type, out var binaryOperatorType)
                 && TryGetUnaryOperatorType(Current.Type, out var unaryOperatorType) => GetUnaryOrBinaryOperatorExpression(
                 previousExpression,
@@ -2628,16 +2650,11 @@ public sealed class Parser : IDisposable
             return null;
         }
 
-        NamedTypeIdentifier type;
+        ITypeIdentifier type;
 
         if (previousExpression is TypeIdentifierExpression(var typeIdentifier))
         {
-            if (typeIdentifier is not NamedTypeIdentifier named)
-            {
-                throw new InvalidOperationException();
-            }
-
-            type = named;
+            type = typeIdentifier;
         }
         else if (previousExpression is ValueAccessorExpression
         {

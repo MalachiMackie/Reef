@@ -87,6 +87,7 @@ public record Token
             TokenType.DoubleAmpersand => "&&",
             TokenType.DoubleBar => "||",
             TokenType.While => "while",
+            TokenType.VariantOf => "variantOf",
             TokenType.Break => "break",
             TokenType.Continue => "continue",
             TokenType.Unboxed => "unboxed",
@@ -113,6 +114,7 @@ public record Token
     }
 
     public static Token Union(SourceSpan sourceSpan) => new() { Type = TokenType.Union, SourceSpan = sourceSpan };
+    public static Token VariantOf(SourceSpan sourceSpan) => new() { Type = TokenType.VariantOf, SourceSpan = sourceSpan };
     public static Token Unboxed(SourceSpan sourceSpan) => new() { Type = TokenType.Unboxed, SourceSpan = sourceSpan };
     public static Token Extern(SourceSpan sourceSpan) => new() { Type = TokenType.Extern, SourceSpan = sourceSpan };
     public static Token Boxed(SourceSpan sourceSpan) => new() { Type = TokenType.Boxed, SourceSpan = sourceSpan };
