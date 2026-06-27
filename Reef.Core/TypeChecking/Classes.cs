@@ -142,6 +142,8 @@ public partial class TypeChecker
         }
     }
 
+    public record VariantOfType(InstantiatedUnion Union) : ITypeReference;
+
     // TODO: arrayType and ArrayTypeSignature can't be generic classes until we implement const generics
     public class ArrayType : ITypeReference, IInstantiatedGeneric
     {

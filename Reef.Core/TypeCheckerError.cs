@@ -109,6 +109,14 @@ public record TypeCheckerError
             "Type arguments can only be on functions");
     }
 
+    public static TypeCheckerError IncompatibleVariantOfUnions(string expectedUnionName, string actualUnionName, SourceRange sourceRange)
+    {
+        return new TypeCheckerError(
+            TypeCheckerErrorType.AccessingClosureWhichReferencesUninitializedVariables,
+            sourceRange,
+            $"Incompatible variant of unions. Expected variantOf {expectedUnionName}, but found variantOf {actualUnionName}");
+    }
+
     public static TypeCheckerError AccessingClosureWhichReferencesUninitializedVariables(StringToken functionName, IEnumerable<StringToken> uninitializedVariables)
     {
         return new TypeCheckerError(
@@ -454,6 +462,15 @@ public record TypeCheckerError
         );
     }
 
+    public static TypeCheckerError TypeArgumentMustBeUnboxed(string typeParamName, SourceRange sourceRange)
+    {
+        return new(
+            TypeCheckerErrorType.TypeArgumentMustBeUnboxed,
+            sourceRange,
+            $"Type Argument {typeParamName} must be unboxed"
+        );
+    }
+
     public static TypeCheckerError TypeArgumentMustBeBoxed(string typeParamName, SourceRange sourceRange)
     {
         return new(
@@ -522,6 +539,15 @@ public record TypeCheckerError
             sourceRange,
             $"Break cannot be used in loop that 'grab's a value");
     }
+
+    public static TypeCheckerError VariantOfOnNonUnion(SourceRange sourceRange)
+    {
+        return new(
+            TypeCheckerErrorType.VariantOfOnNonUnion,
+            sourceRange,
+            $"variantOf must be for a union");
+    }
+
 }
 
 public enum TypeCheckerErrorType
@@ -595,6 +621,8 @@ public enum TypeCheckerErrorType
     UninitializableType,
     DefinitionNameCannotBeSelf,
     ContinueUsedInValueLoop,
-    BreakUsedInValueLoop
+    BreakUsedInValueLoop,
+    VariantOfOnNonUnion,
+    TypeArgumentMustBeUnboxed
 
 }

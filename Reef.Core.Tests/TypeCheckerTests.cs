@@ -79,18 +79,30 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
     [Fact]
     public async Task SingleTest()
     {
+
         var sourceFiles = new Dictionary<string, (string, IReadOnlyList<TypeCheckerError> expectedErrors)>()
-                            {
-                                {
-                                    "main.rf",
-                                    (
-                                        """
-                                        [].abc.cde;
-                                        """,
-                                        [TypeCheckerError.UnknownTypeMember(Identifier("abc"), "array")]
-                                    )
-                                }
-                            };
+        {
+            {
+                "main.rf",
+                ("""
+                union MyUnion
+                {
+                    A,
+                    B(string),
+                    C
+                }
+
+                var x: variantOf MyUnion = variantOf MyUnion::A;
+
+                var b = match (x)
+                {
+                    variantOf MyUnion::A => 0,
+                    variantOf MyUnion::B => 1,
+                    variantOf MyUnion::C => 2,
+                };
+                """, [])
+            }
+        };
 
         foreach (var (path, (contents, _)) in sourceFiles)
         {
@@ -111,6 +123,49 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
     {
         IEnumerable<Dictionary<string, string>> sources =
         [
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    union MyUnion<T> {
+                        A,
+                        B(T)
+                    }
+
+                    var x: variantOf MyUnion::<string> = variantOf MyUnion::<u32>::A;
+                    """
+                },
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    union MyUnion<T> {
+                        A,
+                        B(T)
+                    }
+
+                    var x = variantOf MyUnion::A;
+                    """
+                },
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    fn some_fn<T>()
+                        where T : unboxed
+                    {}
+
+                    union MyUnion{}
+
+                    some_fn::<variantOf MyUnion>();
+                    """
+                },
+            },
             new()
             {
                 {
@@ -671,6 +726,21 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                     if (true && some_fn() matches option::Some(var value)) {
                         print_string(value);
                     }
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    fn some_fn<T>() where T : unboxed {
+                    }
+
+                    unboxed class MyClass{};
+
+                    some_fn::<u32>();
+                    some_fn::<MyClass>();
                     """
                 }
             },
@@ -3829,6 +3899,67 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
         return new TheoryData<string, Dictionary<string, (string contents, IReadOnlyList<TypeCheckerError> expectedErrors)>>
         {
             {
+                "variantOf different types",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            union UnionA{A}
+                            union UnionB{B}
+
+                            var a = variantOf UnionA::A;
+                            a = variantOf UnionB::B;
+                            """,
+                            [
+                                TypeCheckerError.IncompatibleVariantOfUnions("UnionA", "UnionB", SourceRange.Default)
+                            ]
+                        )
+                    }
+                }
+            },
+            {
+                "variantOf as generic type parameter constrained to be boxed",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            fn some_fn<T>()
+                                where T : boxed
+                            {}
+
+                            union MyUnion{}
+                            some_fn::<variantOf MyUnion>();
+                            """,
+                            [
+                                TypeCheckerError.TypeArgumentMustBeBoxed("T", SourceRange.Default)
+                            ]
+                        )
+                    }
+                }
+            },
+            {
+                "variantOf on class",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            class MyClass{}
+                            var x: variantOf MyClass;
+                            """,
+                            [
+                                TypeCheckerError.VariantOfOnNonUnion(SourceRange.Default)
+                            ]
+                        )
+                    }
+                }
+            },
+            {
                 "parameter name conflicts with function",
                 new()
                 {
@@ -4589,6 +4720,23 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
                         some_fn::<MyClass>();
                         """, [TypeCheckerError.TypeArgumentMustBeBoxed("T", SourceRange.Default)])
+                    }
+                }
+            },
+            {
+            "boxed type used for unboxed constrained type",
+                new()
+                {
+                    {
+                        "main.rf",
+                        ("""
+                        fn some_fn<T>() where T : unboxed {
+                        }
+
+                        class MyClass{};
+
+                        some_fn::<MyClass>();
+                        """, [TypeCheckerError.TypeArgumentMustBeUnboxed("T", SourceRange.Default)])
                     }
                 }
             },

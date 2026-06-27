@@ -629,10 +629,9 @@ public class TypeTwoTypeChecker(
                     break;
                 }
             case TypeChecker.FunctionObject:
-                break;
             case TypeChecker.GenericPlaceholder:
-                break;
             case TypeChecker.UnknownType:
+            case TypeChecker.VariantOfType:
                 break;
             default:
                 throw new ArgumentOutOfRangeException(typeReference.GetType().ToString());

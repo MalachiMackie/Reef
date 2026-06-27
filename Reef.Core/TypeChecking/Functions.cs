@@ -142,6 +142,14 @@ public partial class TypeChecker
                         }
                         break;
                     }
+                case UnboxedConstraint boxed:
+                    {
+                        if (typeParameter is not null)
+                        {
+                            typeParameterConstraints[typeParameter].Add(new UnboxedTypeConstraint());
+                        }
+                        break;
+                    }
                 case BoxedOfConstraint boxedOfConstraint:
                     {
                         var boxedOf = GetTypeReference(boxedOfConstraint.BoxedOfType);
@@ -445,6 +453,7 @@ public partial class TypeChecker
 
     public record BoxedTypeConstraint : ITypeConstraint;
     public record BoxedOfTypeConstraint(ITypeReference BoxedOfType) : ITypeConstraint;
+    public record UnboxedTypeConstraint : ITypeConstraint;
     public record UnboxedOfTypeConstraint(ITypeReference BoxedOfType) : ITypeConstraint;
 
     public record FunctionParameter(ITypeReference Type, bool Mutable);

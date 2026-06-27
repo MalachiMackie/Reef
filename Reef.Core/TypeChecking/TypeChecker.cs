@@ -689,11 +689,30 @@ public partial class TypeChecker
             TupleTypeIdentifier tupleTypeIdentifier => GetTupleTypeReference(tupleTypeIdentifier),
             UnitTypeIdentifier => Unit(),
             ArrayTypeIdentifier arrayTypeIdentifier => GetArrayTypeReference(arrayTypeIdentifier),
+            VariantOfTypeIdentifier variantOfTypeIdentifier => GetVariantOfTypeReference(variantOfTypeIdentifier),
             _ => throw new ArgumentOutOfRangeException(nameof(typeIdentifier))
         };
     }
 
-    private ITypeReference GetArrayTypeReference(ArrayTypeIdentifier arrayTypeIdentifier)
+    private ITypeReference GetVariantOfTypeReference(VariantOfTypeIdentifier variantOfTypeIdentifier)
+    {
+        if (variantOfTypeIdentifier.Type is null)
+        {
+            return UnknownType.Instance;
+        }
+
+        var type = GetTypeReference(variantOfTypeIdentifier.Type);
+
+        if (type is not InstantiatedUnion union)
+        {
+            AddError(TypeCheckerError.VariantOfOnNonUnion(variantOfTypeIdentifier.SourceRange));
+            return UnknownType.Instance;
+        }
+
+        return new VariantOfType(union);
+    }
+
+    private ArrayType GetArrayTypeReference(ArrayTypeIdentifier arrayTypeIdentifier)
     {
         if (arrayTypeIdentifier.LengthSpecifier is null)
         {
@@ -1111,6 +1130,7 @@ public partial class TypeChecker
             UnknownInferredType unknownInferredType => throw new NotImplementedException(),
             UnknownType unknownType => throw new NotImplementedException(),
             UnspecifiedSizedIntType { Boxed: var boxed } => boxed,
+            VariantOfType => false,
             _ => throw new ArgumentOutOfRangeException(nameof(typeReference))
         };
     }
@@ -1200,6 +1220,15 @@ public partial class TypeChecker
                         default:
                             throw new ArgumentOutOfRangeException(nameof(typeReference));
                     }
+                }
+            case UnboxedTypeConstraint:
+                {
+                    if (IsTypeReferenceBoxed(typeReference) && reportError)
+                    {
+                        AddError(TypeCheckerError.TypeArgumentMustBeUnboxed(placeholder.GenericName, actualSourceRange));
+                        return false;
+                    }
+                    return true;
                 }
             case BoxedTypeConstraint:
                 {
@@ -1560,6 +1589,74 @@ public partial class TypeChecker
                                 expectedIntType, expectedIntType.Boxed,
                                 actualClass, actualClass.Boxed));
                         }
+                    }
+
+                    break;
+                }
+            case (GenericTypeReference actualGeneric, VariantOfType expectedVariantOfType):
+                {
+                    if (actualGeneric.ResolvedType is not null)
+                    {
+                        result &= ExpectType(actualGeneric.ResolvedType, expectedVariantOfType, actualSourceRange, reportError, assignInferredTypes);
+                    }
+                    else
+                    {
+                        var genericPlaceholder =
+                            actualGeneric.OwnerType.TypeParameters.First(z => z.GenericName == actualGeneric.GenericName);
+
+                        if (checkConstraints)
+                        {
+                            foreach (var constraint in genericPlaceholder.Constraints)
+                            {
+                                result &= ExpectTypeConstraint(genericPlaceholder, constraint, actualGeneric.InstantiatedFrom, expectedVariantOfType, actualSourceRange, reportError);
+                            }
+                        }
+
+                        if (assignInferredTypes)
+                        {
+                            actualGeneric.ResolvedType = expectedVariantOfType;
+                        }
+                    }
+                    break;
+                }
+            case (VariantOfType actualVariantOfType, GenericTypeReference expectedGeneric):
+                {
+                    if (expectedGeneric.ResolvedType is not null)
+                    {
+                        result &= ExpectType(actualVariantOfType, expectedGeneric.ResolvedType, actualSourceRange, reportError, assignInferredTypes);
+                    }
+                    else
+                    {
+                        var genericPlaceholder =
+                            expectedGeneric.OwnerType.TypeParameters.First(z => z.GenericName == expectedGeneric.GenericName);
+
+                        if (checkConstraints)
+                        {
+                            foreach (var constraint in genericPlaceholder.Constraints)
+                            {
+                                result &= ExpectTypeConstraint(genericPlaceholder, constraint, expectedGeneric.InstantiatedFrom, actualVariantOfType, actualSourceRange, reportError);
+                            }
+                        }
+
+                        if (assignInferredTypes)
+                        {
+                            expectedGeneric.ResolvedType = actualVariantOfType;
+                        }
+                    }
+                    break;
+                }
+            case (VariantOfType actualVariantOfType, VariantOfType expectedVariantOfType):
+                {
+                    if (actualVariantOfType.Union.Signature.Id != expectedVariantOfType.Union.Signature.Id)
+                    {
+                        if (reportError)
+                        {
+                            AddError(TypeCheckerError.IncompatibleVariantOfUnions(
+                                expectedVariantOfType.Union.Signature.Name,
+                                actualVariantOfType.Union.Signature.Name,
+                                actualSourceRange));
+                        }
+                        result = false;
                     }
 
                     break;

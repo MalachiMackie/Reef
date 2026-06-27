@@ -653,8 +653,13 @@ public static class MatchUsefulnessAnalyzer
                 }
             case UnionVariantPattern { VariantName.StringValue: { } variantName }:
                 {
-                    var unionType = type as TypeChecker.InstantiatedUnion
-                                    ?? throw new InvalidOperationException("Expected union type");
+                    var unionType = type switch
+                    {
+                        TypeChecker.InstantiatedUnion x => x,
+                        TypeChecker.VariantOfType(var x) => x,
+                        _ => throw new InvalidOperationException("Expected union type"),
+                    };
+
                     var (index, variant) = unionType.GetVariants()
                         .Index()
                         .FirstOrDefault(x => x.Item.Name == variantName);

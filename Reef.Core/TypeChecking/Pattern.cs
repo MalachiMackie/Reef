@@ -16,7 +16,7 @@ public partial class TypeChecker
                 break;
             case UnionVariantPattern variantPattern:
                 {
-                    var patternUnionType = GetTypeReference(variantPattern.Type).ConcreteType().Type;
+                    var patternUnionType = GetTypeReference(variantPattern.Type).ConcreteType();
                     variantPattern.TypeReference = patternUnionType;
 
                     if (patternUnionType is UnknownType)
@@ -24,12 +24,14 @@ public partial class TypeChecker
                         break;
                     }
 
-                    if (patternUnionType is not InstantiatedUnion union)
-                    {
-                        throw new InvalidOperationException($"{patternUnionType} is not a union");
-                    }
+                    ExpectType(valueTypeReference, patternUnionType, variantPattern.SourceRange);
 
-                    ExpectType(valueTypeReference, union, variantPattern.SourceRange);
+                    var union = patternUnionType switch
+                    {
+                        InstantiatedUnion x => x,
+                        VariantOfType(var x) => x,
+                        _ => throw new InvalidOperationException($"{patternUnionType} is not a union")
+                    };
 
                     if (variantPattern.VariantName is not null)
                     {

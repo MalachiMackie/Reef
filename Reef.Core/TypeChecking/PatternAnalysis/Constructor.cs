@@ -38,8 +38,12 @@ public interface IConstructor
                 return [];
             case VariantConstructor variantConstructor:
                 {
-                    var union = typeReference.ConcreteType().Type as TypeChecker.InstantiatedUnion
-                                ?? throw new InvalidOperationException($"Expected union, found {typeReference.GetType()}");
+                    var union = typeReference.ConcreteType() switch
+                    {
+                        TypeChecker.InstantiatedUnion x => x,
+                        TypeChecker.VariantOfType(var x) => x,
+                        _ => throw new InvalidOperationException($"Expected union, found {typeReference.GetType()}")
+                    };
 
                     var variant = union.GetVariants()[(int)variantConstructor.VariantIndex];
 
@@ -90,6 +94,19 @@ public interface IConstructor
             return new VariantsConstructorSet(variants, NonExhaustive: false);
         }
 
+        if (type is TypeChecker.VariantOfType(var variantOfUnion))
+        {
+            if (variantOfUnion.Signature.Variants.Count == 0)
+            {
+                return new NoConstructorsConstructorSet();
+            }
+
+            var variants = new VariantVisibility[variantOfUnion.Signature.Variants.Count];
+            Array.Fill(variants, VariantVisibility.Visible);
+
+            return new VariantsConstructorSet(variants, NonExhaustive: false);
+        }
+
         if (type is TypeChecker.GenericPlaceholder)
         {
             return new NoConstructorsConstructorSet();
@@ -122,7 +139,7 @@ public interface IConstructor
             case ClassConstructor:
                 {
                     var concreteType = typeReference.ConcreteType();
-                    if (concreteType.Item1 is TypeChecker.InstantiatedClass { Signature: var signature })
+                    if (concreteType is TypeChecker.InstantiatedClass { Signature: var signature })
                     {
                         return (uint)signature.Fields.Count;
                     }
@@ -132,19 +149,25 @@ public interface IConstructor
             case VariantConstructor { VariantIndex: var variantIndex }:
                 {
                     var concreteType = typeReference.ConcreteType();
-                    if (concreteType.Item1 is not TypeChecker.InstantiatedUnion { Signature: var unionSignature })
+                    if (concreteType is TypeChecker.InstantiatedUnion { Signature: var unionSignature })
                     {
-                        throw new InvalidOperationException("Expected type to be union");
+                        var variant = unionSignature.Variants[(int)variantIndex];
+                        return variant switch
+                        {
+                            TypeChecker.ClassUnionVariant classUnionVariant => (uint)classUnionVariant.Fields.Count,
+                            TypeChecker.TupleUnionVariant tupleUnionVariant => (uint)tupleUnionVariant.TupleMembers.Count,
+                            TypeChecker.UnitUnionVariant => 0,
+                            _ => throw new ArgumentOutOfRangeException(nameof(variant))
+                        };
                     }
 
-                    var variant = unionSignature.Variants[(int)variantIndex];
-                    return variant switch
+                    if (concreteType is TypeChecker.VariantOfType({ Signature: var variantOfUnionSignature }))
                     {
-                        TypeChecker.ClassUnionVariant classUnionVariant => (uint)classUnionVariant.Fields.Count,
-                        TypeChecker.TupleUnionVariant tupleUnionVariant => (uint)tupleUnionVariant.TupleMembers.Count,
-                        TypeChecker.UnitUnionVariant => 0,
-                        _ => throw new ArgumentOutOfRangeException(nameof(variant))
-                    };
+                        // all variants of variantOf have an arity of 0
+                        return 0;
+                    }
+
+                    throw new InvalidOperationException("Expected type to be union");
 
                 }
             case BooleanConstructor or StringLiteralConstructor or NeverConstructor

@@ -136,6 +136,16 @@ public partial class TypeChecker
                 return UnknownType.Instance;
             case UnknownType:
                 return UnknownType.Instance;
+            case VariantOfType(var union):
+                {
+                    var signatureOfUnion = union.Signature;
+                    if (staticMemberAccess.MemberName is not null && signatureOfUnion.Variants.All(x => x.Name != memberName))
+                    {
+                        AddError(TypeCheckerError.UnknownTypeMember(staticMemberAccess.MemberName, union.Signature.Name));
+                    }
+
+                    return type;
+                }
             default:
                 throw new UnreachableException(type.GetType().ToString());
         }

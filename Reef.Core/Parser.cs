@@ -1297,12 +1297,17 @@ public sealed class Parser : IDisposable
         }
         if (Current.Type == TokenType.Unboxed)
         {
-            if (!ExpectNextTypeIdentifier(out var unboxedOfType))
+            if (!MoveNext())
             {
-                return null;
+                return new UnboxedConstraint(constrainedType);
             }
 
-            return new UnboxedOfConstraint(constrainedType, unboxedOfType);
+            if (TryGetTypeIdentifier() is { } unboxedOfType)
+            {
+                return new UnboxedOfConstraint(constrainedType, unboxedOfType);
+            }
+
+            return new UnboxedConstraint(constrainedType);
         }
 
         _errors.Add(ParserError.ExpectedConstraint(Current));
@@ -2130,7 +2135,7 @@ public sealed class Parser : IDisposable
             return new VariableDeclarationPattern(variableName, new SourceRange(start, end), isMut);
         }
 
-        if (Current.Type is not (TokenType.Identifier or TokenType.Boxed or TokenType.Unboxed or TokenType.DoubleColon))
+        if (Current.Type is not (TokenType.Identifier or TokenType.Boxed or TokenType.Unboxed or TokenType.DoubleColon or TokenType.VariantOf))
         {
             _errors.Add(ParserError.ExpectedPattern(Current));
             MoveNext();

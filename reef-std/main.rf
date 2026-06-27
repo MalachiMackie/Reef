@@ -175,7 +175,7 @@ pub class string {
     pub field start_byte: u8,
 
     pub fn slice(start: u64, slice_length: u64): result::<string_slice, string> {
-        if (start + length > length) {
+        if (start + slice_length > length) {
             return error("String slice out of bounds");
         }
 

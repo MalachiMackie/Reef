@@ -10,6 +10,17 @@ public static class ParseTestCases
         return [.. new (string Source, LangModule ExpectedProgram)[]
         {
             (
+                """
+                x matches variantOf MyUnion::X;
+                """,
+                Program("ParseTestCases",
+                    expressions: [
+                        Matches(
+                            VariableAccessor("x"),
+                            UnionVariantPattern(VariantOf(NamedTypeIdentifier("MyUnion")), "X"))
+                    ])
+            ),
+            (
                 "var x: variantOf MyUnion;",
                 Program("ParseTestCases",
                     expressions: [
@@ -256,6 +267,24 @@ public static class ParseTestCases
                             block: Block().Block,
                             attributes: [Attribute("some_attribute"), Attribute("some_attribute_2")]
                         )
+                    ]
+                )
+            ),
+            (
+                """
+                pub fn some_fn<T>() where T: unboxed {}
+                """,
+                Program(
+                    "ParseTestCases",
+                    functions: [
+                        Function(
+                            "some_fn",
+                            isPublic: true,
+                            typeParameters: ["T"],
+                            block: Block().Block,
+                            constraints: [
+                                new UnboxedConstraint(NamedTypeIdentifier("T"))
+                            ])
                     ]
                 )
             ),

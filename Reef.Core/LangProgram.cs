@@ -245,6 +245,7 @@ public interface IConstraint
 
 public record BoxedConstraint(NamedTypeIdentifier ConstrainedType) : IConstraint;
 public record BoxedOfConstraint(NamedTypeIdentifier ConstrainedType, ITypeIdentifier BoxedOfType) : IConstraint;
+public record UnboxedConstraint(NamedTypeIdentifier ConstrainedType) : IConstraint;
 public record UnboxedOfConstraint(NamedTypeIdentifier ConstrainedType, ITypeIdentifier UnboxedOfType) : IConstraint;
 
 

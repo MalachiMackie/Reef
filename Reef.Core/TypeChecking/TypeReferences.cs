@@ -169,17 +169,14 @@ public partial class TypeChecker
 
     public interface ITypeReference
     {
-        (ITypeReference Type, DefId? Id) ConcreteType()
+        ITypeReference ConcreteType()
         {
-            return this switch
+            if (this is GenericTypeReference genericTypeReference)
             {
-                GenericTypeReference genericTypeReference => genericTypeReference.ResolvedType?.ConcreteType()
-                    ?? throw new InvalidOperationException("No resolved type"),
-                InstantiatedClass instantiatedClass => (instantiatedClass, instantiatedClass.Signature.Id),
-                InstantiatedUnion instantiatedUnion => (instantiatedUnion, instantiatedUnion.Signature.Id),
-                UnknownType => (this, null),
-                _ => throw new UnreachableException()
-            };
+                return genericTypeReference.ResolvedType.NotNull().ConcreteType();
+            }
+
+            return this;
         }
     }
 
