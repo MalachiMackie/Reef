@@ -254,6 +254,11 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                             variants: [
                                 Variant("A", [Field("_variantIdentifier", UInt16T)]),
                                 Variant("B", [Field("_variantIdentifier", UInt16T)])
+                            ]),
+                        DataType(ModuleId, "MyUnion__VariantOf",
+                            variants: [
+                                Variant("A", [Field("_variantIdentifier", UInt16T)]),
+                                Variant("B", [Field("_variantIdentifier", UInt16T)])
                             ])
                     ],
                     methods: [
@@ -308,6 +313,11 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                 LoweredProgram(ModuleId,
                     types: [
                         DataType(ModuleId, "MyUnion",
+                            variants: [
+                                Variant("A", [Field("_variantIdentifier", UInt16T)]),
+                                Variant("B", [Field("_variantIdentifier", UInt16T)])
+                            ]),
+                        DataType(ModuleId, "MyUnion__VariantOf",
                             variants: [
                                 Variant("A", [Field("_variantIdentifier", UInt16T)]),
                                 Variant("B", [Field("_variantIdentifier", UInt16T)])
@@ -366,7 +376,12 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                             variants: [
                                 Variant("A", [Field("_variantIdentifier", UInt16T), Field("Item0", Int64T)]),
                                 Variant("B", [Field("_variantIdentifier", UInt16T)])
-                            ])
+                            ]),
+                        DataType(ModuleId, "MyUnion__VariantOf",
+                            variants: [
+                                Variant("A", [Field("_variantIdentifier", UInt16T)]),
+                                Variant("B", [Field("_variantIdentifier", UInt16T)])
+                            ]),
                     ],
                     methods: [
                         Method(new DefId(ModuleId, $"{ModuleId}:::MyUnion__Create__A"), "MyUnion__Create__A",
@@ -474,7 +489,12 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                             variants: [
                                 Variant("A", [Field("_variantIdentifier", UInt16T), Field("Item0", Int64T)]),
                                 Variant("B", [Field("_variantIdentifier", UInt16T)])
-                            ])
+                            ]),
+                        DataType(ModuleId, "MyUnion__VariantOf",
+                            variants: [
+                                Variant("A", [Field("_variantIdentifier", UInt16T)]),
+                                Variant("B", [Field("_variantIdentifier", UInt16T)])
+                            ]),
                     ],
                     methods: [
                         Method(new DefId(ModuleId, $"{ModuleId}:::MyUnion__Create__A"), "MyUnion__Create__A",
@@ -593,7 +613,16 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                         Field("Item2", BooleanT),
                                     ]),
                                 Variant("B", [Field("_variantIdentifier", UInt16T)])
-                            ])
+                            ]),
+                        DataType(ModuleId, "MyUnion__VariantOf",
+                            variants: [
+                                Variant(
+                                    "A",
+                                    [
+                                        Field("_variantIdentifier", UInt16T),
+                                    ]),
+                                Variant("B", [Field("_variantIdentifier", UInt16T)])
+                            ]),
                     ],
                     methods: [
                         Method(new DefId(ModuleId, $"{ModuleId}:::MyUnion__Create__A"), "MyUnion__Create__A",
@@ -755,7 +784,16 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                         Field("FieldA", Int64T)
                                     ]),
                                 Variant("B", [Field("_variantIdentifier", UInt16T)])
-                            ])
+                            ]),
+                        DataType(ModuleId, "MyUnion__VariantOf",
+                            variants: [
+                                Variant(
+                                    "A",
+                                    [
+                                        Field("_variantIdentifier", UInt16T),
+                                    ]),
+                                Variant("B", [Field("_variantIdentifier", UInt16T)])
+                            ]),
                     ],
                     methods: [
                         Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
@@ -826,7 +864,16 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                         Field("FieldA", Int64T)
                                     ]),
                                 Variant("B", [Field("_variantIdentifier", UInt16T)])
-                            ])
+                            ]),
+                        DataType(ModuleId, "MyUnion__VariantOf",
+                            variants: [
+                                Variant(
+                                    "A",
+                                    [
+                                        Field("_variantIdentifier", UInt16T),
+                                    ]),
+                                Variant("B", [Field("_variantIdentifier", UInt16T)])
+                            ]),
                     ],
                     methods: [
                         Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
@@ -887,7 +934,16 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                         Field("FieldC", BooleanT)
                                     ]),
                                 Variant("B", [Field("_variantIdentifier", UInt16T)])
-                            ])
+                            ]),
+                        DataType(ModuleId, "MyUnion__VariantOf",
+                            variants: [
+                                Variant(
+                                    "A",
+                                    [
+                                        Field("_variantIdentifier", UInt16T),
+                                    ]),
+                                Variant("B", [Field("_variantIdentifier", UInt16T)])
+                            ]),
                     ],
                     methods: [
                         Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
@@ -1000,7 +1056,16 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                         Field("FieldC", BooleanT)
                                     ]),
                                 Variant("B", [Field("_variantIdentifier", UInt16T)])
-                            ])
+                            ]),
+                        DataType(ModuleId, "MyUnion__VariantOf",
+                            variants: [
+                                Variant(
+                                    "A",
+                                    [
+                                        Field("_variantIdentifier", UInt16T),
+                                    ]),
+                                Variant("B", [Field("_variantIdentifier", UInt16T)])
+                            ]),
                     ],
                     methods: [
                         Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
@@ -1095,9 +1160,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                     types: [
                         DataType(ModuleId, "MyClass",
                             variants: [
-                                Variant("_classVariant",
-                                    [
-                                    ])
+                                Variant("_classVariant",[])
                             ])
                     ],
                     methods: [

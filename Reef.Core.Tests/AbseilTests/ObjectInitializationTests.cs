@@ -194,7 +194,9 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : Tes
                 LoweredProgram(ModuleId,
                     types: [
                         DataType(ModuleId, "MyUnion",
-                            variants: [Variant("A", [Field("_variantIdentifier", UInt16T)])])
+                            variants: [Variant("A", [Field("_variantIdentifier", UInt16T)])]),
+                        DataType(ModuleId, "MyUnion__VariantOf",
+                            variants: [Variant("A", [Field("_variantIdentifier", UInt16T)])]),
                     ],
                     methods: [
                         Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
@@ -240,8 +242,15 @@ public class ObjectInitializationTests(ITestOutputHelper testOutputHelper) : Tes
                                 Variant("B", [
                                     Field("_variantIdentifier", UInt16T),
                                     Field("a", StringT),
-                                ])
-                            ])
+                                ]),
+                            ]),
+                        DataType(ModuleId, "MyUnion__VariantOf",
+                            variants: [
+                                Variant("A", [Field("_variantIdentifier", UInt16T)]),
+                                Variant("B", [
+                                    Field("_variantIdentifier", UInt16T),
+                                ]),
+                            ]),
                     ],
                     methods: [
                         Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",

@@ -1244,6 +1244,57 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                                 new MethodLocal("_local0", "a", Int32T),
                                 new MethodLocal("_local1", "b", Int32T),
                             ])])
+            },
+            {
+                "variantOf",
+                """
+                union MyUnion{A, B}
+
+                var a = variantOf MyUnion::A;
+                """,
+                LoweredProgram(
+                    ModuleId,
+                    types: [
+                        DataType(
+                            ModuleId,
+                            "MyUnion",
+                            variants: [
+                                Variant("A", [Field("_variantIdentifier", UInt16T)]),
+                                Variant("B", [Field("_variantIdentifier", UInt16T)]),
+                            ]),
+                        DataType(
+                            ModuleId,
+                            "MyUnion__VariantOf",
+                            variants: [
+                                Variant("A", [Field("_variantIdentifier", UInt16T)]),
+                                Variant("B", [Field("_variantIdentifier", UInt16T)]),
+                            ]),
+                    ],
+                    methods: [
+                        Method(
+                            new DefId(ModuleId, $"{ModuleId}:::_Main"),
+                            "_Main",
+                            [
+                                new BasicBlock(
+                                    BB0,
+                                    [
+                                        new Assign(
+                                            Local0,
+                                            new CreateObject(ConcreteTypeReference("MyUnion__VariantOf", ModuleId))),
+                                        new Assign(
+                                            new Field(Local0, "_variantIdentifier", "A"),
+                                            new Use(new UIntConstant(0, 2)))
+                                    ],
+                                    new GoTo(BB1)
+                                ),
+                                new BasicBlock(BB1, [], new Return())
+                            ],
+                            returnType: Unit,
+                            locals: [
+                                new MethodLocal("_local0", "a", ConcreteTypeReference("MyUnion__VariantOf", ModuleId))
+                            ])
+                    ]
+                )
             }
         };
     }

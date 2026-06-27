@@ -62,4 +62,29 @@ public class UnionTests : IntegrationTestBase
             """
         );
     }
+
+    [Fact, TestMe]
+    public async Task VariantOfUnion()
+    {
+        await SetupTest(
+            """
+            union MyUnion{A(string), B, C{field a: u32}};
+
+            var a = variantOf MyUnion::B;
+
+            var b = match (a) {
+                variantOf MyUnion::A => 6,
+                variantOf MyUnion::B => 7,
+                variantOf MyUnion::C => 8,
+            };
+
+            print_u32(b);
+            """
+        );
+
+        var result = await Run();
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal("7", result.StandardOutput);
+    }
 }

@@ -27,7 +27,8 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
         const string source =
                 "union MyUnion{}";
         var expectedProgram = LoweredProgram(ModuleId, types: [
-            DataType(ModuleId, "MyUnion")
+            DataType(ModuleId, "MyUnion"),
+            DataType(ModuleId, "MyUnion__VariantOf"),
         ]);
 
         var program = await CreateProgram(ModuleId, source);
@@ -43,15 +44,16 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                 "empty union",
                 "union MyUnion{}",
                 LoweredProgram(ModuleId, types: [
-                    DataType(ModuleId, "MyUnion")
+                    DataType(ModuleId, "MyUnion"),
+                    DataType(ModuleId, "MyUnion__VariantOf")
                 ])
             },
             {
                 "generic union",
                 "union MyUnion<T>{}",
                 LoweredProgram(ModuleId, types: [
-                        DataType(ModuleId, "MyUnion",
-                            ["T"])
+                        DataType(ModuleId, "MyUnion", ["T"]),
+                        DataType(ModuleId, "MyUnion__VariantOf"),
                 ])
             },
             {
@@ -62,6 +64,11 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                         variants: [
                             Variant("A", [Field("_variantIdentifier", UInt16T)]),
                             Variant("B", [Field("_variantIdentifier", UInt16T)]),
+                        ]),
+                    DataType(ModuleId, "MyUnion__VariantOf",
+                        variants: [
+                            Variant("A", [Field("_variantIdentifier", UInt16T)]),
+                            Variant("B", [Field("_variantIdentifier", UInt16T)]),
                         ])
                 ])
             },
@@ -69,8 +76,8 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                 "generic union with instance function",
                 "union MyUnion<T>{pub fn SomeFn(){}}",
                 LoweredProgram(ModuleId, types: [
-                    DataType(ModuleId, "MyUnion",
-                        ["T"])
+                    DataType(ModuleId, "MyUnion", ["T"]),
+                    DataType(ModuleId, "MyUnion__VariantOf"),
                 ], methods: [
                     Method(new DefId(ModuleId, $"{ModuleId}:::MyUnion__SomeFn"), "MyUnion__SomeFn",
                         [
@@ -101,7 +108,13 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                 Field("Item0", StringT),
                                 Field("Item1", Int64T),
                             ])
-                        ])
+                        ]),
+                    DataType(ModuleId, "MyUnion__VariantOf",
+                        variants: [
+                            Variant("A", [
+                                Field("_variantIdentifier", UInt16T),
+                            ])
+                        ]),
                 ], methods: [
                     Method(new DefId(ModuleId, $"{ModuleId}:::MyUnion__Create__A"), "MyUnion__Create__A",
                         [
@@ -167,6 +180,13 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                 [
                                     Field("_variantIdentifier", UInt16T),
                                     Field("Item0", new LoweredGenericPlaceholder(new DefId(ModuleId, $"{ModuleId}:::MyUnion"), "T"))
+                                ])
+                        ]),
+                    DataType(ModuleId, "MyUnion__VariantOf",
+                        variants: [
+                            Variant("A",
+                                [
+                                    Field("_variantIdentifier", UInt16T),
                                 ])
                         ])
                 ], methods: [
@@ -234,21 +254,30 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                     Field("MyField", StringT),
                                     Field("OtherField", Int64T),
                                 ])
-                        ])
+                        ]),
+                    DataType(ModuleId, "MyUnion__VariantOf",
+                        variants: [
+                            Variant("A",
+                                fields: [
+                                    Field("_variantIdentifier", UInt16T),
+                                ])
+                        ]),
                 ])
             },
             {
                 "union with method",
                 "union MyUnion { pub fn MyFn(){} }",
                 LoweredProgram(ModuleId,
-                [
-                            Method(new DefId(ModuleId, $"{ModuleId}:::MyUnion__MyFn"), "MyUnion__MyFn",
-                                [new BasicBlock(BB0, []) {Terminator = new Return()}],
-                                Unit,
-                                parameters: [("this", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference( new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))))])
-                        ], types: [
-                    DataType(ModuleId, "MyUnion")
-                ])
+                    methods: [
+                        Method(new DefId(ModuleId, $"{ModuleId}:::MyUnion__MyFn"), "MyUnion__MyFn",
+                            [new BasicBlock(BB0, []) {Terminator = new Return()}],
+                            Unit,
+                            parameters: [("this", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference( new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))))])
+                    ],
+                    types: [
+                        DataType(ModuleId, "MyUnion"),
+                        DataType(ModuleId, "MyUnion__VariantOf"),
+                    ])
             },
             {
                 "union with method and tuple variants",
@@ -371,6 +400,19 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                     [
                                         Field("_variantIdentifier", UInt16T),
                                         Field("Item0", StringT),
+                                    ]),
+                            ]),
+                        DataType(ModuleId, "MyUnion__VariantOf",
+                            variants: [
+                                Variant(
+                                    "A",
+                                    [
+                                        Field("_variantIdentifier", UInt16T),
+                                    ]),
+                                Variant(
+                                    "B",
+                                    [
+                                        Field("_variantIdentifier", UInt16T),
                                     ]),
                             ])
                     ])

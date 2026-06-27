@@ -340,12 +340,12 @@ public partial class ProgramAbseil
 
             foreach (var union in module.Unions)
             {
-                var dataType = LowerUnion(union.Signature.NotNull());
+                var (dataType, variantOfDataType) = LowerUnion(union.Signature.NotNull());
 
                 _types.Add(dataType.Id, dataType);
+                _types.Add(variantOfDataType.Id, variantOfDataType);
 
                 LowerUnionMethods(union.Signature.NotNull());
-
             }
 
             foreach (var dataType in module.Classes.Select(x => LowerClass(x.Signature.NotNull())))
@@ -1032,7 +1032,7 @@ public partial class ProgramAbseil
                                 new CreateObject(BoxedValueType(unionTypeReference))),
                             new Assign(
                                 new Field(new Deref(new Local(ReturnValueLocalName)), "ObjectHeader", ClassVariantName),
-                                new CreateObject((new LoweredConcreteTypeReference(DefId.ObjectHeader, [])).NotNull())
+                                new CreateObject(new LoweredConcreteTypeReference(DefId.ObjectHeader, []))
                             ),
                             new Assign(
                                 new Field(new Field(new Deref(new Local(ReturnValueLocalName)), "ObjectHeader", ClassVariantName), "TypeId", ClassVariantName),
@@ -1092,7 +1092,7 @@ public partial class ProgramAbseil
         }
     }
 
-    private DataType LowerUnion(TypeChecker.UnionSignature union)
+    private static (DataType unionDataType, DataType variantOfDataType) LowerUnion(TypeChecker.UnionSignature union)
     {
         var typeParameters = union.TypeParameters.Select(GetGenericPlaceholder).ToArray();
         var unionTypeReference = new LoweredConcreteTypeReference(
@@ -1135,12 +1135,21 @@ public partial class ProgramAbseil
                         fields));
         }
 
-        return new DataType(
-                union.NotNull().Id,
-                union.Name,
-                typeParameters,
-                Variants: variants,
-                StaticFields: []);
+        var variantOfDataType = new DataType(
+            new DefId(union.Id.ModuleId, union.Id.FullName + "__VariantOf"),
+            union.Name + "__VariantOf",
+            TypeParameters: [],
+            Variants: [.. variants.Select(x => new DataTypeVariant(x.Name, [.. x.Fields.Where(y => y.Name == VariantIdentifierFieldName)]))],
+            StaticFields: []);
+
+        var dataType = new DataType(
+            union.Id,
+            union.Name,
+            typeParameters,
+            Variants: variants,
+            StaticFields: []);
+
+        return (dataType, variantOfDataType);
     }
 
     // instead of lowering the methods expressions right here, we return the list of expressions
@@ -1438,7 +1447,7 @@ public partial class ProgramAbseil
             DefId.BoxedValue, [valueType]);
     }
 
-    private ILoweredTypeReference GetBuiltInTypeReference(DefId id)
+    private static LoweredConcreteTypeReference GetBuiltInTypeReference(DefId id)
     {
         return new LoweredConcreteTypeReference(id, []);
     }
@@ -1463,6 +1472,7 @@ public partial class ProgramAbseil
             TypeChecker.UnknownInferredType i => GetTypeReference(i.ResolvedType.NotNull()),
             TypeChecker.FunctionObject f => FunctionObjectCase(f),
             TypeChecker.UnspecifiedSizedIntType i => GetTypeReference(i.ResolvedIntType.NotNull()),
+            TypeChecker.VariantOfType v => VariantOfTypeCase(v),
             TypeChecker.ArrayType a => new LoweredArray(
                 GetTypeReference(a.ElementType), a.Length),
             _ => throw new InvalidOperationException($"Type reference {typeReference.GetType()} is not supported")
@@ -1474,6 +1484,15 @@ public partial class ProgramAbseil
         }
 
         return loweredTypeReference;
+
+        static LoweredConcreteTypeReference VariantOfTypeCase(TypeChecker.VariantOfType v)
+        {
+            return new LoweredConcreteTypeReference(
+                new DefId(
+                    v.Union.Signature.Id.ModuleId,
+                    v.Union.Signature.Id.FullName + "__VariantOf"),
+                []);
+        }
 
         static LoweredConcreteTypeReference FunctionObjectCase(TypeChecker.FunctionObject f)
         {

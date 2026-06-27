@@ -36,7 +36,15 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                          Field("_variantIdentifier", UInt16T),
                                          Field("Item0", StringT)
                                      ])
-                             ])
+                             ]),
+                DataType(ModuleId, "MyUnion__VariantOf",
+                             variants: [
+                                 Variant(
+                                     "A",
+                                     [
+                                         Field("_variantIdentifier", UInt16T),
+                                     ])
+                             ]),
             ],
             methods: [
                 Method(new DefId(ModuleId, $"{ModuleId}:::MyUnion__Create__A"), "MyUnion__Create__A",
@@ -185,7 +193,15 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                                           Field("_variantIdentifier", UInt16T),
                                                           Field("Item0", StringT)
                                                       ])
-                                              ])
+                                              ]),
+                                 DataType(ModuleId, "MyUnion__VariantOf",
+                                              variants: [
+                                                  Variant(
+                                                      "A",
+                                                      [
+                                                          Field("_variantIdentifier", UInt16T),
+                                                      ])
+                                              ]),
                              ],
                              methods: [
                                  Method(new DefId(ModuleId, $"{ModuleId}:::MyUnion__Create__A"), "MyUnion__Create__A",

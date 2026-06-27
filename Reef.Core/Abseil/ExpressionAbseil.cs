@@ -1488,6 +1488,7 @@ public partial class ProgramAbseil
             TypeChecker.UnknownInferredType { ResolvedType: var resolvedType } => IsTypeReferenceBoxed(resolvedType.NotNull()),
             TypeChecker.UnknownType => throw new UnreachableException($"{typeReference.GetType()}"),
             TypeChecker.ArrayType arrayType => arrayType.Boxed,
+            TypeChecker.VariantOfType => false,
             _ => throw new ArgumentOutOfRangeException(nameof(typeReference))
         };
     }
@@ -1532,7 +1533,7 @@ public partial class ProgramAbseil
             StaticMemberAccessExpression e,
             IPlace? destination)
     {
-        switch (e.StaticMemberAccess.MemberType)
+        switch (e.StaticMemberAccess.MemberType.NotNull())
         {
             case MemberType.Variant:
                 {
