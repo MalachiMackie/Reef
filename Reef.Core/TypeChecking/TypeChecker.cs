@@ -610,6 +610,7 @@ public partial class TypeChecker
                 functionObject.MutableReturn,
                 functionObject.IsBoxed
             ),
+            VariantOfType x => x,
             UnknownType => typeReference,
             _ => throw new InvalidOperationException(typeReference.GetType().ToString())
         };
