@@ -27,6 +27,24 @@ public class UnionTests : IntegrationTestBase
         Assert.Equal("7", result.StandardOutput);
     }
 
+    [Fact]
+    public async Task IfIntoMethodCall()
+    {
+        await SetupTest(
+            """
+            union MyUnion{A(string), B, C{field a: u32}};
+
+            var a = variantOf MyUnion::B;
+
+            print_u32(if (a matches variantOf MyUnion::B) 2 else 3);
+            """
+        );
+
+        var result = await Run();
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal("2", result.StandardOutput);
+    }
 
     [Theory]
     [InlineData("unboxed")]
@@ -87,7 +105,7 @@ public class UnionTests : IntegrationTestBase
         );
     }
 
-    [Fact, TestMe]
+    [Fact]
     public async Task VariantOfUnion()
     {
         await SetupTest(
