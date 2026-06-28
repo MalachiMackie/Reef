@@ -2340,7 +2340,90 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                   new MethodLocal("_local1", "b", Int32T),
                               ])
                       ])
-              }
+              },
+              {
+                    "match into function call",
+                    """
+                    fn do_something(param: u32){}
+                    var x = option::<string>::None;
+
+                    do_something(match (x) {option::None => 2, option::Some => 3});
+                    """,
+                    LoweredProgram(ModuleId,
+                        types: [
+                        ],
+                        methods: [
+                            Method(
+                                new DefId(ModuleId, $"{ModuleId}:::do_something"),
+                                "do_something",
+                                [
+                                    new BasicBlock(BB0, [], new Return())
+                                ],
+                                returnType: Unit,
+                                parameters: [("param", UInt32T)]),
+                            Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
+                                [
+                                    new BasicBlock(
+                                        BB0,
+                                        [
+                                            new Assign(
+                                                Local0,
+                                                new CreateObject(new LoweredConcreteTypeReference(DefId.Option, [StringT]))),
+                                            new Assign(
+                                                new Field(Local0, "_variantIdentifier", "None"),
+                                                new Use(new UIntConstant(0, 2))
+                                            )
+                                        ],
+                                        new SwitchInt(
+                                            new Copy(new Field(Local0, "_variantIdentifier", "None")),
+                                            new(){ { 0, BB1 }, { 1, BB2 } },
+                                            BB3
+                                        )),
+                                    new BasicBlock(
+                                        BB1,
+                                        [
+                                            new Assign(
+                                                Local2,
+                                                new Use(new UIntConstant(2, 4)))
+                                        ],
+                                        new GoTo(BB3)),
+                                    new BasicBlock(
+                                        BB2,
+                                        [
+                                            new Assign(
+                                                Local2,
+                                                new Use(new UIntConstant(3, 4)))
+                                        ],
+                                        new GoTo(BB3)),
+                                    new BasicBlock(
+                                        BB3,
+                                        [],
+                                        new MethodCall(
+                                            new LoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}:::do_something"), []),
+                                            [new Copy(Local2)],
+                                            Local1,
+                                            BB4)),
+                                    new BasicBlock(
+                                        BB4, [], new Return())
+                                ],
+                                Unit,
+                                locals: [
+                                    new MethodLocal(
+                                        "_local0",
+                                        "x",
+                                        new LoweredConcreteTypeReference(DefId.Option, [StringT])),
+                                    new MethodLocal(
+                                        "_local1",
+                                        null,
+                                        Unit),
+                                    new MethodLocal(
+                                        "_local2",
+                                        null,
+                                        UInt32T),
+                                ])
+                        ])
+                }
+
         };
     }
 }

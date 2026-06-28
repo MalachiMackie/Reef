@@ -4,6 +4,30 @@ namespace Reef.Core.Tests.IntegrationTests;
 
 public class UnionTests : IntegrationTestBase
 {
+    [Fact]
+    public async Task MatchIntoMethodCall()
+    {
+        await SetupTest(
+            """
+            union MyUnion{A(string), B, C{field a: u32}};
+
+            var a = variantOf MyUnion::B;
+
+            print_u32(match (a) {
+                variantOf MyUnion::A => 6,
+                variantOf MyUnion::B => 7,
+                variantOf MyUnion::C => 8,
+            });
+            """
+        );
+
+        var result = await Run();
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal("7", result.StandardOutput);
+    }
+
+
     [Theory]
     [InlineData("unboxed")]
     [InlineData("boxed")]

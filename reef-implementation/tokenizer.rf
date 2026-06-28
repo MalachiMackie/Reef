@@ -58,7 +58,6 @@ fn eat_token(slice: string_slice): result::<Token, string>
     return resolve_token(slice, possible_matches);
 }
 
-
 fn resolve_token(slice: string_slice, possible_matches: unboxed [option::<variantOf Token>; 4]): result::<Token, string>
 {
     for (var i = 0; i < possible_matches.length && possible_matches[i] matches option::Some(var type); i++) {

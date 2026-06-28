@@ -1050,6 +1050,15 @@ public partial class ProgramAbseil
 
     private IExpressionResult LowerMatch(MatchExpression e, IPlace? destination)
     {
+        var type = GetTypeReference(e.ResolvedType.NotNull());
+
+        if ((type is not LoweredConcreteTypeReference { DefinitionId: var defId } || defId != DefId.Unit) && destination is null && e.ValueUseful)
+        {
+            var localName = LocalName((uint)_locals.Count);
+            _locals.Add(new MethodLocal(localName, null, type));
+            destination = new Local(localName);
+        }
+
         var accessResult = LowerExpression(e.Value, destination: null);
 
         var afterBasicBlockId = new BasicBlockId("after");
