@@ -1,7 +1,7 @@
-use :::main:::{token:::*, helpers:::linked_list};
+use :::main:::{token:::*};
 
-pub fn tokenize(source: string): linked_list::<Token> {
-    var mut tokens = linked_list::create();
+pub fn tokenize(source: string): list::<Token> {
+    var mut tokens = list::create();
 
     var slice = source.as_slice();
 
@@ -72,7 +72,7 @@ fn resolve_token(slice: string_slice, possible_matches: unboxed [option::<varian
         }
     }
 
-    return try_match(slice, variantOf Token::Identifier).ok_or("Invalid Token");
+    return option::ok_or(try_match(slice, variantOf Token::Identifier), "Invalid Token");
 }
 
 unboxed class PossibleMatches {

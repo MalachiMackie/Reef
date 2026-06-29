@@ -356,15 +356,15 @@ pub unboxed union option<TValue> {
     None,
     Some(TValue),
 
-    pub fn unwrap(): TValue {
-        return match(this) {
+    pub static fn unwrap(val: option::<TValue>): TValue {
+        return match(val) {
             Self::None => panic(),
             Self::Some(var value) => value,
         };
     }
 
-    pub fn ok_or<TError>(err: TError): result::<TValue, TError> {
-        return match (this)
+    pub static fn ok_or<TError>(val: option::<TValue>, err: TError): result::<TValue, TError> {
+        return match (val)
         {
             Self::Some(var value) => ok(value),
             Self::None => error(err),
@@ -411,6 +411,68 @@ extern fn from_bytes<TValue>(bytes: [u8]): mut TValue
     where TValue: boxed;
 
 extern fn unsafe_allocate_array_bytes(header: ObjectHeader, item_size_bytes: u64, length: u64): mut [u8];
+
+pub class list<TValue>
+{
+    mut field _inner_array: [TValue],
+    mut field _length: u64,
+    mut field _capacity: u64,
+
+    pub fn length(): u64
+    {
+        return _length;
+    }
+
+    pub fn capacity(): u64
+    {
+        return _capacity;
+    }
+
+    pub mut fn add(value: TValue) {
+        if (_length >= _capacity) {
+            _capacity = _capacity * 2;
+            var mut new_array = create_array(_capacity);
+            for (var i = 0; i < _length; i++) {
+                new_array[i] = _inner_array[i];
+            }
+            _inner_array = new_array;
+        }
+        _inner_array[_length++] = value;
+    }
+
+    pub fn get(index: u64): option::<TValue> {
+        if (index < _length)
+        {
+            return option::Some(_inner_array[index]);
+        }
+        return option::None;
+    }
+
+    pub static fn create(): mut list::<TValue>
+    {
+        var mut capacity = 4;
+        var mut inner_array = create_array(capacity);
+
+        return new list::<TValue>
+        {
+            _inner_array = inner_array,
+            _length = 0,
+            _capacity = capacity,
+        };
+    }
+
+    static fn create_array(capacity: u64): mut [TValue]
+    {
+        var mut bytes = unsafe_allocate_array_bytes(
+            new ObjectHeader {
+                TypeId = type_id_of::<TValue>(),
+            },
+            sizeof::<TValue>(),
+            capacity);
+
+        return from_bytes::<[TValue]>(bytes);
+    }
+}
 
 // intrinsic
 pub extern fn sizeof<T>(): u64;
