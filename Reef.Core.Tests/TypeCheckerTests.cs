@@ -128,6 +128,25 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     "main.rf",
                     """
+                    class MyClass
+                    {
+                        pub field my_field: string,
+
+                        pub static fn some_fn(): u64
+                        {
+                            // my_field doesn't conflict because we're in a static function
+                            var my_field = 3;
+                            return my_field;
+                        }
+                    }
+                    """
+                },
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
                     union MyUnion<T> {
                         A,
                         B(T)

@@ -64,6 +64,25 @@ public partial class TypeChecker
         StringToken variableName,
         bool allowUninstantiated)
     {
+        if (TryGetScopedVariable(variableName, out var valueVariable))
+        {
+            expression.ReferencedVariable = valueVariable;
+
+            if (!allowUninstantiated && valueVariable is LocalVariable { Instantiated: false, ContainingFunction: var containingFunction }
+                // if we're accessing an outer variable, then we can assume it's been assigned
+                && containingFunction == CurrentFunctionSignature)
+            {
+                AddError(TypeCheckerError.AccessUninitializedVariable(variableName));
+            }
+
+            if (expression.ValueAccessor.TypeArguments is not null)
+            {
+                AddError(TypeCheckerError.GenericTypeArgumentsOnNonFunctionValue(expression.SourceRange));
+            }
+
+            return valueVariable.Type;
+        }
+
         var typeArguments = (expression.ValueAccessor.TypeArguments ?? [])
             .Select(x => (GetTypeReference(x), x.SourceRange))
             .ToArray();
@@ -142,26 +161,7 @@ public partial class TypeChecker
             }
         }
 
-        if (expression.ValueAccessor.TypeArguments is not null)
-        {
-            AddError(TypeCheckerError.GenericTypeArgumentsOnNonFunctionValue(expression.SourceRange));
-        }
-
-        if (!TryGetScopedVariable(variableName, out var valueVariable))
-        {
-            AddError(TypeCheckerError.SymbolNotFound(variableName));
-            return UnknownType.Instance;
-        }
-
-        expression.ReferencedVariable = valueVariable;
-
-        if (!allowUninstantiated && valueVariable is LocalVariable { Instantiated: false, ContainingFunction: var containingFunction }
-            // if we're accessing an outer variable, then we can assume it's been assigned
-            && containingFunction == CurrentFunctionSignature)
-        {
-            AddError(TypeCheckerError.AccessUninitializedVariable(variableName));
-        }
-
-        return valueVariable.Type;
+        AddError(TypeCheckerError.SymbolNotFound(variableName));
+        return UnknownType.Instance;
     }
 }
