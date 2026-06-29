@@ -277,6 +277,31 @@ public class IntOperations : IntegrationTestBase
 
     [Theory]
     [MemberData(nameof(IntTypes))]
+    public async Task GreaterThanOrEqual(string typeSpecifier)
+    {
+        await SetupTest(
+            $$"""
+            var one: {{typeSpecifier}} = 1;
+            var two: {{typeSpecifier}} = 2;
+            if (one >= two) {
+                print_string("1 >= 2, ");
+            }
+            if (two >= one) {
+                print_string("2 >= 1, ");
+            }
+            if (two >= two) {
+                print_string("2 >= 2, ");
+            }
+            """, typeSpecifier
+        );
+
+        var result = await Run(typeSpecifier);
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal("2 >= 1, 2 >= 2, ", result.StandardOutput);
+    }
+
+    [Theory]
+    [MemberData(nameof(IntTypes))]
     public async Task LessThan(string typeSpecifier)
     {
         await SetupTest(
@@ -298,5 +323,30 @@ public class IntOperations : IntegrationTestBase
         var result = await Run(typeSpecifier);
         Assert.Equal(0, result.ExitCode);
         Assert.Equal("1 < 2", result.StandardOutput);
+    }
+
+    [Theory]
+    [MemberData(nameof(IntTypes))]
+    public async Task LessThanOrEqual(string typeSpecifier)
+    {
+        await SetupTest(
+            $$"""
+                var one: {{typeSpecifier}} = 1;
+                var two: {{typeSpecifier}} = 2;
+                if (one <= two) {
+                    print_string("1 <= 2, ");
+                }
+                if (two <= one) {
+                    print_string("2 <= 1, ");
+                }
+                if (two <= two) {
+                    print_string("2 <= 2, ");
+                }
+                """, typeSpecifier
+        );
+
+        var result = await Run(typeSpecifier);
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal("1 <= 2, 2 <= 2, ", result.StandardOutput);
     }
 }

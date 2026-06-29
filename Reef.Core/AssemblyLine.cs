@@ -2283,15 +2283,23 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                     MoveOperandToDestination(left, leftOperandRegister, currentTypeArguments);
                     MoveOperandToDestination(right, rightOperandRegister, currentTypeArguments);
                     _methodBody.AppendLine($"    cmp     {leftOperandRegister.ToAsm(size)}, {rightOperandRegister.ToAsm(size)}");
-                    _methodBody.AppendLine("    pushf");
-                    _methodBody.AppendLine($"    pop     {leftOperandRegister.ToAsm(PointerSize)}");
-                    _methodBody.AppendLine($"    and     {leftOperandRegister.ToAsm(PointerSize)}, 10000000b"); // sign flag
-                    _methodBody.AppendLine($"    shr     {leftOperandRegister.ToAsm(PointerSize)}, 7");
+                    _methodBody.AppendLine($"    setl   {leftOperandRegister.ToAsm(1)}");
                     MoveIntoPlace(destination, leftOperandRegister, 1);
+
                     break;
                 }
             case BinaryOperationKind.LessThanOrEqual:
-                throw new NotImplementedException();
+                {
+                    leftOperandRegister = AllocateRegister();
+                    rightOperandRegister = AllocateRegister();
+
+                    MoveOperandToDestination(left, leftOperandRegister, currentTypeArguments);
+                    MoveOperandToDestination(right, rightOperandRegister, currentTypeArguments);
+                    _methodBody.AppendLine($"    cmp     {leftOperandRegister.ToAsm(size)}, {rightOperandRegister.ToAsm(size)}");
+                    _methodBody.AppendLine($"    setle   {leftOperandRegister.ToAsm(1)}");
+                    MoveIntoPlace(destination, leftOperandRegister, 1);
+                    break;
+                }
             case BinaryOperationKind.GreaterThan:
                 {
                     leftOperandRegister = AllocateRegister();
@@ -2299,27 +2307,33 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
 
                     MoveOperandToDestination(left, leftOperandRegister, currentTypeArguments);
                     MoveOperandToDestination(right, rightOperandRegister, currentTypeArguments);
-                    _methodBody.AppendLine($"    cmp     {rightOperandRegister.ToAsm(size)}, {leftOperandRegister.ToAsm(size)}");
-                    _methodBody.AppendLine("    pushf");
-                    _methodBody.AppendLine($"    pop     {leftOperandRegister.ToAsm(PointerSize)}");
-                    _methodBody.AppendLine($"    and     {leftOperandRegister.ToAsm(PointerSize)}, 10000000b"); // sign flag
-                    _methodBody.AppendLine($"    shr     {leftOperandRegister.ToAsm(PointerSize)}, 7");
+                    _methodBody.AppendLine($"    cmp     {leftOperandRegister.ToAsm(size)}, {rightOperandRegister.ToAsm(size)}");
+                    _methodBody.AppendLine($"    setg   {leftOperandRegister.ToAsm(1)}");
                     MoveIntoPlace(destination, leftOperandRegister, 1);
                     break;
                 }
             case BinaryOperationKind.GreaterThanOrEqual:
-                throw new NotImplementedException();
+                {
+                    leftOperandRegister = AllocateRegister();
+                    rightOperandRegister = AllocateRegister();
+
+                    MoveOperandToDestination(left, leftOperandRegister, currentTypeArguments);
+                    MoveOperandToDestination(right, rightOperandRegister, currentTypeArguments);
+                    _methodBody.AppendLine($"    cmp     {leftOperandRegister.ToAsm(size)}, {rightOperandRegister.ToAsm(size)}");
+                    _methodBody.AppendLine($"    setge   {leftOperandRegister.ToAsm(1)}");
+                    MoveIntoPlace(destination, leftOperandRegister, 1);
+                    break;
+                }
             case BinaryOperationKind.Equal:
                 {
                     leftOperandRegister = AllocateRegister();
                     rightOperandRegister = AllocateRegister();
+
                     MoveOperandToDestination(left, leftOperandRegister, currentTypeArguments);
                     MoveOperandToDestination(right, rightOperandRegister, currentTypeArguments);
+
                     _methodBody.AppendLine($"    cmp     {leftOperandRegister.ToAsm(size)}, {rightOperandRegister.ToAsm(size)}");
-                    _methodBody.AppendLine("    pushf");
-                    _methodBody.AppendLine($"    pop     {leftOperandRegister.ToAsm(PointerSize)}");
-                    _methodBody.AppendLine($"    and     {leftOperandRegister.ToAsm(PointerSize)}, 1000000b"); // zero flag
-                    _methodBody.AppendLine($"    shr     {leftOperandRegister.ToAsm(PointerSize)}, 6");
+                    _methodBody.AppendLine($"    sete   {leftOperandRegister.ToAsm(1)}");
                     MoveIntoPlace(destination, leftOperandRegister, 1);
                     break;
                 }
@@ -2327,14 +2341,12 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                 {
                     leftOperandRegister = AllocateRegister();
                     rightOperandRegister = AllocateRegister();
+
                     MoveOperandToDestination(left, leftOperandRegister, currentTypeArguments);
                     MoveOperandToDestination(right, rightOperandRegister, currentTypeArguments);
+
                     _methodBody.AppendLine($"    cmp     {leftOperandRegister.ToAsm(size)}, {rightOperandRegister.ToAsm(size)}");
-                    _methodBody.AppendLine("    pushf");
-                    _methodBody.AppendLine($"    pop     {leftOperandRegister.ToAsm(PointerSize)}");
-                    _methodBody.AppendLine($"    and     {leftOperandRegister.ToAsm(PointerSize)}, 1000000b"); // zero flag
-                    _methodBody.AppendLine($"    shr     {leftOperandRegister.ToAsm(PointerSize)}, 6");
-                    _methodBody.AppendLine($"    btc     {leftOperandRegister.ToAsm(PointerSize)}, 0");
+                    _methodBody.AppendLine($"    setne   {leftOperandRegister.ToAsm(1)}");
                     MoveIntoPlace(destination, leftOperandRegister, 1);
                     break;
                 }
@@ -2641,7 +2653,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
             // returnType = calleeTypeArgumentsDictionary[genericReturnType.PlaceholderName];
         }
 
-        var returnSize = GetTypeSize(returnType, calleeTypeArgumentsDictionary.Concat(currentTypeArguments).ToDictionary(x => x.Key, x => x.Value));
+        var returnSize = GetTypeSize(returnType, calleeTypeArgumentsDictionary.Concat(currentTypeArguments).GroupBy(x => x.Key).ToDictionary(x => x.Key, x => x.First().Value));
 
         var argumentTypesEnumerable = methodCall.Arguments.Select(x => (GetOperandType(x, currentTypeArguments), x));
 
