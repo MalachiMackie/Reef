@@ -534,15 +534,30 @@ BoxedCharArray* string_chars(StringBoxedValue *str)
 }
 
 void print_string_slice(string_slice slice) {
+    uint64_t byteOffset = 0;
+    for (uint64_t char_i = 0; char_i < slice.offset; char_i++)
+    {
+        reef_char ch;
+        byteOffset += utf8_decode_char(slice.original_string->str.chars + byteOffset, &ch);
+    }
+
     if (slice.original_string->str.length - slice.offset == slice.length)
     {
         // slice ends at the end of the original string, which is null terminated, so just print using fputs
-        fputs(slice.original_string->str.chars + slice.offset, stdout);
+        fputs(slice.original_string->str.chars + byteOffset, stdout);
         return;
     }
 
-    for (uint64_t i = slice.offset; i < slice.offset + slice.length; i++) {
-        fputc(slice.original_string->str.chars[i], stdout);
+    uint64_t charactersPrinted = 0;
+    for (uint64_t i = byteOffset, char_i = 0; char_i < slice.length; char_i++) {
+        charactersPrinted++;
+        reef_char ch;
+        uint64_t bytesUsed = utf8_decode_char(slice.original_string->str.chars + byteOffset, &ch);
+        for (uint64_t j = 0; j < bytesUsed; j++)
+        {
+            fputc(slice.original_string->str.chars[byteOffset + j], stdout);
+        }
+        byteOffset += bytesUsed;
     }
 }
 
@@ -902,16 +917,48 @@ StringBoxedValue *allocate_new_string(uint64_t length) {
     return result;
 }
 
-void copy_string(StringBoxedValue *destination, StringBoxedValue *source, uint64_t sourceOffset)
+void unsafe_copy_string(
+    StringBoxedValue *destination,
+    uint64_t destinationCharOffset,
+    StringBoxedValue *source,
+    uint64_t sourceCharOffset,
+    uint64_t length
+)
 {
-    assert(source->str.length - sourceOffset >= destination->str.length);
+    if (length == 0)
+    {
+        return;
+    }
 
-    memcpy_s(
-        destination->str.chars,
-        destination->str.length,
-        source->str.chars + sourceOffset,
-        destination->str.length
-    );
+    assert(destinationCharOffset + length <= destination->str.length && "not enough space in destination");
+    assert(sourceCharOffset + length <= source->str.length && "length too long for source char offset");
+
+    uint64_t destinationByteOffset = 0;
+    for (uint64_t char_i = 0; char_i < destinationCharOffset; char_i++)
+    {
+        reef_char ch;
+        destinationByteOffset += utf8_decode_char(destination->str.chars + destinationByteOffset, &ch);
+    }
+
+    uint64_t sourceByteOffset = 0;
+    for (uint64_t char_i = 0; char_i < sourceCharOffset; char_i++)
+    {
+        reef_char ch;
+        sourceByteOffset += utf8_decode_char(source->str.chars + sourceByteOffset, &ch);
+    }
+
+    for (uint64_t char_i = 0, bytes_i = 0; char_i < length; char_i++)
+    {
+        reef_char ch;
+        uint64_t byteCount = utf8_decode_char(source->str.chars + sourceByteOffset, &ch);
+
+        for (uint64_t i = 0; i < byteCount; i++)
+        {
+            destination->str.chars[destinationByteOffset + i] = source->str.chars[sourceByteOffset + i];
+        }
+        destinationByteOffset += byteCount;
+        sourceByteOffset += byteCount;
+    }
 }
 
 void print_all_types()
@@ -996,6 +1043,8 @@ bool type_info_has_pointer(TypeInfo *type)
             TypeInfo* elementType = &typeInfoArray[type->arrayInfo.elementTypeId];
             return type_info_has_pointer(elementType);
     }
+    assert(false && "Unknown type info variant");
+    return false;
 }
 
 uint64_t get_type_size(TypeInfo *type)
@@ -1013,7 +1062,8 @@ uint64_t get_type_size(TypeInfo *type)
             return 8 + get_type_size(elementType);
             // return type_info_has_pointer(elementType);
     }
-    assert(false);
+    assert(false && "Unknown type info variant");
+    return 0;
 }
 
 typedef Ht(uint64_t, bool) AlivePointerHashTable;

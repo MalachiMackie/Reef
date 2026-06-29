@@ -194,7 +194,49 @@ public class StringTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task StringConcat()
+    {
+        await SetupTest(""" print_string("fんoo".concat("bんar")); """);
+
+        var result = await Run();
+        result.ExitCode.Should().Be(0);
+        result.StandardOutput.Should().Be($"fんoobんar");
+    }
+
+    [Fact]
     public async Task StringSliceToString()
+    {
+        await SetupTest(
+            """
+            var original: string = "ん hello ん world";
+            var trimmedSlice: string_slice = match (original.slice(3, 11)) {
+                result::Ok(var slice) => slice,
+                result::Error(var err) => {
+                    print_string(err);
+                    return;
+                }
+            };
+
+            print_string_slice(trimmedSlice);
+            print_string("\n");
+            print_string(trimmedSlice.to_string());
+            """
+        );
+
+        using var _ = new AssertionScope();
+
+        var result = await Run();
+        result.ExitCode.Should().Be(0);
+        result.StandardOutput.Should().Be(
+            """
+            ello ん worl
+            ello ん worl
+            """
+        );
+    }
+
+    [Fact]
+    public async Task UnicodeSliceToString()
     {
         await SetupTest(
             """

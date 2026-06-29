@@ -99,7 +99,9 @@ pub class Function_8<TParam1, TParam2, TParam3, TParam4, TParam5, TParam6, TPara
 
 pub extern fn allocate(size_bytes: u64): mut rawPointer
 pub extern fn allocate_new_string(length: u64): mut string
-pub extern fn copy_string(destination: string, source: string, source_offset: u64)
+
+// destination up until destination_char_offset must be filled with valid utf8 code points
+pub extern fn unsafe_copy_string(destination: string, destination_char_offset: u64, source: string, source_char_offset: u64, length: u64)
 
 pub extern fn ref_equals<T>(left: T, right: T): bool
     where T : boxed
@@ -133,7 +135,7 @@ pub unboxed class string_slice {
         }
 
         var mut result = allocate_new_string(length);
-        copy_string(result, original_string, offset);
+        unsafe_copy_string(result, 0, original_string, offset, length);
 
         return result;
     }
@@ -247,6 +249,14 @@ pub class string {
         }
 
         return true;
+    }
+
+    pub fn concat(other: string): string {
+        var mut result = allocate_new_string(length + other.length);
+        unsafe_copy_string(result, 0, this, 0, length);
+        unsafe_copy_string(result, length, other, 0, other.length);
+
+        return result;
     }
 }
 

@@ -88,7 +88,11 @@ public class IntegrationTestBase
         var output = await outputTask;
         var stdError = await errorTask;
 
-        testLogger.LogInformation(output);
+        testLogger.LogInformation("{Output}", output);
+        if (stdError.Length > 0)
+        {
+            testLogger.LogError("{Error}", stdError);
+        }
 
         return new TestRunOutput(process.ExitCode, output, stdError);
     }
