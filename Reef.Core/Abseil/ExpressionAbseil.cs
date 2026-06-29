@@ -1949,6 +1949,7 @@ public partial class ProgramAbseil
         }
         else
         {
+            GetNextEmptyBasicBlock();
             _basicBlocks[^1].Terminator = new Return();
         }
 

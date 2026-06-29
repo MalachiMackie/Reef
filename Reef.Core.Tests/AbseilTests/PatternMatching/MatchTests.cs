@@ -1518,7 +1518,8 @@ public class MatchTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                  new BasicBlock(
                                      BB0,
                                      [new Assign(ReturnValue, new Use(new IntConstant(1, 8)))],
-                                     new Return())
+                                     new GoTo(BB1)),
+                                 new BasicBlock(BB1, [], new Return())
                              ],
                              Int64T),
                          Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",

@@ -33,8 +33,9 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                                         new BasicBlock(
                                             BB0,
                                             [new Assign(new Local("_returnValue"), new Use(new StringConstant("MyClass")))],
-                                            new Return()
+                                            new GoTo(BB1)
                                         ),
+                                        new BasicBlock(BB1, [], new Return())
                                     ],
                                     returnType: StringT,
                                     parameters: [
@@ -991,12 +992,10 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                             new DefId(ModuleId, $"{ModuleId}:::MyFn"),
                             "MyFn",
                             [
-                                new BasicBlock(new BasicBlockId("bb0"), [
-                                    new Assign(new Local("_returnValue"), new Use(new Copy(new Local("_param0"))))
-                                ])
-                                {
-                                    Terminator = new Return()
-                                }
+                                new BasicBlock(BB0, [
+                                    new Assign(ReturnValue, new Use(new Copy(Param0)))
+                                ], new GoTo(BB1)),
+                                new BasicBlock(BB1, [], new Return())
                             ],
                             StringT,
                             parameters: [("a", StringT)])
@@ -1085,8 +1084,9 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                                 new BasicBlock(
                                     BB0,
                                     [new Assign(new Local("_returnValue"), new Use(new StringConstant("MyClass")))],
-                                    new Return()
+                                    new GoTo(BB1)
                                 ),
+                                new BasicBlock(BB1, [], new Return())
                             ],
                             returnType: StringT,
                             parameters: [

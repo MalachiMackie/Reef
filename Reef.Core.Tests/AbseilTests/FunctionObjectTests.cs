@@ -838,7 +838,8 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                  new BasicBlock(
                                      BB0,
                                      [new Assign(ReturnValue, new Use(new IntConstant(1, 8)))],
-                                     new Return())
+                                     new GoTo(BB1)),
+                                 new BasicBlock(BB1, [], new Return())
                              ],
                              parameters: [("a", StringT)],
                              returnType: Int64T),

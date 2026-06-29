@@ -168,7 +168,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                 [
                                     new BasicBlock(new BasicBlockId("bb0"), [
                                         new Assign(
-                                            new Local("_returnValue"),
+                                            ReturnValue,
                                             new Use(new StringConstant("")))
                                     ], new GoTo(new BasicBlockId("bb1"))),
                                     new BasicBlock(new BasicBlockId("bb1"), [], new Return())
@@ -342,7 +342,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                     StringT,
                                     [
                                         new BasicBlock(new BasicBlockId("bb0"), [
-                                            new Assign(new Local("_returnValue"), new Use(new StringConstant("")))
+                                            new Assign(ReturnValue, new Use(new StringConstant("")))
                                         ], new GoTo(new BasicBlockId("bb1"))),
                                         new BasicBlock(new BasicBlockId("bb1"), [], new Return())
                                     ],
@@ -719,7 +719,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                     StringT,
                                     [
                                         new BasicBlock(new BasicBlockId("bb0"), [
-                                            new Assign(new Local("_returnValue"), new Use(new StringConstant("")))
+                                            new Assign(ReturnValue, new Use(new StringConstant("")))
                                         ], new GoTo(new BasicBlockId("bb1"))),
                                         new BasicBlock(new BasicBlockId("bb1"), [], new Return())
                                     ],
@@ -923,7 +923,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                      StringT,
                                      [
                                          new BasicBlock(new BasicBlockId("bb0"), [
-                                             new Assign(new Local("_returnValue"), new Use(new StringConstant("")))
+                                             new Assign(ReturnValue, new Use(new StringConstant("")))
                                          ], new GoTo(new BasicBlockId("bb1"))),
                                          new BasicBlock(new BasicBlockId("bb1"), [], new Return())
                                      ], [])
@@ -962,7 +962,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                              staticFields: [
                                  StaticField("MyField", StringT, [
                                      new BasicBlock(new BasicBlockId("bb0"), [
-                                         new Assign(new Local("_returnValue"),
+                                         new Assign(ReturnValue,
                                              new Use(new StringConstant("")))
                                      ], new GoTo(new BasicBlockId("bb1"))),
                                      new BasicBlock(new BasicBlockId("bb1"), [], new Return()),
@@ -1004,9 +1004,10 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                              [
                                  new BasicBlock(new BasicBlockId("bb0"), [
                                      new Assign(
-                                         new Local("_returnValue"),
+                                         ReturnValue,
                                          new Use(new Copy(new Local("_param1"))))
-                                 ], new Return()),
+                                 ], new GoTo(BB1)),
+                                 new BasicBlock(BB1, [], new Return())
                              ],
                              StringT,
                              parameters: [
@@ -1035,9 +1036,10 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                              [
                                  new BasicBlock(new BasicBlockId("bb0"), [
                                      new Assign(
-                                         new Local("_returnValue"),
+                                         ReturnValue,
                                          new Use(new Copy(new Local("_param0"))))
-                                 ], new Return())
+                                 ], new GoTo(BB1)),
+                                 new BasicBlock(BB1, [], new Return())
                              ],
                              StringT,
                              parameters: [("a", StringT)])

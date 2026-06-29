@@ -880,7 +880,57 @@ public class ControlFlowTests(ITestOutputHelper testOutputHelper) : TestBase(tes
                                  new MethodLocal("_local3", null, Unit),
                              ])
                      ])
-             }
+             },
+            {
+                "early return value",
+                """
+                fn some_fn(): u32
+                {
+                    if (true) {
+                        return 3;
+                    }
+                    return 2;
+                }
+                """,
+                LoweredProgram(
+                    ModuleId,
+                    [
+                        Method(
+                            new DefId(ModuleId, $"{ModuleId}:::some_fn"),
+                            "some_fn",
+                            returnType: UInt32T,
+                            basicBlocks: [
+                                new BasicBlock(
+                                    BB0,
+                                    [],
+                                    new SwitchInt(
+                                        new BoolConstant(true),
+                                        new(){ { 0, BB2 } },
+                                        BB1)),
+                                new BasicBlock(
+                                    BB1,
+                                    [
+                                        new Assign(
+                                            ReturnValue,
+                                            new Use(new UIntConstant(3, 4)))
+                                    ],
+                                    new GoTo(BB3)),
+                                new BasicBlock(
+                                    BB2,
+                                    [
+                                        new Assign(
+                                            ReturnValue,
+                                            new Use(new UIntConstant(2, 4)))
+                                    ],
+                                    new GoTo(BB3)),
+                                new BasicBlock(
+                                    BB3,
+                                    [],
+                                    new Return())
+                            ])
+                    ]
+                )
+             },
         };
     }
 }
