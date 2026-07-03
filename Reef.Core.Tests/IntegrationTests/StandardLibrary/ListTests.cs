@@ -2,7 +2,6 @@ using Reef.Core.Tests.IntegrationTests.Helpers;
 
 namespace Reef.Core.Tests.IntegrationTests.StandardLibrary;
 
-[TestMe]
 public class ListTests : IntegrationTestBase
 {
     [Fact]

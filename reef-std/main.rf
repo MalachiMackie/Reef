@@ -98,10 +98,6 @@ pub class Function_8<TParam1, TParam2, TParam3, TParam4, TParam5, TParam6, TPara
 }
 
 pub extern fn allocate(size_bytes: u64): mut rawPointer
-pub extern fn allocate_new_string(length: u64): mut string
-
-// destination up until destination_char_offset must be filled with valid utf8 code points
-pub extern fn unsafe_copy_string(destination: string, destination_char_offset: u64, source: string, source_char_offset: u64, length: u64)
 
 pub extern fn ref_equals<T>(left: T, right: T): bool
     where T : boxed
@@ -110,6 +106,8 @@ pub unboxed class BoxedValue<TValue> {
     pub field ObjectHeader: ObjectHeader,
     pub field Value: TValue,
 }
+
+extern fn string_sub_string(original: string, offset: u64, length: u64): string
 
 pub unboxed class string_slice {
     // todo: pub(module)
@@ -134,10 +132,11 @@ pub unboxed class string_slice {
             return "";
         }
 
-        var mut result = allocate_new_string(length);
-        unsafe_copy_string(result, 0, original_string, offset, length);
+        if (offset == 0 && length == original_string.length) {
+            return original_string;
+        }
 
-        return result;
+        return string_sub_string(original_string, offset, length);
     }
 
     pub fn char_at(at: u64): option::<char>
@@ -170,6 +169,7 @@ pub unboxed class string_slice {
 // private global function for easy ffi naming
 extern fn string_chars(str: string): [char]
 extern fn string_char_at(str: string, at: u64): char
+extern fn string_concat(left: string, right: string): string;
 
 pub class string {
     // If these are renamed or reordered, serialization within AssemblyLine needs to be updated wherever we write strings
@@ -252,11 +252,14 @@ pub class string {
     }
 
     pub fn concat(other: string): string {
-        var mut result = allocate_new_string(length + other.length);
-        unsafe_copy_string(result, 0, this, 0, length);
-        unsafe_copy_string(result, length, other, 0, other.length);
+        if (this.eq("")) {
+            return other;
+        }
+        if (other.eq("")) {
+            return this;
+        }
 
-        return result;
+        return string_concat(this, other);
     }
 }
 
@@ -278,6 +281,117 @@ pub extern unboxed class i64{}
 pub extern unboxed class i32{}
 pub extern unboxed class i16{}
 pub extern unboxed class i8{}
+
+fn array_filter_map<T>(arr: [option::<T>]): [T] {
+    var mut items = list::create();
+    for (var i = 0; i < arr.length; i++) {
+        if (arr[i] matches option::Some(var value)) {
+            items.add(value);
+        }
+    }
+    return items.reset_and_get_items();
+}
+
+// todo: casts
+pub extern fn i8_to_u64(value: i8): u64;
+pub extern fn i8_to_u8(value: i8): u8;
+pub extern fn i8_to_i16(value: i8): i16;
+pub extern fn i16_to_u8(value: i16): u8;
+pub extern fn ascii_num_to_char(value: u8): char;
+pub extern fn u8_to_u64(value: u8): u64;
+pub extern fn char_array_to_string(chars: [char]): string;
+
+// todo: figure out a way to do instance functions on unboxed values that doesn't box
+pub fn i8_to_string(val: i8): string {
+    if (val >= -10 && val <= 10) {
+        // todo: move these into a static field
+        var common_values = [
+            unboxed;
+            "-10", "-9", "-8", "-7", "-6", "-5", "-4", "-3", "-2", "-1",
+            "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
+        ];
+
+        return common_values[i8_to_u64(val) + 10];
+    }
+
+    var char_i = 0;
+    var mut chars = [option::None; 4];
+    var isNegative = false;
+
+    var newVal = i8_to_i16(val);
+
+    if (newVal < 0)
+    {
+        newVal = -newVal;
+        chars[char_i++] = option::Some('-');
+        isNegative = true;
+    }
+
+    var foundFirstNumber = false;
+
+    for (var magnitude = 100; magnitude >= 10; magnitude = magnitude / 10) {
+        var magnitude_count = 0;
+        while (newVal >= magnitude)
+        {
+            magnitude_count++;
+            newVal = newVal - magnitude;
+        }
+        if (magnitude_count == 0 && !foundFirstNumber)
+        {
+            continue;
+        }
+        foundFirstNumber = true;
+        var ch = ascii_num_to_char(magnitude_count);
+        chars[char_i++] = option::Some(ch);
+    }
+
+    if (newVal > 0 || foundFirstNumber)
+    {
+        var ch = ascii_num_to_char(i16_to_u8(newVal));
+        chars[char_i++] = option::Some(ch);
+    }
+
+    return char_array_to_string(array_filter_map(chars));
+}
+
+pub fn u8_to_string(val: u8): string {
+    if (val <= 20) {
+        // todo: move these into a static field
+        var common_values = [
+            unboxed;
+            "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
+            "11", "12", "13", "14", "15", "16", "17", "18", "19", "20",
+        ];
+
+        return common_values[u8_to_u64(val)];
+    }
+
+    var char_i = 0;
+    var mut chars = [option::None; 3];
+
+    for (var magnitude = 100; magnitude >= 10; magnitude = magnitude / 10) {
+        var magnitude_count = 0;
+        while (val >= magnitude)
+        {
+            magnitude_count++;
+            val = val - magnitude;
+        }
+        if (magnitude_count == 0 && char_i == 0)
+        {
+            continue;
+        }
+        var ch = ascii_num_to_char(magnitude_count);
+        chars[char_i++] = option::Some(ch);
+    }
+
+    if (val > 0 || char_i != 0)
+    {
+        var ch = ascii_num_to_char(val);
+        chars[char_i++] = option::Some(ch);
+    }
+
+    return char_array_to_string(array_filter_map(chars));
+}
 
 
 pub unboxed class Tuple_1<T0> {
@@ -406,11 +520,12 @@ pub extern fn panic(): never
 
 extern fn catch_unwind_intrinsic(callee: Fn([u8]), data_bytes: [u8]): bool
 extern fn as_bytes<TValue>(value: TValue): [u8]
-    where TValue: boxed;
+    where TValue: boxed
 extern fn from_bytes<TValue>(bytes: [u8]): mut TValue
-    where TValue: boxed;
+    where TValue: boxed
 
-extern fn unsafe_allocate_array_bytes(header: ObjectHeader, item_size_bytes: u64, length: u64): mut [u8];
+extern fn unsafe_allocate_array_bytes(header: ObjectHeader, item_size_bytes: u64, length: u64): mut [u8]
+extern fn unsafe_set_array_length<T>(arr: [T], length: u64)
 
 pub class list<TValue>
 {
@@ -446,6 +561,19 @@ pub class list<TValue>
             return option::Some(_inner_array[index]);
         }
         return option::None;
+    }
+
+    pub mut fn reset_and_get_items(): mut [TValue] {
+        if (_capacity > _length) {
+            // todo: shrink allocation
+            unsafe_set_array_length(_inner_array, _length);
+        }
+        var mut items = _inner_array;
+        _length = 0;
+        _capacity = 4;
+        _inner_array = create_array(_capacity);
+
+        return items;
     }
 
     pub static fn create(): mut list::<TValue>

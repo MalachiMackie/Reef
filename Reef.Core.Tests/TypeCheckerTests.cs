@@ -128,6 +128,15 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     "main.rf",
                     """
+                    var a: [string] = [""; 2];
+                    """
+                },
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
                     class MyClass
                     {
                         pub field my_field: string,

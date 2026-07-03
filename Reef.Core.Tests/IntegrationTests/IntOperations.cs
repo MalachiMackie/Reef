@@ -16,6 +16,8 @@ public class IntOperations : IntegrationTestBase
         "u8"
     ];
 
+    public static readonly TheoryData<string, int, int> NumberData = [.. IntTypes.SelectMany(x => new[] { (x.Data, 1, 2), (x.Data, 20, 120) })];
+
     [Theory]
     [MemberData(nameof(IntTypes))]
     public async Task PrintPositiveInts(string typeSpecifier)
@@ -251,102 +253,107 @@ public class IntOperations : IntegrationTestBase
     }
 
     [Theory]
-    [MemberData(nameof(IntTypes))]
-    public async Task GreaterThan(string typeSpecifier)
+    [MemberData(nameof(NumberData))]
+    public async Task GreaterThan(string typeSpecifier, int small, int large)
     {
+        var testCaseName = $"{typeSpecifier}_{small}_{large}";
         await SetupTest(
             $$"""
-            var one: {{typeSpecifier}} = 1;
-            var two: {{typeSpecifier}} = 2;
-            if (one > two) {
-                print_string("1 > 2");
+            var small: {{typeSpecifier}} = {{small}};
+            var large: {{typeSpecifier}} = {{large}};
+            if (small > large) {
+                print_string("{{small}} > {{large}}");
             }
-            if (two > one) {
-                print_string("2 > 1");
+            if (large > small) {
+                print_string("{{large}} > {{small}}");
             }
-            if (two > two) {
-                print_string("2 > 2");
+            if (large > large) {
+                print_string("{{large}} > {{large}}");
             }
-            """, typeSpecifier
+            """, testCaseName
         );
 
-        var result = await Run(typeSpecifier);
+        var result = await Run(testCaseName);
         Assert.Equal(0, result.ExitCode);
-        Assert.Equal("2 > 1", result.StandardOutput);
+        Assert.Equal($"{large} > {small}", result.StandardOutput);
     }
 
     [Theory]
-    [MemberData(nameof(IntTypes))]
-    public async Task GreaterThanOrEqual(string typeSpecifier)
+    [MemberData(nameof(NumberData))]
+    public async Task GreaterThanOrEqual(string typeSpecifier, int small, int large)
     {
+        var testCaseName = $"{typeSpecifier}_{small}_{large}";
         await SetupTest(
             $$"""
-            var one: {{typeSpecifier}} = 1;
-            var two: {{typeSpecifier}} = 2;
-            if (one >= two) {
-                print_string("1 >= 2, ");
+            var small: {{typeSpecifier}} = {{small}};
+            var large: {{typeSpecifier}} = {{large}};
+            if (small >= large) {
+                print_string("{{small}} >= {{large}}, ");
             }
-            if (two >= one) {
-                print_string("2 >= 1, ");
+            if (large >= small) {
+                print_string("{{large}} >= {{small}}, ");
             }
-            if (two >= two) {
-                print_string("2 >= 2, ");
+            if (large >= large) {
+                print_string("{{large}} >= {{large}}, ");
             }
-            """, typeSpecifier
+            """, testCaseName
         );
 
-        var result = await Run(typeSpecifier);
+        var result = await Run(testCaseName);
         Assert.Equal(0, result.ExitCode);
-        Assert.Equal("2 >= 1, 2 >= 2, ", result.StandardOutput);
+        Assert.Equal($"{large} >= {small}, {large} >= {large}, ", result.StandardOutput);
     }
 
     [Theory]
-    [MemberData(nameof(IntTypes))]
-    public async Task LessThan(string typeSpecifier)
+    [MemberData(nameof(NumberData))]
+    public async Task LessThan(string typeSpecifier, int small, int large)
     {
+        var testCaseName = $"{typeSpecifier}_{small}_{large}";
         await SetupTest(
             $$"""
-              var one: {{typeSpecifier}} = 1;
-              var two: {{typeSpecifier}} = 2;
-              if (one < two) {
-                  print_string("1 < 2");
+              var small: {{typeSpecifier}} = {{small}};
+              var large: {{typeSpecifier}} = {{large}};
+              if (small < large) {
+                  print_string("{{small}} < {{large}}");
               }
-              if (two < one) {
-                  print_string("2 < 1");
+              if (large < small) {
+                  print_string("{{large}} < {{small}}");
               }
-              if (two < two) {
-                  print_string("2 > 2");
+              if (large < large) {
+                  print_string("{{large}} > {{large}}");
               }
-              """, typeSpecifier
+              """, testCaseName
         );
 
-        var result = await Run(typeSpecifier);
+        var result = await Run(testCaseName);
         Assert.Equal(0, result.ExitCode);
-        Assert.Equal("1 < 2", result.StandardOutput);
+        Assert.Equal($"{small} < {large}", result.StandardOutput);
     }
 
+
     [Theory]
-    [MemberData(nameof(IntTypes))]
-    public async Task LessThanOrEqual(string typeSpecifier)
+    [MemberData(nameof(NumberData))]
+    public async Task LessThanOrEqual(string typeSpecifier, int small, int large)
     {
+        var testCaseName = $"{typeSpecifier}_{small}_{large}";
         await SetupTest(
             $$"""
-                var one: {{typeSpecifier}} = 1;
-                var two: {{typeSpecifier}} = 2;
-                if (one <= two) {
-                    print_string("1 <= 2, ");
+                var small: {{typeSpecifier}} = {{small}};
+                var large: {{typeSpecifier}} = {{large}};
+                if (small <= large) {
+                    print_string("{{small}} <= {{large}}, ");
                 }
-                if (two <= one) {
-                    print_string("2 <= 1, ");
+                if (large <= small) {
+                    print_string("{{large}} <= {{small}}, ");
                 }
-                if (two <= two) {
-                    print_string("2 <= 2, ");
+                if (large <= large) {
+                    print_string("{{large}} <= {{large}}, ");
                 }
-                """, typeSpecifier
+                """, testCaseName
         );
 
-        var result = await Run(typeSpecifier);
+        var result = await Run(testCaseName);
         Assert.Equal(0, result.ExitCode);
-        Assert.Equal("1 <= 2, 2 <= 2, ", result.StandardOutput);
+        Assert.Equal($"{small} <= {large}, {large} <= {large}, ", result.StandardOutput);
     }
 }

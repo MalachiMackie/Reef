@@ -363,62 +363,81 @@ int utf8_encode(char *out, uint32_t utf)
   }
 }
 
-void* allocate(uint64_t size);
-
-int utf8_decode_char(const char *in, uint32_t *utf);
-
-reef_char utf8_decode_string_at(string *str, uint64_t at)
+int utf8_decode_char_length(const char *in)
 {
-    if (str->length == 0)
-    {
-        panic();
-        return 0;
+    const unsigned char *s = (const unsigned char *)in;
+    uint32_t cp;
+
+    // ASCII
+    if ((s[0] & 0x80) == 0) {
+        return 1;
     }
 
-    char *chars = str->chars;
-
-    uint64_t bytes_i = 0;
-    uint64_t chars_i = 0;
-    uint32_t ch;
-    while (chars[bytes_i])
-    {
-        int bytes_used = utf8_decode_char(chars + bytes_i, &ch);
-
-        if (chars_i == at)
+    // 2-byte sequence
+    if ((s[0] & 0xE0) == 0xC0) {
+        if ((s[1] & 0xC0) != 0x80)
         {
-            return ch;
+            goto invalid;
         }
 
-        chars_i++;
-        bytes_i += bytes_used;
+        // Reject overlong encodings
+        if (((uint32_t)(s[0] & 0x1F) << 6) |
+                    ((uint32_t)(s[1] & 0x3F)))
+        {
+            goto invalid;
+        }
+
+        return 2;
     }
 
-    panic();
-    return ch;
-}
+    // 3-byte sequence
+    if ((s[0] & 0xF0) == 0xE0) {
+        if ((s[1] & 0xC0) != 0x80 ||
+            (s[2] & 0xC0) != 0x80)
+            goto invalid;
 
-void utf8_decode_string(string *str, reef_char* destination)
-{
-    if (str->length == 0)
-    {
-        destination = NULL;
-        return;
+        cp =
+            ((uint32_t)(s[0] & 0x0F) << 12) |
+            ((uint32_t)(s[1] & 0x3F) <<  6) |
+            ((uint32_t)(s[2] & 0x3F));
+
+        // Reject overlong encodings
+        if (cp < 0x800)
+            goto invalid;
+
+        // Reject UTF-16 surrogate range
+        if (cp >= 0xD800 && cp <= 0xDFFF)
+            goto invalid;
+
+        return 3;
     }
 
-    char *chars = str->chars;
+    // 4-byte sequence
+    if ((s[0] & 0xF8) == 0xF0) {
+        if ((s[1] & 0xC0) != 0x80 ||
+            (s[2] & 0xC0) != 0x80 ||
+            (s[3] & 0xC0) != 0x80)
+            goto invalid;
 
-    uint64_t bytes_i = 0;
-    uint64_t chars_i = 0;
-    while (chars[bytes_i])
-    {
-        uint32_t *ch = &destination[chars_i];
-        int bytes_used = utf8_decode_char(chars + bytes_i, ch);
+        cp =
+            ((uint32_t)(s[0] & 0x07) << 18) |
+            ((uint32_t)(s[1] & 0x3F) << 12) |
+            ((uint32_t)(s[2] & 0x3F) <<  6) |
+            ((uint32_t)(s[3] & 0x3F));
 
-        assert(*ch != 0xFFFD);
-        assert(bytes_used > 0);
-        chars_i++;
-        bytes_i += bytes_used;
+        // Reject overlong encodings
+        if (cp < 0x10000)
+            goto invalid;
+
+        // Reject code points beyond Unicode maximum
+        if (cp > 0x10FFFF)
+            goto invalid;
+
+        return 4;
     }
+
+invalid:
+    return 0;
 }
 
 int utf8_decode_char(const char *in, uint32_t *utf)
@@ -502,6 +521,64 @@ invalid:
     return 0;
 }
 
+void* allocate(uint64_t size);
+
+reef_char utf8_decode_string_at(string *str, uint64_t at)
+{
+    if (str->length == 0)
+    {
+        panic();
+        return 0;
+    }
+
+    char *chars = str->chars;
+
+    uint64_t bytes_i = 0;
+    uint64_t chars_i = 0;
+    uint32_t ch;
+    while (chars[bytes_i])
+    {
+        int bytes_used = utf8_decode_char(chars + bytes_i, &ch);
+
+        if (chars_i == at)
+        {
+            return ch;
+        }
+
+        chars_i++;
+        bytes_i += bytes_used;
+    }
+
+    panic();
+    return ch;
+}
+
+void utf8_decode_string(string *str, reef_char* destination)
+{
+    if (str->length == 0)
+    {
+        destination = NULL;
+        return;
+    }
+
+    char *chars = str->chars;
+
+    uint64_t bytes_i = 0;
+    uint64_t chars_i = 0;
+    while (chars[bytes_i])
+    {
+        uint32_t *ch = &destination[chars_i];
+        int bytes_used = utf8_decode_char(chars + bytes_i, ch);
+
+        assert(*ch != 0xFFFD);
+        assert(bytes_used > 0);
+        chars_i++;
+        bytes_i += bytes_used;
+    }
+}
+
+
+
 reef_char string_char_at(StringBoxedValue *str, uint64_t char_at)
 {
     if (char_at >= str->str.length)
@@ -537,8 +614,7 @@ void print_string_slice(string_slice slice) {
     uint64_t byteOffset = 0;
     for (uint64_t char_i = 0; char_i < slice.offset; char_i++)
     {
-        reef_char ch;
-        byteOffset += utf8_decode_char(slice.original_string->str.chars + byteOffset, &ch);
+        byteOffset += utf8_decode_char_length(slice.original_string->str.chars + byteOffset);
     }
 
     if (slice.original_string->str.length - slice.offset == slice.length)
@@ -551,8 +627,7 @@ void print_string_slice(string_slice slice) {
     uint64_t charactersPrinted = 0;
     for (uint64_t i = byteOffset, char_i = 0; char_i < slice.length; char_i++) {
         charactersPrinted++;
-        reef_char ch;
-        uint64_t bytesUsed = utf8_decode_char(slice.original_string->str.chars + byteOffset, &ch);
+        uint64_t bytesUsed = utf8_decode_char_length(slice.original_string->str.chars + byteOffset);
         for (uint64_t j = 0; j < bytesUsed; j++)
         {
             fputc(slice.original_string->str.chars[byteOffset + j], stdout);
@@ -885,6 +960,125 @@ void* allocate(uint64_t size) {
     return ptr;
 }
 
+void unsafe_set_array_length(BoxedUnknownArray *arr, uint64_t length) {
+    arr->array.length = length;
+}
+
+StringBoxedValue *string_sub_string(StringBoxedValue *original, uint64_t offset, uint64_t length) {
+    assert(original->str.length - offset >= length);
+
+    uint64_t byteOffset = 0;
+    uint64_t bytesNeeded = 0;
+    for (uint64_t char_i = 0; char_i < length + offset; char_i++)
+    {
+        int char_bytes = utf8_decode_char_length(&original->str.chars[byteOffset + bytesNeeded]);
+        if (char_i < offset)
+        {
+            byteOffset += char_bytes;
+        }
+        else
+        {
+            bytesNeeded += char_bytes;
+        }
+    }
+
+    uint64_t size =
+        bytesNeeded
+        + 1 // extra byte for null terminated string that it outside of length
+        + sizeof(uint64_t) // length
+        + 4 // padding
+        + sizeof(ObjectHeader);
+
+    StringBoxedValue *result = allocate(size);
+    result->objectHeader.typeId = boxedValueStringTypeId;
+    result->str.length = length;
+    result->str.chars[bytesNeeded] = 0; // ensure string is null terminated
+
+    memcpy(result->str.chars, original->str.chars + byteOffset, bytesNeeded);
+
+    return result;
+}
+
+reef_char ascii_num_to_char(int8_t value) {
+    assert(value >= 0 && value <= 9);
+    return value + '0';
+}
+
+uint64_t i8_to_u64(int8_t value) { return value; }
+uint64_t u8_to_u64(uint8_t value) { return value; }
+uint8_t i8_to_u8(int8_t value) { return value; }
+int16_t i8_to_i16(int8_t value) { return value; }
+uint8_t i16_to_u8(int16_t value) {
+    assert(value <= 255 && value >= 0);
+    return value;
+}
+
+StringBoxedValue *char_array_to_string(BoxedCharArray *chars) {
+    uint64_t bytesNeeded = 0;
+    for (uint64_t i = 0; i < chars->array.length; i++)
+    {
+        char _[4];
+        bytesNeeded += utf8_encode(_, chars->array.value[i]);
+    }
+
+    uint64_t size =
+            bytesNeeded
+            + 1 // extra byte for null terminated string that it outside of length
+            + sizeof(uint64_t) // length
+            + 4 // padding
+            + sizeof(ObjectHeader);
+
+    StringBoxedValue *result = allocate(size);
+    result->objectHeader.typeId = boxedValueStringTypeId;
+    result->str.length = chars->array.length;
+    result->str.chars[chars->array.length] = 0; // ensure string is null terminated
+
+    bytesNeeded = 0;
+    for (uint64_t i = 0; i < chars->array.length; i++)
+    {
+        char bytes[4];
+        int charBytes = utf8_encode(bytes, chars->array.value[i]);
+        for (uint64_t j = 0; j < charBytes; j++)
+        {
+            result->str.chars[bytesNeeded++] = bytes[j];
+        }
+    }
+
+    return result;
+}
+
+StringBoxedValue *string_concat(StringBoxedValue *left, StringBoxedValue *right) {
+    uint64_t bytesNeeded = 0;
+    for (uint64_t char_i = 0; char_i < left->str.length; char_i++)
+    {
+        bytesNeeded += utf8_decode_char_length(left->str.chars + bytesNeeded);
+    }
+    uint64_t rightOffset = bytesNeeded;
+    uint64_t rightBytesNeeded = 0;
+    for (uint64_t char_i = 0; char_i < right->str.length; char_i++)
+    {
+        uint64_t rightBytes = utf8_decode_char_length(right->str.chars + rightBytesNeeded);
+        rightBytesNeeded += rightBytes;
+        bytesNeeded += rightBytes;
+    }
+
+    uint64_t size =
+            bytesNeeded
+            + 1 // extra byte for null terminated string that it outside of length
+            + sizeof(uint64_t) // length
+            + 4 // padding
+            + sizeof(ObjectHeader);
+
+    StringBoxedValue *result = allocate(size);
+    result->objectHeader.typeId = boxedValueStringTypeId;
+    result->str.length = left->str.length + right->str.length;
+    result->str.chars[bytesNeeded] = 0; // ensure string is null terminated
+    memcpy(result->str.chars, left->str.chars, rightOffset);
+    memcpy(result->str.chars + rightOffset, right->str.chars, rightBytesNeeded);
+
+    return result;
+}
+
 uint8_t* unsafe_allocate_array_bytes(ObjectHeader objectHeader, uint64_t item_size, uint64_t length) {
     BoxedUnknownArray* array = allocate(
         (item_size * length)
@@ -896,69 +1090,6 @@ uint8_t* unsafe_allocate_array_bytes(ObjectHeader objectHeader, uint64_t item_si
     array->array.length = length;
 
     return (uint8_t*)array;
-}
-
-StringBoxedValue *allocate_new_string(uint64_t length) {
-    assert(length > 0);
-
-    uint64_t size =
-        length
-        + 1 // extra byte for null terminated string that it outside of length
-        + sizeof(uint64_t) // length
-        + 4 // padding
-        + sizeof(ObjectHeader);
-
-    // for now this assumes 1 byte characters. Once we support unicode characters, this will need to change
-    StringBoxedValue *result = allocate(size);
-    result->objectHeader.typeId = boxedValueStringTypeId;
-    result->str.length = length;
-    result->str.chars[length] = 0; // ensure string is null terminated
-
-    return result;
-}
-
-void unsafe_copy_string(
-    StringBoxedValue *destination,
-    uint64_t destinationCharOffset,
-    StringBoxedValue *source,
-    uint64_t sourceCharOffset,
-    uint64_t length
-)
-{
-    if (length == 0)
-    {
-        return;
-    }
-
-    assert(destinationCharOffset + length <= destination->str.length && "not enough space in destination");
-    assert(sourceCharOffset + length <= source->str.length && "length too long for source char offset");
-
-    uint64_t destinationByteOffset = 0;
-    for (uint64_t char_i = 0; char_i < destinationCharOffset; char_i++)
-    {
-        reef_char ch;
-        destinationByteOffset += utf8_decode_char(destination->str.chars + destinationByteOffset, &ch);
-    }
-
-    uint64_t sourceByteOffset = 0;
-    for (uint64_t char_i = 0; char_i < sourceCharOffset; char_i++)
-    {
-        reef_char ch;
-        sourceByteOffset += utf8_decode_char(source->str.chars + sourceByteOffset, &ch);
-    }
-
-    for (uint64_t char_i = 0, bytes_i = 0; char_i < length; char_i++)
-    {
-        reef_char ch;
-        uint64_t byteCount = utf8_decode_char(source->str.chars + sourceByteOffset, &ch);
-
-        for (uint64_t i = 0; i < byteCount; i++)
-        {
-            destination->str.chars[destinationByteOffset + i] = source->str.chars[sourceByteOffset + i];
-        }
-        destinationByteOffset += byteCount;
-        sourceByteOffset += byteCount;
-    }
 }
 
 void print_all_types()

@@ -2282,8 +2282,10 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
 
                     MoveOperandToDestination(left, leftOperandRegister, currentTypeArguments);
                     MoveOperandToDestination(right, rightOperandRegister, currentTypeArguments);
+                    var isSigned = GetIntSigned(left, currentTypeArguments) == IntSigned.Signed;
+
                     _methodBody.AppendLine($"    cmp     {leftOperandRegister.ToAsm(size)}, {rightOperandRegister.ToAsm(size)}");
-                    _methodBody.AppendLine($"    setl   {leftOperandRegister.ToAsm(1)}");
+                    _methodBody.AppendLine($"    {(isSigned ? "setl" : "setb")}   {leftOperandRegister.ToAsm(1)}");
                     MoveIntoPlace(destination, leftOperandRegister, 1);
 
                     break;
@@ -2295,8 +2297,10 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
 
                     MoveOperandToDestination(left, leftOperandRegister, currentTypeArguments);
                     MoveOperandToDestination(right, rightOperandRegister, currentTypeArguments);
+                    var isSigned = GetIntSigned(left, currentTypeArguments) == IntSigned.Signed;
+
                     _methodBody.AppendLine($"    cmp     {leftOperandRegister.ToAsm(size)}, {rightOperandRegister.ToAsm(size)}");
-                    _methodBody.AppendLine($"    setle   {leftOperandRegister.ToAsm(1)}");
+                    _methodBody.AppendLine($"    {(isSigned ? "setle" : "setbe")}   {leftOperandRegister.ToAsm(1)}");
                     MoveIntoPlace(destination, leftOperandRegister, 1);
                     break;
                 }
@@ -2304,11 +2308,12 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                 {
                     leftOperandRegister = AllocateRegister();
                     rightOperandRegister = AllocateRegister();
+                    var isSigned = GetIntSigned(left, currentTypeArguments) == IntSigned.Signed;
 
                     MoveOperandToDestination(left, leftOperandRegister, currentTypeArguments);
                     MoveOperandToDestination(right, rightOperandRegister, currentTypeArguments);
                     _methodBody.AppendLine($"    cmp     {leftOperandRegister.ToAsm(size)}, {rightOperandRegister.ToAsm(size)}");
-                    _methodBody.AppendLine($"    setg   {leftOperandRegister.ToAsm(1)}");
+                    _methodBody.AppendLine($"    {(isSigned ? "setg" : "seta")}   {leftOperandRegister.ToAsm(1)}");
                     MoveIntoPlace(destination, leftOperandRegister, 1);
                     break;
                 }
@@ -2319,8 +2324,10 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
 
                     MoveOperandToDestination(left, leftOperandRegister, currentTypeArguments);
                     MoveOperandToDestination(right, rightOperandRegister, currentTypeArguments);
+                    var isSigned = GetIntSigned(left, currentTypeArguments) == IntSigned.Signed;
+
                     _methodBody.AppendLine($"    cmp     {leftOperandRegister.ToAsm(size)}, {rightOperandRegister.ToAsm(size)}");
-                    _methodBody.AppendLine($"    setge   {leftOperandRegister.ToAsm(1)}");
+                    _methodBody.AppendLine($"    {(isSigned ? "setge" : "setae")}   {leftOperandRegister.ToAsm(1)}");
                     MoveIntoPlace(destination, leftOperandRegister, 1);
                     break;
                 }
