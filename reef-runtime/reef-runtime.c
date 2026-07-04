@@ -1004,12 +1004,61 @@ reef_char ascii_num_to_char(int8_t value) {
     return value + '0';
 }
 
-uint64_t i8_to_u64(int8_t value) { return value; }
+
+uint32_t u8_to_u32(uint8_t value) { return value; }
 uint64_t u8_to_u64(uint8_t value) { return value; }
-uint8_t i8_to_u8(int8_t value) { return value; }
+
+uint8_t i8_to_u8(int8_t value) {
+    assert(value >= 0);
+    return value;
+}
+uint64_t i8_to_u64(int8_t value) {
+    assert(value >= 0);
+    return value;
+}
 int16_t i8_to_i16(int8_t value) { return value; }
+int32_t i8_to_i32(int8_t value) { return value; }
+
+uint32_t u16_to_u32(uint16_t value) { return value; }
+
 uint8_t i16_to_u8(int16_t value) {
-    assert(value <= 255 && value >= 0);
+    assert(value >= 0 && value <= 255);
+    return value;
+}
+int32_t i16_to_i32(int16_t value) { return value; }
+
+uint8_t u32_to_u8(uint32_t value)
+{
+    assert(value <= 255);
+    return value;
+}
+uint64_t u32_to_u64(uint32_t value) { return value; }
+
+uint8_t i32_to_u8(int32_t value)
+{
+    assert(value >= 0 && value <= 255);
+    return value;
+}
+uint64_t i32_to_u64(int32_t value)
+{
+    assert(value >= 0);
+    return value;
+}
+
+uint8_t u64_to_u8(uint64_t value)
+{
+    assert(value <= 255);
+    return value;
+}
+
+uint8_t i64_to_u8(int64_t value)
+{
+    assert(value >= 0 && value <= 255);
+    return value;
+}
+uint64_t i64_to_u64(int64_t value)
+{
+    assert(value >= 0);
     return value;
 }
 

@@ -735,7 +735,7 @@ public partial class TypeChecker
                 null => ArrayTypeSignature.Instance.Boxed,
                 _ => throw new UnreachableException(arrayTypeIdentifier.BoxingSpecifier.Type.ToString())
             },
-            (uint)arrayTypeIdentifier.LengthSpecifier.IntValue);
+            arrayTypeIdentifier.LengthSpecifier.UnsignedValue ?? (ulong)arrayTypeIdentifier.LengthSpecifier.SignedValue.NotNull());
     }
 
     private InstantiatedClass Unit() => GetBuiltInType(DefId.Unit);

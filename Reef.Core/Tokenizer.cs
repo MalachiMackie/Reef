@@ -396,7 +396,9 @@ public class Tokenizer
             TokenType.Turbofish when source is "::<" => Token.Turbofish(new SourceSpan(position,
                 (ushort)source.Length)),
             TokenType.Else when source is "else" => Token.Else(new SourceSpan(position, (ushort)source.Length)),
-            TokenType.IntLiteral when int.TryParse(source, out var intValue) => Token.IntLiteral(intValue,
+            TokenType.IntLiteral when long.TryParse(source, out var intValue) => Token.IntLiteral(intValue,
+                new SourceSpan(position, (ushort)source.Length)),
+            TokenType.IntLiteral when ulong.TryParse(source, out var intValue) => Token.IntLiteral(intValue,
                 new SourceSpan(position, (ushort)source.Length)),
             TokenType.StringLiteral when ExactlyMatchesStringOrCharLiteral(source, '"') => Token.StringLiteral(
                 GetString(source[1..^1]), new SourceSpan(position, (ushort)source.Length)),

@@ -293,16 +293,43 @@ fn array_filter_map<T>(arr: [option::<T>]): [T] {
 }
 
 // todo: casts
-pub extern fn i8_to_u64(value: i8): u64;
-pub extern fn i8_to_u8(value: i8): u8;
-pub extern fn i8_to_i16(value: i8): i16;
-pub extern fn i16_to_u8(value: i16): u8;
-pub extern fn ascii_num_to_char(value: u8): char;
+pub extern fn u8_to_u32(value: u8): u32;
 pub extern fn u8_to_u64(value: u8): u64;
+
+pub extern fn i8_to_u8(value: i8): u8;
+pub extern fn i8_to_u64(value: i8): u64;
+pub extern fn i8_to_i16(value: i8): i16;
+pub extern fn i8_to_i32(value: i8): i32;
+
+pub extern fn u16_to_u32(value: u16): u32;
+
+pub extern fn i16_to_u8(value: i16): u8;
+pub extern fn i16_to_i32(value: i16): i32;
+
+pub extern fn u32_to_u8(value: u32): u8;
+pub extern fn u32_to_u64(value: u32): u64;
+
+pub extern fn i32_to_u8(value: i32): u8;
+pub extern fn i32_to_u64(value: i32): u64;
+
+pub extern fn u64_to_u8(value: u64): u8;
+
+pub extern fn i64_to_u8(value: i64): u8;
+pub extern fn i64_to_u64(value: i64): u64;
+
+pub extern fn ascii_num_to_char(value: u8): char;
 pub extern fn char_array_to_string(chars: [char]): string;
 
 // todo: figure out a way to do instance functions on unboxed values that doesn't box
 pub fn i8_to_string(val: i8): string {
+    return i32_to_string(i8_to_i32(val));
+}
+
+pub fn i16_to_string(val: i16): string {
+    return i32_to_string(i16_to_i32(val));
+}
+
+pub fn i32_to_string(val: i32): string {
     if (val >= -10 && val <= 10) {
         // todo: move these into a static field
         var common_values = [
@@ -311,30 +338,32 @@ pub fn i8_to_string(val: i8): string {
             "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
         ];
 
-        return common_values[i8_to_u64(val) + 10];
+        return common_values[i32_to_u64(val + 10)];
+    }
+
+    if (val == -2147483648) {
+        return "-2147483648";
     }
 
     var char_i = 0;
-    var mut chars = [option::None; 4];
+    var mut chars = [option::None; 11];
     var isNegative = false;
 
-    var newVal = i8_to_i16(val);
-
-    if (newVal < 0)
+    if (val < 0)
     {
-        newVal = -newVal;
+        val = -val;
         chars[char_i++] = option::Some('-');
         isNegative = true;
     }
 
     var foundFirstNumber = false;
 
-    for (var magnitude = 100; magnitude >= 10; magnitude = magnitude / 10) {
+    for (var magnitude = 1000000000; magnitude >= 10; magnitude = magnitude / 10) {
         var magnitude_count = 0;
-        while (newVal >= magnitude)
+        while (val >= magnitude)
         {
             magnitude_count++;
-            newVal = newVal - magnitude;
+            val = val - magnitude;
         }
         if (magnitude_count == 0 && !foundFirstNumber)
         {
@@ -345,9 +374,63 @@ pub fn i8_to_string(val: i8): string {
         chars[char_i++] = option::Some(ch);
     }
 
-    if (newVal > 0 || foundFirstNumber)
+    if (val > 0 || foundFirstNumber)
     {
-        var ch = ascii_num_to_char(i16_to_u8(newVal));
+        var ch = ascii_num_to_char(i32_to_u8(val));
+        chars[char_i++] = option::Some(ch);
+    }
+
+    return char_array_to_string(array_filter_map(chars));
+}
+
+pub fn i64_to_string(val: i64): string {
+    if (val >= -10 && val <= 10) {
+        // todo: move these into a static field
+        var common_values = [
+            unboxed;
+            "-10", "-9", "-8", "-7", "-6", "-5", "-4", "-3", "-2", "-1",
+            "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
+        ];
+
+        return common_values[i64_to_u64(val + 10)];
+    }
+
+    if (val == -9223372036854775808) {
+        return "-9223372036854775808";
+    }
+
+    var char_i = 0;
+    var mut chars = [option::None; 20];
+    var isNegative = false;
+
+    if (val < 0)
+    {
+        val = -val;
+        chars[char_i++] = option::Some('-');
+        isNegative = true;
+    }
+
+    var foundFirstNumber = false;
+
+    for (var magnitude = 1000000000000000000; magnitude >= 10; magnitude = magnitude / 10) {
+        var magnitude_count = 0;
+        while (val >= magnitude)
+        {
+            magnitude_count++;
+            val = val - magnitude;
+        }
+        if (magnitude_count == 0 && !foundFirstNumber)
+        {
+            continue;
+        }
+        foundFirstNumber = true;
+        var ch = ascii_num_to_char(magnitude_count);
+        chars[char_i++] = option::Some(ch);
+    }
+
+    if (val > 0 || foundFirstNumber)
+    {
+        var ch = ascii_num_to_char(i64_to_u8(val));
         chars[char_i++] = option::Some(ch);
     }
 
@@ -355,6 +438,14 @@ pub fn i8_to_string(val: i8): string {
 }
 
 pub fn u8_to_string(val: u8): string {
+    return u32_to_string(u8_to_u32(val));
+}
+
+pub fn u16_to_string(val: u16): string {
+    return u32_to_string(u16_to_u32(val));
+}
+
+pub fn u32_to_string(val: u32): string {
     if (val <= 20) {
         // todo: move these into a static field
         var common_values = [
@@ -363,13 +454,15 @@ pub fn u8_to_string(val: u8): string {
             "11", "12", "13", "14", "15", "16", "17", "18", "19", "20",
         ];
 
-        return common_values[u8_to_u64(val)];
+        return common_values[u32_to_u64(val)];
     }
 
-    var char_i = 0;
-    var mut chars = [option::None; 3];
 
-    for (var magnitude = 100; magnitude >= 10; magnitude = magnitude / 10) {
+    var char_i = 0;
+    // maxValue: 4294967295
+    var mut chars = [option::None; 10];
+
+    for (var magnitude = 1000000000; magnitude >= 10; magnitude = magnitude / 10) {
         var magnitude_count = 0;
         while (val >= magnitude)
         {
@@ -386,7 +479,48 @@ pub fn u8_to_string(val: u8): string {
 
     if (val > 0 || char_i != 0)
     {
-        var ch = ascii_num_to_char(val);
+        var ch = ascii_num_to_char(u32_to_u8(val));
+        chars[char_i++] = option::Some(ch);
+    }
+
+    return char_array_to_string(array_filter_map(chars));
+}
+
+pub fn u64_to_string(val: u64): string {
+    if (val <= 20) {
+        // todo: move these into a static field
+        var common_values = [
+            unboxed;
+            "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
+            "11", "12", "13", "14", "15", "16", "17", "18", "19", "20",
+        ];
+
+        return common_values[val];
+    }
+
+
+    var char_i = 0;
+    // maxValue: 18446744073709551615
+    var mut chars = [option::None; 20];
+
+    for (var magnitude = 10000000000000000000; magnitude >= 10; magnitude = magnitude / 10) {
+        var magnitude_count = 0;
+        while (val >= magnitude)
+        {
+            magnitude_count++;
+            val = val - magnitude;
+        }
+        if (magnitude_count == 0 && char_i == 0)
+        {
+            continue;
+        }
+        var ch = ascii_num_to_char(magnitude_count);
+        chars[char_i++] = option::Some(ch);
+    }
+
+    if (val > 0 || char_i != 0)
+    {
+        var ch = ascii_num_to_char(u64_to_u8(val));
         chars[char_i++] = option::Some(ch);
     }
 

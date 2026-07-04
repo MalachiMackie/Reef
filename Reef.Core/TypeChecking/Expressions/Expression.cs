@@ -114,7 +114,7 @@ public partial class TypeChecker
                 null => ArrayTypeSignature.Instance.Boxed,
                 _ => throw new UnreachableException(e.BoxingSpecifier.Type.ToString())
             },
-            length: (uint)e.LengthSpecifier.IntValue);
+            length: e.LengthSpecifier.UnsignedValue ?? (ulong)e.LengthSpecifier.SignedValue.NotNull());
     }
 
     private ITypeReference TypeCheckTypeIdentifierExpression(TypeIdentifierExpression e)

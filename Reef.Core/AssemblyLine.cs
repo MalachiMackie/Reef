@@ -29,8 +29,8 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
     private readonly StringBuilder _codeSegment = new();
     private readonly StringBuilder _methodBody = new();
 
-    private const uint PointerSize = 8;
-    private const uint MaxParameterSize = 8;
+    private const byte PointerSize = 8;
+    private const byte MaxParameterSize = 8;
     private const string ReturnValueAddressLocal = "_returnValueAddress";
 
     /// <summary>
@@ -231,7 +231,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
 
         var methodInfoSize = GetTypeSize(methodInfoReference, currentTypeArguments);
         var methodInfoOffsets = methodInfoSize.VariantSizeInfo["_classVariant"].FieldOffsets;
-        var bytesWritten = 0u;
+        ulong bytesWritten = 0u;
 
         _methodInfoDataSubSegment.AppendLine($"        ; MethodInfo: {method.Name}");
         _methodInfoDataSubSegment.AppendLine($"        ; MethodInfo.Id");
@@ -258,7 +258,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         bytesWritten += 8;
 
         var parametersSubSegment = new StringBuilder();
-        var parametersBytesWritten = 0u;
+        ulong parametersBytesWritten = 0u;
         _dynamicArrayDataSubSegments.Add(parametersArrayLabel, parametersSubSegment);
         parametersSubSegment.AppendLine($"        ; MethodInfo[{methodId}].Parameters.ObjectHeader.TypeId:");
         parametersBytesWritten += WriteObjectHeaderBlob(parametersSubSegment, parametersArrayType, currentTypeArguments);
@@ -279,7 +279,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
 
             var localInfo = _locals[methodId][local.CompilerGivenName];
 
-            if (localInfo.Place is MemoryOffset { Memory: PointerTo { PointerPlace: Register register }, Offset: int localOffset })
+            if (localInfo.Place is MemoryOffset { Memory: PointerTo { PointerPlace: Register register }, Offset: { } localOffset })
             {
                 Debug.Assert(register == Register.BasePointer);
 
@@ -290,7 +290,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                 parametersSubSegment.AppendLine($"        dw 0x{(short)localOffset:x}");
                 parametersBytesWritten += 2;
             }
-            else if (localInfo.Place is PointerTo(MemoryOffset { Memory: PointerTo { PointerPlace: Register register2 }, Offset: int localOffset2 }))
+            else if (localInfo.Place is PointerTo(MemoryOffset { Memory: PointerTo { PointerPlace: Register register2 }, Offset: { } localOffset2 }))
             {
                 Debug.Assert(register2 == Register.BasePointer);
 
@@ -318,7 +318,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         bytesWritten += 8;
 
         var localsSubSegment = new StringBuilder();
-        var localsBytesWritten = 0u;
+        ulong localsBytesWritten = 0u;
         _dynamicArrayDataSubSegments.Add(localsArrayLabel, localsSubSegment);
         localsSubSegment.AppendLine($"        ; MethodInfo[{methodId}].Locals.ObjectHeader.TypeId:");
         localsBytesWritten += WriteObjectHeaderBlob(localsSubSegment, localsArrayType, currentTypeArguments);
@@ -336,7 +336,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
             localsBytesWritten += 4;
             var localInfo = _locals[methodId][local.CompilerGivenName];
 
-            if (localInfo.Place is not MemoryOffset { Memory: PointerTo { PointerPlace: Register register }, Offset: int localOffset } || register != Register.BasePointer)
+            if (localInfo.Place is not MemoryOffset { Memory: PointerTo { PointerPlace: Register register }, Offset: { } localOffset } || register != Register.BasePointer)
             {
                 throw new NotImplementedException(localInfo.Place.GetType().ToString());
             }
@@ -582,11 +582,11 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         public string NextInstructionLabel { get; }
 
         public sealed record PushRegister(Register Register, string NextInstructionLabel) : IPrologOperation;
-        public sealed record StackAlloc(uint StackOffset, string NextInstructionLabel) : IPrologOperation;
+        public sealed record StackAlloc(ulong StackOffset, string NextInstructionLabel) : IPrologOperation;
         public sealed record SetFramePointerRegister(Register Register, uint Offset, string NextInstructionLabel) : IPrologOperation;
     }
 
-    void PadAlignment(ref uint bytesWritten, StringBuilder stringBuilder, uint alignment)
+    void PadAlignment(ref ulong bytesWritten, StringBuilder stringBuilder, uint alignment)
     {
         var paddingBytesNeeded = alignment - bytesWritten % alignment;
         if (paddingBytesNeeded == 0 || paddingBytesNeeded == alignment)
@@ -649,7 +649,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                         []);
         var typeInfoSize = GetTypeSize(typeInfoTypeReference, currentTypeArguments);
 
-        var bytesWritten = 0u;
+        ulong bytesWritten = 0u;
 
         _typeInfoDataSubSegment.AppendLine($"        ; TypeInfo: {type}");
 
@@ -749,7 +749,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
 
                         var staticFieldsLabel = $"type_id_{typeId}_static_fields";
                         var staticFieldsSubSegment = new StringBuilder();
-                        var staticFieldsBytesWritten = 0u;
+                        ulong staticFieldsBytesWritten = 0u;
                         _dynamicArrayDataSubSegments.Add(staticFieldsLabel, staticFieldsSubSegment);
                         _typeInfoDataSubSegment.AppendLine($"        dq {staticFieldsLabel}");
                         bytesWritten += 8;
@@ -796,7 +796,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
 
                         var fieldsLabel = $"type_id_{typeId}_fields";
                         var fieldsSubSegment = new StringBuilder();
-                        var fieldsBytesWritten = 0u;
+                        ulong fieldsBytesWritten = 0u;
                         _dynamicArrayDataSubSegments.Add(fieldsLabel, fieldsSubSegment);
                         _typeInfoDataSubSegment.AppendLine($"        dq {fieldsLabel}");
                         bytesWritten += 8;
@@ -926,7 +926,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
 
                         var staticFieldsLabel = $"type_id_{typeId}_static_fields";
                         var staticFieldsSubSegment = new StringBuilder();
-                        var staticFieldsBytesWritten = 0u;
+                        ulong staticFieldsBytesWritten = 0u;
                         _dynamicArrayDataSubSegments.Add(staticFieldsLabel, staticFieldsSubSegment);
                         _typeInfoDataSubSegment.AppendLine($"        dq {staticFieldsLabel}");
                         bytesWritten += 8;
@@ -971,7 +971,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                         PadAlignment(ref bytesWritten, staticFieldsSubSegment, unionVariantFieldOffsets["Variants"].Alignment);
                         var variantsLabel = $"type_{typeId}_variants";
                         var variantsSubSegment = new StringBuilder();
-                        var variantsBytesWritten = 0u;
+                        ulong variantsBytesWritten = 0u;
                         _dynamicArrayDataSubSegments.Add(variantsLabel, variantsSubSegment);
                         _typeInfoDataSubSegment.AppendLine($"        ; Variants");
                         _typeInfoDataSubSegment.AppendLine($"        dq {variantsLabel}");
@@ -1002,7 +1002,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
 
                             var fieldsLabel = $"{variantsLabel}_{variantIndex}_fields";
                             var fieldsSubSegment = new StringBuilder();
-                            var fieldsBytesWritten = 0u;
+                            ulong fieldsBytesWritten = 0u;
                             _dynamicArrayDataSubSegments.Add(fieldsLabel, fieldsSubSegment);
                             variantsSubSegment.AppendLine($"        dq {fieldsLabel}");
                             variantsBytesWritten += 8;
@@ -1461,13 +1461,13 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
 
     private readonly List<KeyValuePair<ILoweredTypeReference, TypeSizeInfo>> _typeSizes = [];
 
-    private sealed record VariantSizeInfo(uint? Size, Dictionary<string, FieldSize> FieldOffsets);
+    private sealed record VariantSizeInfo(ulong? Size, Dictionary<string, FieldSize> FieldOffsets);
     private sealed record TypeSizeInfo(
-        uint? Size,
+        ulong? Size,
         uint Alignment,
         Dictionary<string, VariantSizeInfo> VariantSizeInfo);
 
-    private sealed record FieldSize(uint Offset, uint? Size, uint Alignment);
+    private sealed record FieldSize(ulong Offset, ulong? Size, uint Alignment);
 
     private static bool AreTypeReferencesEqual(ILoweredTypeReference left, ILoweredTypeReference right)
     {
@@ -1522,7 +1522,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
             return foundTypeReference.Value;
         }
 
-        uint? size = 0u;
+        ulong? size = 0u;
         var alignment = 1u;
         var dataTypeVariantSizeInfo = new Dictionary<string, VariantSizeInfo>();
 
@@ -1582,7 +1582,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
 
                     foreach (var variant in dataType.Variants)
                     {
-                        uint? variantSize = 0u;
+                        ulong? variantSize = 0u;
                         var variantAlignment = 1u;
                         var variantFieldOffsets = new Dictionary<string, FieldSize>();
 
@@ -1706,7 +1706,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         return typeSize;
     }
 
-    private static byte AlignInt(ref uint? value, uint alignBy)
+    private static byte AlignInt(ref ulong? value, uint alignBy)
     {
         if (value is null)
         {
@@ -1726,7 +1726,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         return (byte)increment;
     }
 
-    private static byte AlignInt(ref uint value, uint alignBy)
+    private static byte AlignInt(ref ulong value, uint alignBy)
     {
         if (alignBy == 0)
             return 0;
@@ -1777,7 +1777,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         _currentMethod = method;
         _methodCount++;
         _locals[methodId] = [];
-        var parameterStackOffset = PointerSize * 2; // start with offset by PointerSize * 2 because return address and rbp are on the top of the stack
+        ulong parameterStackOffset = PointerSize * 2; // start with offset by PointerSize * 2 because return address and rbp are on the top of the stack
 
         var returnType = InstantiateTypeReference(method.ReturnValue.Type, currentTypeArguments);
         _ = GetTypeId(returnType, currentTypeArguments);
@@ -1854,7 +1854,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
             parameterStackOffset += size;
         }
 
-        var localStackOffset = 0u;
+        ulong localStackOffset = 0u;
 
         IEnumerable<MethodLocal> locals = method.Locals;
         if (returnSize.Size > MaxParameterSize)
@@ -1946,11 +1946,11 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         if (localStackOffset > 0)
         {
             var pushedRegisterBytes = registersUsedInMethod.Length * PointerSize;
-            var totalFixedFrameSize = pushedRegisterBytes + localStackOffset;
+            var totalFixedFrameSize = (ulong)pushedRegisterBytes + localStackOffset;
             var alignmentSize = 16;
 
             // amount needed to make final rsp 16-byte aligned
-            var alignmentPadding = (alignmentSize - ((PointerSize + totalFixedFrameSize) % alignmentSize)) % alignmentSize;
+            var alignmentPadding = (int)((ulong)alignmentSize - ((PointerSize + totalFixedFrameSize) % (ulong)alignmentSize)) % alignmentSize;
 
             localStackOffset += (uint)alignmentPadding;
 
@@ -2002,7 +2002,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
             method.UnwindContinueToBlock);
     }
 
-    private static string FormatOffset(int offset) => offset switch
+    private static string FormatOffset(long offset) => offset switch
     {
         0 => "",
         < 0 => $"-{-offset}",
@@ -2185,7 +2185,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
 
                     MoveOperandToDestination(left, leftOperandRegister, currentTypeArguments);
                     MoveOperandToDestination(right, rightOperandRegister, currentTypeArguments);
-                    _methodBody.AppendLine($"    add     {leftOperandRegister.ToAsm(size)}, {rightOperandRegister.ToAsm(size)}");
+                    _methodBody.AppendLine($"    add     {leftOperandRegister.ToAsm((byte)size)}, {rightOperandRegister.ToAsm((byte)size)}");
                     MoveIntoPlace(destination, leftOperandRegister, size);
                     break;
                 }
@@ -2196,7 +2196,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
 
                     MoveOperandToDestination(left, leftOperandRegister, currentTypeArguments);
                     MoveOperandToDestination(right, rightOperandRegister, currentTypeArguments);
-                    _methodBody.AppendLine($"    sub     {leftOperandRegister.ToAsm(size)}, {rightOperandRegister.ToAsm(size)}");
+                    _methodBody.AppendLine($"    sub     {leftOperandRegister.ToAsm((byte)size)}, {rightOperandRegister.ToAsm((byte)size)}");
                     MoveIntoPlace(destination, leftOperandRegister, size);
                     break;
                 }
@@ -2214,8 +2214,8 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                     // imul with one operand implicitly goes into the a register (rax or al),
                     // and the destination is in the a register too
                     _methodBody.AppendLine(intSigned == IntSigned.Signed
-                        ? $"    imul    {rightOperandRegister.ToAsm(size)}"
-                        : $"    mul     {rightOperandRegister.ToAsm(size)}");
+                        ? $"    imul    {rightOperandRegister.ToAsm((byte)size)}"
+                        : $"    mul     {rightOperandRegister.ToAsm((byte)size)}");
 
                     MoveIntoPlace(destination, leftOperandRegister, size);
                     break;
@@ -2245,7 +2245,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                             8 => "    cqo", // quotent in rax, remainder in rdx
                             _ => throw new UnreachableException()
                         });
-                        _methodBody.AppendLine($"    idiv    {rightOperandRegister.ToAsm(size)}");
+                        _methodBody.AppendLine($"    idiv    {rightOperandRegister.ToAsm((byte)size)}");
                     }
                     else
                     {
@@ -2263,7 +2263,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                             _ => throw new UnreachableException()
                         });
 
-                        _methodBody.AppendLine($"    div     {rightOperandRegister.ToAsm(size)}");
+                        _methodBody.AppendLine($"    div     {rightOperandRegister.ToAsm((byte)size)}");
                     }
 
                     if (size != 1)
@@ -2284,7 +2284,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                     MoveOperandToDestination(right, rightOperandRegister, currentTypeArguments);
                     var isSigned = GetIntSigned(left, currentTypeArguments) == IntSigned.Signed;
 
-                    _methodBody.AppendLine($"    cmp     {leftOperandRegister.ToAsm(size)}, {rightOperandRegister.ToAsm(size)}");
+                    _methodBody.AppendLine($"    cmp     {leftOperandRegister.ToAsm((byte)size)}, {rightOperandRegister.ToAsm((byte)size)}");
                     _methodBody.AppendLine($"    {(isSigned ? "setl" : "setb")}   {leftOperandRegister.ToAsm(1)}");
                     MoveIntoPlace(destination, leftOperandRegister, 1);
 
@@ -2299,7 +2299,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                     MoveOperandToDestination(right, rightOperandRegister, currentTypeArguments);
                     var isSigned = GetIntSigned(left, currentTypeArguments) == IntSigned.Signed;
 
-                    _methodBody.AppendLine($"    cmp     {leftOperandRegister.ToAsm(size)}, {rightOperandRegister.ToAsm(size)}");
+                    _methodBody.AppendLine($"    cmp     {leftOperandRegister.ToAsm((byte)size)}, {rightOperandRegister.ToAsm((byte)size)}");
                     _methodBody.AppendLine($"    {(isSigned ? "setle" : "setbe")}   {leftOperandRegister.ToAsm(1)}");
                     MoveIntoPlace(destination, leftOperandRegister, 1);
                     break;
@@ -2312,7 +2312,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
 
                     MoveOperandToDestination(left, leftOperandRegister, currentTypeArguments);
                     MoveOperandToDestination(right, rightOperandRegister, currentTypeArguments);
-                    _methodBody.AppendLine($"    cmp     {leftOperandRegister.ToAsm(size)}, {rightOperandRegister.ToAsm(size)}");
+                    _methodBody.AppendLine($"    cmp     {leftOperandRegister.ToAsm((byte)size)}, {rightOperandRegister.ToAsm((byte)size)}");
                     _methodBody.AppendLine($"    {(isSigned ? "setg" : "seta")}   {leftOperandRegister.ToAsm(1)}");
                     MoveIntoPlace(destination, leftOperandRegister, 1);
                     break;
@@ -2326,7 +2326,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                     MoveOperandToDestination(right, rightOperandRegister, currentTypeArguments);
                     var isSigned = GetIntSigned(left, currentTypeArguments) == IntSigned.Signed;
 
-                    _methodBody.AppendLine($"    cmp     {leftOperandRegister.ToAsm(size)}, {rightOperandRegister.ToAsm(size)}");
+                    _methodBody.AppendLine($"    cmp     {leftOperandRegister.ToAsm((byte)size)}, {rightOperandRegister.ToAsm((byte)size)}");
                     _methodBody.AppendLine($"    {(isSigned ? "setge" : "setae")}   {leftOperandRegister.ToAsm(1)}");
                     MoveIntoPlace(destination, leftOperandRegister, 1);
                     break;
@@ -2339,7 +2339,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                     MoveOperandToDestination(left, leftOperandRegister, currentTypeArguments);
                     MoveOperandToDestination(right, rightOperandRegister, currentTypeArguments);
 
-                    _methodBody.AppendLine($"    cmp     {leftOperandRegister.ToAsm(size)}, {rightOperandRegister.ToAsm(size)}");
+                    _methodBody.AppendLine($"    cmp     {leftOperandRegister.ToAsm((byte)size)}, {rightOperandRegister.ToAsm((byte)size)}");
                     _methodBody.AppendLine($"    sete   {leftOperandRegister.ToAsm(1)}");
                     MoveIntoPlace(destination, leftOperandRegister, 1);
                     break;
@@ -2352,7 +2352,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                     MoveOperandToDestination(left, leftOperandRegister, currentTypeArguments);
                     MoveOperandToDestination(right, rightOperandRegister, currentTypeArguments);
 
-                    _methodBody.AppendLine($"    cmp     {leftOperandRegister.ToAsm(size)}, {rightOperandRegister.ToAsm(size)}");
+                    _methodBody.AppendLine($"    cmp     {leftOperandRegister.ToAsm((byte)size)}, {rightOperandRegister.ToAsm((byte)size)}");
                     _methodBody.AppendLine($"    setne   {leftOperandRegister.ToAsm(1)}");
                     MoveIntoPlace(destination, leftOperandRegister, 1);
                     break;
@@ -2408,14 +2408,14 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                     var elementSize = GetTypeSize(elementType, currentTypeArguments);
                     Debug.Assert(place.IsMemoryPlace);
                     var (remainingOffset, addressRegister, freeRegister) = FollowOffsetPointerChain(place);
-                    for (var i = 0; i < fill.Count; i++)
+                    for (ulong i = 0; i < fill.Count; i++)
                     {
                         MoveOperandToDestination(
                             fill.Value,
                             new MemoryOffset(
                                 new PointerTo(addressRegister),
                                 null,
-                                (i * (int)elementSize.Size!.Value) + remainingOffset + 8 // + 8 to skip past array length
+                                ((long)(i * elementSize.Size!.Value) + remainingOffset + 8) // + 8 to skip past array length
                             ),
                             currentTypeArguments
                         );
@@ -2446,7 +2446,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                     MoveOperandToDestination(operand, operandRegister, currentTypeArguments);
 
                     // btc instruction must be performed on 16 bit registers or greater
-                    var registerSize = operandRegister.ToAsm(Math.Max(operandSize.Size!.Value, 2));
+                    var registerSize = operandRegister.ToAsm((byte)Math.Max(operandSize.Size!.Value, 2));
                     _methodBody.AppendLine($"    btc     {registerSize}, 0");
                     MoveIntoPlace(place, operandRegister, operandSize.Size!.Value);
                     FreeRegister(operandRegister);
@@ -2457,7 +2457,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                     var operandRegister = AllocateRegister();
                     MoveOperandToDestination(operand, operandRegister, currentTypeArguments);
 
-                    _methodBody.AppendLine($"    neg     {operandRegister.ToAsm(operandSize.Size!.Value)}");
+                    _methodBody.AppendLine($"    neg     {operandRegister.ToAsm((byte)operandSize.Size!.Value)}");
                     MoveIntoPlace(place, operandRegister, operandSize.Size!.Value);
 
                     FreeRegister(operandRegister);
@@ -2514,7 +2514,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                     var operandSize = GetTypeSize(operandType, currentTypeArguments);
                     foreach (var (intCase, jumpTo) in switchInt.Cases)
                     {
-                        _methodBody.AppendLine($"    cmp     {register.ToAsm(operandSize.Size!.Value)}, {intCase}");
+                        _methodBody.AppendLine($"    cmp     {register.ToAsm((byte)operandSize.Size!.Value)}, {intCase}");
                         _methodBody.AppendLine($"    je      {GetBasicBlockLabel(jumpTo)}");
                     }
 
@@ -2530,7 +2530,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                     var size = GetTypeSize(type, currentTypeArguments);
 
                     MoveOperandToDestination(assert.Value, register, currentTypeArguments);
-                    _methodBody.AppendLine($"    cmp     {register.ToAsm(size.Size.NotNull())}, 1");
+                    _methodBody.AppendLine($"    cmp     {register.ToAsm((byte)size.Size.NotNull())}, 1");
                     _methodBody.AppendLine($"    je     {GetBasicBlockLabel(assert.GoTo)}");
 
                     _methodBody.AppendLine($"    sub     rsp, {ShadowSpaceBytes}");
@@ -2674,13 +2674,13 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         var argumentTypes = argumentTypesEnumerable.ToArray();
 
 
-        var parametersSpaceNeeded = (uint)Math.Max((argumentTypes.Length - 4) * MaxParameterSize, 0) + 32;
+        ulong parametersSpaceNeeded = (uint)Math.Max((argumentTypes.Length - 4) * MaxParameterSize, 0) + 32;
 
         // move first four arguments into registers as specified by win 64 calling convention, then
         // shift the remaining arguments up by four so that the 'top' 32 bytes are free and can act as
         // the callee's shadow space
 
-        var largeParametersSpace = 0u;
+        ulong largeParametersSpace = 0u;
 
         var parameterPointers = new Dictionary<int, int>();
 
@@ -2695,8 +2695,8 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                 AlignInt(ref largeParametersSpace, size.Alignment);
                 largeParametersSpace += size.Size!.Value;
                 parameterPointers[i] = -(int)largeParametersSpace;
-                _methodBody.AppendLine($"; Parameter {i} ({size} bytes) at offset {-largeParametersSpace}");
-                MoveOperandToDestination(argument.NotNull(), new MemoryOffset(new PointerTo(Register.StackPointer), null, -(int)largeParametersSpace), currentTypeArguments);
+                _methodBody.AppendLine($"; Parameter {i} ({size} bytes) at offset {-(long)largeParametersSpace}");
+                MoveOperandToDestination(argument.NotNull(), new MemoryOffset(new PointerTo(Register.StackPointer), null, -(long)largeParametersSpace), currentTypeArguments);
             }
         }
 
@@ -2715,7 +2715,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                 1 => Register.D,
                 2 => Register.R8,
                 3 => Register.R9,
-                _ => new MemoryOffset(new PointerTo(Register.StackPointer), null, i * (int)MaxParameterSize)
+                _ => new MemoryOffset(new PointerTo(Register.StackPointer), null, i * MaxParameterSize)
             };
 
             var (type, argument) = argumentTypes[i];
@@ -2846,7 +2846,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         public bool IsImmutable { get; }
         public bool IsMemoryPlace => false;
 
-        public string ToAsm(uint size)
+        public string ToAsm(byte size)
         {
             if (Name is "rsi" or "rdi" or "rbp" or "rsp")
             {
@@ -2870,7 +2870,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
 
     private class MemoryOffset : IAsmPlace
     {
-        public MemoryOffset(IAsmPlace memory, Action<Register>? getOffsetInRegister, int? offset)
+        public MemoryOffset(IAsmPlace memory, Action<Register>? getOffsetInRegister, long? offset)
         {
             if (!memory.IsMemoryPlace)
             {
@@ -2881,7 +2881,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
             Offset = offset;
         }
 
-        public void Deconstruct(out IAsmPlace memory, out Action<Register>? getOffsetInRegister, out int? offset)
+        public void Deconstruct(out IAsmPlace memory, out Action<Register>? getOffsetInRegister, out long? offset)
         {
             memory = Memory;
             getOffsetInRegister = GetOffsetInRegister;
@@ -2890,7 +2890,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
 
         public IAsmPlace Memory { get; }
         public Action<Register>? GetOffsetInRegister { get; }
-        public int? Offset { get; }
+        public long? Offset { get; }
         public bool IsMemoryPlace => true;
     }
 
@@ -2899,7 +2899,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         public bool IsMemoryPlace => true;
     }
 
-    private uint WriteObjectHeaderBlob(StringBuilder sb, ILoweredTypeReference typeReference, IReadOnlyDictionary<LoweredGenericPlaceholder, ILoweredTypeReference> currentTypeArguments)
+    private ulong WriteObjectHeaderBlob(StringBuilder sb, ILoweredTypeReference typeReference, IReadOnlyDictionary<LoweredGenericPlaceholder, ILoweredTypeReference> currentTypeArguments)
     {
         sb.AppendLine($"        dd 0x{GetTypeId(typeReference, currentTypeArguments):X}");
         return 4;
@@ -2918,7 +2918,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         var str = constant.AsSpan();
         _stringDataSubSegment.AppendLine($"    {stringName}:");
 
-        var bytesWritten = WriteObjectHeaderBlob(_stringDataSubSegment, new LoweredConcreteTypeReference(DefId.String, []), currentTypeArguments);
+        ulong bytesWritten = WriteObjectHeaderBlob(_stringDataSubSegment, new LoweredConcreteTypeReference(DefId.String, []), currentTypeArguments);
 
         PadAlignment(ref bytesWritten, _stringDataSubSegment, 8);
 
@@ -3116,7 +3116,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         }
     }
 
-    private (int remainingOffset, Register addressRegister, bool freeRegister) FollowOffsetPointerChain(
+    private (long remainingOffset, Register addressRegister, bool freeRegister) FollowOffsetPointerChain(
         IAsmPlace place)
     {
         Debug.Assert(place is MemoryOffset or PointerTo);
@@ -3139,7 +3139,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
             throw new UnreachableException();
         }
 
-        var constOffset = 0;
+        long constOffset = 0;
         var getOffsetInRegisters = new List<Action<Register>>();
         var offsetRegister = AllocateRegister();
         var freeAddressRegister = false;
@@ -3244,7 +3244,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         FreeRegister(register);
     }
 
-    private void MoveIntoPlace(IAsmPlace destination, IAsmPlace source, uint size)
+    private void MoveIntoPlace(IAsmPlace destination, IAsmPlace source, ulong size)
     {
         if (size == 0)
         {
@@ -3268,14 +3268,14 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         }
     }
 
-    private void MoveIntoPlaceInner(IAsmPlace place, Register register, uint size)
+    private void MoveIntoPlaceInner(IAsmPlace place, Register register, ulong size)
     {
         switch (place)
         {
             case PointerTo or MemoryOffset:
                 {
                     var (remainingOffset, addressRegister, freeRegister) = FollowOffsetPointerChain(place);
-                    _methodBody.AppendLine($"    mov     [{addressRegister.ToAsm(PointerSize)}{FormatOffset(remainingOffset)}], {register.ToAsm(size)}");
+                    _methodBody.AppendLine($"    mov     [{addressRegister.ToAsm(PointerSize)}{FormatOffset(remainingOffset)}], {register.ToAsm((byte)size)}");
                     if (freeRegister)
                     {
                         FreeRegister(addressRegister);
@@ -3285,7 +3285,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
             case Register destinationRegister when destinationRegister == register:
                 throw new InvalidOperationException();
             case Register destinationRegister:
-                _methodBody.AppendLine($"    mov     {destinationRegister.ToAsm(size)}, {register.ToAsm(size)}");
+                _methodBody.AppendLine($"    mov     {destinationRegister.ToAsm((byte)size)}, {register.ToAsm((byte)size)}");
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(place));
@@ -3293,7 +3293,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
 
     }
 
-    private void MoveIntoPlaceInner(IAsmPlace destination, MemoryOffset source, uint size)
+    private void MoveIntoPlaceInner(IAsmPlace destination, MemoryOffset source, ulong size)
     {
         if (size > PointerSize)
         {
@@ -3316,7 +3316,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         var (remainingOffset, addressRegister, freeAddressRegister) = FollowOffsetPointerChain(source);
         var valueRegister = AllocateRegister();
 
-        _methodBody.AppendLine($"    mov     {valueRegister.ToAsm(size)}, [{addressRegister.ToAsm(PointerSize)}{FormatOffset(remainingOffset)}]");
+        _methodBody.AppendLine($"    mov     {valueRegister.ToAsm((byte)size)}, [{addressRegister.ToAsm(PointerSize)}{FormatOffset(remainingOffset)}]");
         if (freeAddressRegister)
         {
             FreeRegister(addressRegister);
@@ -3327,7 +3327,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         FreeRegister(valueRegister);
     }
 
-    private void MoveIntoPlaceInner(IAsmPlace destination, PointerTo source, uint size)
+    private void MoveIntoPlaceInner(IAsmPlace destination, PointerTo source, ulong size)
     {
         if (size > PointerSize)
         {
@@ -3350,7 +3350,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         var (remainingOffset, addressRegister, freeAddressRegister) = FollowOffsetPointerChain(source);
         var valueRegister = AllocateRegister();
 
-        _methodBody.AppendLine($"    mov     {valueRegister.ToAsm(size)}, [{addressRegister.ToAsm(PointerSize)}{FormatOffset(remainingOffset)}]");
+        _methodBody.AppendLine($"    mov     {valueRegister.ToAsm((byte)size)}, [{addressRegister.ToAsm(PointerSize)}{FormatOffset(remainingOffset)}]");
         if (freeAddressRegister)
         {
             FreeRegister(addressRegister);
@@ -3361,7 +3361,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         FreeRegister(valueRegister);
     }
 
-    private void FillMemory(IAsmPlace place, string constantValue, uint size)
+    private void FillMemory(IAsmPlace place, string constantValue, ulong size)
     {
         if (size < PointerSize)
         {
@@ -3375,13 +3375,27 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                 {
                     var (remainingOffset, addressRegister, freeAddressRegister) = FollowOffsetPointerChain(place);
 
-                    var i = 0;
+                    ulong i = 0;
                     while (i < size)
                     {
                         var chunkSize = SizeSpecifiers.Keys.Where(x => i + x <= size).Max();
                         var sizeSpecifier = SizeSpecifiers[chunkSize];
-                        _methodBody.AppendLine($"    mov     {sizeSpecifier} [{addressRegister.ToAsm(PointerSize)}{FormatOffset(remainingOffset + i)}], {constantValue}");
-                        i += (int)chunkSize;
+
+                        Register? tempRegister = null;
+                        if (chunkSize == 8)
+                        {
+                            tempRegister = AllocateRegister();
+                            _methodBody.AppendLine($"    mov     {tempRegister.ToAsm(8)}, {constantValue}");
+                        }
+
+                        _methodBody.AppendLine($"    mov     {sizeSpecifier} [{addressRegister.ToAsm(PointerSize)}{FormatOffset(remainingOffset + (long)i)}], {tempRegister?.ToAsm(chunkSize) ?? constantValue}");
+
+                        if (tempRegister is not null)
+                        {
+                            FreeRegister(tempRegister);
+                        }
+
+                        i += chunkSize;
                     }
 
                     if (freeAddressRegister)
@@ -3399,7 +3413,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         }
     }
 
-    private void MoveIntoPlace(IAsmPlace place, string constantValue, uint size)
+    private void MoveIntoPlace(IAsmPlace place, string constantValue, ulong size)
     {
         if (size == 0)
         {
@@ -3412,14 +3426,28 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
             case PointerTo or MemoryOffset:
                 {
                     var (remainingOffset, addressRegister, freeAddressRegister) = FollowOffsetPointerChain(place);
-                    var i = 0;
+                    ulong i = 0;
 
                     while (i < size)
                     {
                         var chunkSize = SizeSpecifiers.Keys.Where(x => i + x <= size).Max();
                         var sizeSpecifier = SizeSpecifiers[chunkSize];
-                        _methodBody.AppendLine($"    mov     {sizeSpecifier} [{addressRegister.ToAsm(PointerSize)}{FormatOffset(remainingOffset + i)}], {constantValue}");
-                        i += (int)chunkSize;
+
+                        Register? tempRegister = null;
+                        if (chunkSize == 8)
+                        {
+                            tempRegister = AllocateRegister();
+                            _methodBody.AppendLine($"    mov     {tempRegister.ToAsm(8)}, {constantValue}");
+                        }
+
+                        _methodBody.AppendLine($"    mov     {sizeSpecifier} [{addressRegister.ToAsm(PointerSize)}{FormatOffset(remainingOffset + (long)i)}], {tempRegister?.ToAsm(chunkSize) ?? constantValue}");
+
+                        if (tempRegister is not null)
+                        {
+                            FreeRegister(tempRegister);
+                        }
+
+                        i += chunkSize;
                     }
 
                     if (freeAddressRegister)
@@ -3430,7 +3458,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                 }
             case Register register:
                 {
-                    _methodBody.AppendLine($"    mov     {register.ToAsm(size)}, {constantValue}");
+                    _methodBody.AppendLine($"    mov     {register.ToAsm((byte)size)}, {constantValue}");
                     break;
                 }
             default:
@@ -3438,7 +3466,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         }
     }
 
-    private static readonly Dictionary<uint, string> SizeSpecifiers = new()
+    private static readonly Dictionary<byte, string> SizeSpecifiers = new()
     {
         { 1, "BYTE" },
         { 2, "WORD" },

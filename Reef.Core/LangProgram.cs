@@ -174,7 +174,7 @@ public record ArrayTypeIdentifier(
         if (LengthSpecifier is not null)
         {
             sb.Append(';');
-            sb.Append(LengthSpecifier.IntValue);
+            sb.Append(LengthSpecifier.SignedValue?.ToString() ?? LengthSpecifier.UnsignedValue.NotNull().ToString());
         }
         sb.Append(']');
 

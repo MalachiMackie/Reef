@@ -22,21 +22,39 @@ public record StringToken : Token
 
 public record IntToken : Token
 {
-    public required int IntValue { get; init; }
+    public long? SignedValue { get; }
+    public ulong? UnsignedValue { get; }
+
+    public IntToken(long signedValue)
+    {
+        SignedValue = signedValue;
+    }
+
+    public IntToken(ulong unsignedValue)
+    {
+        UnsignedValue = unsignedValue;
+    }
+
+    public IntToken()
+    {
+        throw new InvalidOperationException();
+    }
 
     public override string ToString()
     {
         return Type switch
         {
-            TokenType.IntLiteral => $"{IntValue}",
+            TokenType.IntLiteral => SignedValue?.ToString() ?? UnsignedValue.NotNull().ToString(),
             _ => throw new ArgumentOutOfRangeException()
         };
     }
 }
 
+public record struct IntLiteral(long SignedValue, ulong UnsignedValue);
+
 public record Token
 {
-    public TokenType Type { get; private init; }
+    public TokenType Type { get; protected init; }
 
     public required SourceSpan SourceSpan { get; init; }
 
@@ -280,9 +298,22 @@ public record Token
         return new StringToken { StringValue = value, Type = TokenType.CharLiteral, SourceSpan = sourceSpan };
     }
 
-    public static IntToken IntLiteral(int value, SourceSpan sourceSpan)
+    public static IntToken IntLiteral(long value, SourceSpan sourceSpan)
     {
-        return new IntToken { IntValue = value, Type = TokenType.IntLiteral, SourceSpan = sourceSpan };
+        return new IntToken(value)
+        {
+            SourceSpan = sourceSpan,
+            Type = TokenType.IntLiteral
+        };
+    }
+
+    public static IntToken IntLiteral(ulong value, SourceSpan sourceSpan)
+    {
+        return new IntToken(value)
+        {
+            SourceSpan = sourceSpan,
+            Type = TokenType.IntLiteral
+        };
     }
 
     public static Token Todo(SourceSpan sourceSpan)

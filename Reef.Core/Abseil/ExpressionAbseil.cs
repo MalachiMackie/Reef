@@ -199,7 +199,7 @@ public partial class ProgramAbseil
             new Use(new UIntConstant(arrayType.Length.Value, 8))
         ));
 
-        Debug.Assert(arrayType.Length == collectionExpression.Elements.Count);
+        Debug.Assert(arrayType.Length == (ulong)collectionExpression.Elements.Count);
 
         for (var i = 0u; i < collectionExpression.Elements.Count; i++)
         {
@@ -2545,10 +2545,10 @@ public partial class ProgramAbseil
                     Token: StringToken { Type: TokenType.CharLiteral, StringValue: var charLiteral }
                 }
             } => new OperandResult(new CharConstant(charLiteral.Single())),
-            { ValueAccessor: { AccessType: ValueAccessType.Literal, Token: IntToken { Type: TokenType.IntLiteral, IntValue: var intValue } }, ResolvedType: var resolvedType } =>
+            { ValueAccessor: { AccessType: ValueAccessType.Literal, Token: IntToken { Type: TokenType.IntLiteral, SignedValue: var intValue, UnsignedValue: var uintValue } }, ResolvedType: var resolvedType } =>
                 new OperandResult(IsIntSigned(resolvedType.NotNull())
-                    ? new IntConstant(intValue, GetIntSize(resolvedType.NotNull()))
-                    : new UIntConstant((ulong)intValue, GetIntSize(resolvedType.NotNull()))),
+                    ? new IntConstant(intValue ?? (long)uintValue.NotNull(), GetIntSize(resolvedType))
+                    : new UIntConstant(uintValue ?? (ulong)intValue.NotNull(), GetIntSize(resolvedType))),
             { ValueAccessor: { AccessType: ValueAccessType.Literal, Token.Type: TokenType.True } } => new OperandResult(new BoolConstant(true)),
             { ValueAccessor: { AccessType: ValueAccessType.Literal, Token.Type: TokenType.False } } => new OperandResult(new BoolConstant(false)),
             { ValueAccessor.AccessType: ValueAccessType.Variable, ReferencedVariable: { } variable } => VariableAccess(variable),

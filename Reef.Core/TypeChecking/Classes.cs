@@ -150,7 +150,7 @@ public partial class TypeChecker
         public ArrayType(
             ITypeReference? elementType,
             bool boxed,
-            uint length)
+            ulong length)
         {
             ElementType = ArrayTypeSignature.Instance.ElementGenericPlaceholder.Instantiate(this, elementType);
             Boxed = boxed;
@@ -188,7 +188,7 @@ public partial class TypeChecker
 
         public IReadOnlyList<GenericTypeReference> TypeArguments => [ElementType];
         public GenericTypeReference ElementType { get; }
-        public uint? Length { get; }
+        public ulong? Length { get; }
         public bool IsDynamic => Length is null;
 
         public bool Boxed { get; }

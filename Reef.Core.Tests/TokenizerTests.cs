@@ -302,6 +302,8 @@ public class TokenizerTests
                 new [] { Token.StringLiteral("\r", new SourceSpan(SourcePosition.Default, 4)) },
             ],
             ["-1", new[] { Token.IntLiteral(-1, new SourceSpan(new SourcePosition(0, 0, 0), 2)) }],
+            ["-10", new[] { Token.IntLiteral(-10, new SourceSpan(new SourcePosition(0, 0, 0), 3)) }],
+            ["-9223372036854775808", new[] { Token.IntLiteral(-9223372036854775808, new SourceSpan(new SourcePosition(0, 0, 0), 20)) }],
             ["0", new[] { Token.IntLiteral(0, new SourceSpan(new SourcePosition(0, 0, 0), 1)) }],
             ["1", new[] { Token.IntLiteral(1, new SourceSpan(new SourcePosition(0, 0, 0), 1)) }],
             ["2", new[] { Token.IntLiteral(2, new SourceSpan(new SourcePosition(0, 0, 0), 1)) }],

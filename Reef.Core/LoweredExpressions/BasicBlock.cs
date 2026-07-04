@@ -23,7 +23,7 @@ public record SwitchInt(
     Dictionary<int, BasicBlockId> Cases,
     BasicBlockId Otherwise) : ITerminator;
 
-public record FillArray(IOperand Value, uint Count) : IRValue;
+public record FillArray(IOperand Value, ulong Count) : IRValue;
 
 public interface IFunctionReference;
 
@@ -163,7 +163,7 @@ public record LoweredGenericPlaceholder(DefId OwnerDefinitionId, string Placehol
     public string FullyQualifiedName => $"{OwnerDefinitionId.FullName}:::{PlaceholderName}";
 }
 
-public record LoweredArray(ILoweredTypeReference ElementType, uint? Length) : ILoweredTypeReference
+public record LoweredArray(ILoweredTypeReference ElementType, ulong? Length) : ILoweredTypeReference
 {
     public override string? ToString()
     {
