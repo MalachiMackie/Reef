@@ -141,6 +141,19 @@ public class StringTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task PrintStringEscapedQuote()
+    {
+        await SetupTest("""
+            print_string("\"hi\"");
+            """);
+
+        var result = await Run();
+
+        result.ExitCode.Should().Be(0);
+        result.StandardOutput.Should().Be("\"hi\"");
+    }
+
+    [Fact]
     public async Task PrintStringConsistingOnlyOfEscapedCharacter()
     {
         await SetupTest("print_string(\"\\n\");");

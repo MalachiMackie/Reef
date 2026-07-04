@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Diagnostics;
 using System.Text;
 using Microsoft.Extensions.Logging;
@@ -2905,6 +2906,10 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         return 4;
     }
 
+    private static readonly SearchValues<char> _specialHandledChars = SearchValues.Create(
+        // https://www.ascii-code.com/characters/white-space-characters
+        (char)9, (char)10, (char)11, (char)12, (char)13,
+        '"');
 
     private string GetStringConstantLabel(string constant, IReadOnlyDictionary<LoweredGenericPlaceholder, ILoweredTypeReference> currentTypeArguments)
     {
@@ -2925,14 +2930,13 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
         _stringDataSubSegment.AppendLine($"        dq 0x{constant.Length:X}");
         _stringDataSubSegment.Append("        db ");
 
-        // https://www.ascii-code.com/characters/white-space-characters
-        var whitespaceIndex = str.IndexOfAnyInRange((char)9, (char)13);
+        var specialCharacterIndex = str.IndexOfAny(_specialHandledChars);
 
         var started = false;
         var inStringLiteral = false;
-        while (whitespaceIndex >= 0)
+        while (specialCharacterIndex >= 0)
         {
-            var segment = str[..whitespaceIndex];
+            var segment = str[..specialCharacterIndex];
             if (segment.Length > 0)
             {
                 if (started)
@@ -2957,9 +2961,9 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
             {
                 _stringDataSubSegment.Append(", ");
             }
-            _stringDataSubSegment.Append((int)str[whitespaceIndex]);
-            str = str[(whitespaceIndex + 1)..];
-            whitespaceIndex = str.IndexOfAnyInRange((char)9, (char)13);
+            _stringDataSubSegment.Append((int)str[specialCharacterIndex]);
+            str = str[(specialCharacterIndex + 1)..];
+            specialCharacterIndex = str.IndexOfAny(_specialHandledChars);
             started = true;
         }
 
