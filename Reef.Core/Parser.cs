@@ -3315,6 +3315,7 @@ public sealed class Parser : IDisposable
             TokenType.Equals => BinaryOperatorType.ValueAssignment,
             TokenType.DoubleAmpersand => BinaryOperatorType.BooleanAnd,
             TokenType.DoubleBar => BinaryOperatorType.BooleanOr,
+            TokenType.Percent => BinaryOperatorType.Modulo,
             _ => null
         };
 
@@ -3329,6 +3330,7 @@ public sealed class Parser : IDisposable
             BinaryOperatorType.Divide => 7,
             BinaryOperatorType.Plus => 6,
             BinaryOperatorType.Minus => 6,
+            BinaryOperatorType.Modulo => 8,
             BinaryOperatorType.GreaterThan => 5,
             BinaryOperatorType.GreaterThanOrEqual => 5,
             BinaryOperatorType.LessThan => 5,

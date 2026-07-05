@@ -1714,6 +1714,14 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
             {
                 {
                     "main.rf", """
+                                var a = 1 % 2;
+                               """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf", """
                                var a = 1;
                                var b: u8 = a;
                                """
@@ -3926,6 +3934,21 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
     {
         return new TheoryData<string, Dictionary<string, (string contents, IReadOnlyList<TypeCheckerError> expectedErrors)>>
         {
+            {
+                "modulo on char",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            var a = 'a' % 'b';
+                            """,
+                            [TypeCheckerError.MismatchedTypes(SourceRange.Default, [Int64, Int32, Int16, Int8, UInt64, UInt32, UInt16, UInt8], Char)]
+                        )
+                    }
+                }
+            },
             {
                 "variantOf different types",
                 new()
@@ -9655,6 +9678,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
     private static readonly ITypeReference UInt16 = new TestClassReference(DefId.UInt16, [], false);
     private static readonly ITypeReference UInt8 = new TestClassReference(DefId.UInt8, [], false);
     private static readonly ITypeReference String = new TestClassReference(DefId.String, [], false);
+    private static readonly ITypeReference Char = new TestClassReference(DefId.Char, [], false);
     private static readonly ITypeReference Boolean = new TestClassReference(DefId.Boolean, [], false);
     private static readonly ITypeReference Unit = new TestClassReference(DefId.Unit, [], false);
     private static readonly ITypeReference UnspecifiedSizedIntType = new UnspecifiedSizedIntType() { Boxed = false };

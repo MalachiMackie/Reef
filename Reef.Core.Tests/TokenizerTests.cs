@@ -178,6 +178,7 @@ public class TokenizerTests
             ["}", new[] { Token.RightBrace(new SourceSpan(new SourcePosition(0, 0, 0), 1)) }],
             ["<", new[] { Token.LeftAngleBracket(new SourceSpan(new SourcePosition(0, 0, 0), 1)) }],
             ["<=", new[] { Token.LeftAngleBracketEquals(new SourceSpan(new SourcePosition(0, 0, 0), 2)) }],
+            ["%", new[] { Token.Percent(new SourceSpan(new SourcePosition(0, 0, 0), 1)) }],
             [">", new[] { Token.RightAngleBracket(new SourceSpan(new SourcePosition(0, 0, 0), 1)) }],
             [">=", new[] { Token.RightAngleBracketEquals(new SourceSpan(new SourcePosition(0, 0, 0), 2)) }],
             ["++", new[] { Token.DoublePlus(new SourceSpan(new SourcePosition(0, 0, 0), 2)) }],

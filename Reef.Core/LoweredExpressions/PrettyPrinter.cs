@@ -404,20 +404,7 @@ public class PrettyPrinter(LoweredProgram module)
         {
             case BinaryOperation binaryOperation:
                 {
-                    _stringBuilder.Append(binaryOperation.Kind switch
-                    {
-                        BinaryOperationKind.Add => "Add",
-                        BinaryOperationKind.Subtract => "Subtract",
-                        BinaryOperationKind.Multiply => "Multiply",
-                        BinaryOperationKind.Divide => "Divide",
-                        BinaryOperationKind.LessThan => "LessThan",
-                        BinaryOperationKind.LessThanOrEqual => "LessThanOrEqual",
-                        BinaryOperationKind.GreaterThan => "GreaterThan",
-                        BinaryOperationKind.GreaterThanOrEqual => "GreaterThanOrEqual",
-                        BinaryOperationKind.Equal => "Equal",
-                        BinaryOperationKind.NotEqual => "NotEqual",
-                        _ => throw new ArgumentOutOfRangeException()
-                    });
+                    _stringBuilder.Append(binaryOperation.Kind.ToString());
                     _stringBuilder.Append('(');
                     PrettyPrintJoin([binaryOperation.LeftOperand, binaryOperation.RightOperand], PrettyPrintOperand, ", ");
                     _stringBuilder.Append(')');

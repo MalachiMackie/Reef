@@ -185,6 +185,7 @@ public class ReefCompiler(
             if (tokens.Errors.Count > 0)
             {
                 yield return (null, tokens.Errors, projectRelativeFileName, moduleId);
+                continue;
             }
 
             var parseResult = Parser.Parse(moduleId, tokens.Tokens);

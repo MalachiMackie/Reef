@@ -94,7 +94,8 @@ public enum BinaryOperationKind
     GreaterThan,
     GreaterThanOrEqual,
     Equal,
-    NotEqual
+    NotEqual,
+    Modulo,
 }
 
 public enum UnaryOperationKind

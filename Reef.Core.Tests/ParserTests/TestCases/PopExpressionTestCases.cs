@@ -416,6 +416,7 @@ public static class PopExpressionTestCases
                 Token.ForwardSlash(SourceSpan.Default)))),
             ("a && b", BinaryOperatorExpression(BinaryOperatorType.BooleanAnd, VariableAccessor("a"), VariableAccessor("b"))),
             ("a || b", BinaryOperatorExpression(BinaryOperatorType.BooleanOr, VariableAccessor("a"), VariableAccessor("b"))),
+            ("a % b", Modulo(VariableAccessor("a"), VariableAccessor("b"))),
             ("var a: int = b", new VariableDeclarationExpression(
                 new VariableDeclaration(
                     Identifier("a"),
@@ -974,6 +975,13 @@ public static class PopExpressionTestCases
                     UnaryOperatorExpression(UnaryOperatorType.Decrement,
                         VariableAccessor("b")))
             ),
+            ( // modulo
+                "a > b % c",
+                GreaterThan(
+                    VariableAccessor("a"),
+                    Modulo(VariableAccessor("b"), VariableAccessor("c"))
+                )
+            ),
             // __Less than
             ( // greater than
                 "a < b > c",
@@ -1174,6 +1182,13 @@ public static class PopExpressionTestCases
                     VariableAccessor("a"),
                     UnaryOperatorExpression(UnaryOperatorType.Decrement,
                         VariableAccessor("b")))
+            ),
+            ( // modulo
+                "a < b % c",
+                LessThan(
+                    VariableAccessor("a"),
+                    Modulo(VariableAccessor("b"), VariableAccessor("c"))
+                )
             ),
             // __multiply
             ( // greater than
@@ -1376,6 +1391,10 @@ public static class PopExpressionTestCases
                     UnaryOperatorExpression(UnaryOperatorType.Decrement,
                         VariableAccessor("b")))
             ),
+            ( // modulo
+                "a * b % c",
+                Multiply(VariableAccessor("a"), Modulo(VariableAccessor("b"), VariableAccessor("c")))
+            ),
             // __divide
             ( // greater than
                 "a / b > c",
@@ -1576,6 +1595,10 @@ public static class PopExpressionTestCases
                     VariableAccessor("a"),
                     UnaryOperatorExpression(UnaryOperatorType.Decrement,
                         VariableAccessor("b")))
+            ),
+            ( // modulo
+                "a / b % c",
+                Divide(VariableAccessor("a"), Modulo(VariableAccessor("b"), VariableAccessor("c")))
             ),
             // __plus
             ( // greater than
@@ -1778,6 +1801,10 @@ public static class PopExpressionTestCases
                     UnaryOperatorExpression(UnaryOperatorType.Decrement,
                         VariableAccessor("b")))
             ),
+            ( // modulo
+                "a + b % c",
+                Plus(VariableAccessor("a"), Modulo(VariableAccessor("b"), VariableAccessor("c")))
+            ),
             // __minus
             ( // greater than
                 "a - b > c",
@@ -1979,6 +2006,10 @@ public static class PopExpressionTestCases
                     UnaryOperatorExpression(UnaryOperatorType.Decrement,
                         VariableAccessor("b")))
             ),
+            ( // modulo
+                "a - b % c",
+                Minus(VariableAccessor("a"), Modulo(VariableAccessor("b"), VariableAccessor("c")))
+            ),
             // __FallOut
             ( // fallout
                 "a??",
@@ -2148,6 +2179,13 @@ public static class PopExpressionTestCases
                 UnaryOperatorExpression(UnaryOperatorType.Decrement,
                     UnaryOperatorExpression(UnaryOperatorType.FallOut,
                         VariableAccessor("a")))
+            ),
+            ( // less or equal to
+                "a? % b",
+                BinaryOperatorExpression(BinaryOperatorType.Modulo,
+                    UnaryOperatorExpression(UnaryOperatorType.FallOut,
+                        VariableAccessor("a")),
+                    VariableAccessor("b"))
             ),
             // __ value assignment
             ( // greater than
@@ -2328,6 +2366,14 @@ public static class PopExpressionTestCases
                     VariableAccessor("a"),
                     UnaryOperatorExpression(UnaryOperatorType.Decrement,
                         VariableAccessor("b")))
+            ),
+            ( // modulo
+                "a = b % c",
+                BinaryOperatorExpression(BinaryOperatorType.ValueAssignment,
+                    VariableAccessor("a"),
+                    BinaryOperatorExpression(BinaryOperatorType.Modulo,
+                        VariableAccessor("b"),
+                        VariableAccessor("c")))
             ),
             // __ equality check
             ( // greater than
@@ -2530,6 +2576,14 @@ public static class PopExpressionTestCases
                     UnaryOperatorExpression(UnaryOperatorType.Decrement,
                         VariableAccessor("b")))
             ),
+            ( // modulo
+                "a == b % c",
+                BinaryOperatorExpression(BinaryOperatorType.EqualityCheck,
+                    VariableAccessor("a"),
+                    BinaryOperatorExpression(BinaryOperatorType.Modulo,
+                        VariableAccessor("b"),
+                        VariableAccessor("c")))
+            ),
             // __ negative equality check
             ( // greater than
                 "a != b > c",
@@ -2731,6 +2785,14 @@ public static class PopExpressionTestCases
                     UnaryOperatorExpression(UnaryOperatorType.Decrement,
                         VariableAccessor("b")))
             ),
+            ( // modulo
+                "a != b % c",
+                BinaryOperatorExpression(BinaryOperatorType.NegativeEqualityCheck,
+                    VariableAccessor("a"),
+                    BinaryOperatorExpression(BinaryOperatorType.Modulo,
+                        VariableAccessor("b"),
+                        VariableAccessor("c")))
+            ),
             // __Member Access
             ( // greater than
                 "a.b > c",
@@ -2882,6 +2944,14 @@ public static class PopExpressionTestCases
                 UnaryOperatorExpression(UnaryOperatorType.Decrement,
                     MemberAccess(VariableAccessor("a"), "b"))
             ),
+            ( // modulo
+                "a.b % c",
+                BinaryOperatorExpression(BinaryOperatorType.Modulo,
+                    MemberAccess(
+                        VariableAccessor("a"), "b"
+                    ),
+                    VariableAccessor("c"))
+            ),
             // __Static Member Access
             ( // greater than
                 "a::b > c",
@@ -3030,6 +3100,14 @@ public static class PopExpressionTestCases
                 "a::b--",
                 UnaryOperatorExpression(UnaryOperatorType.Decrement,
                     StaticMemberAccess(NamedTypeIdentifier("a"), "b"))
+            ),
+            ( // modulo
+                "a::b % c",
+                BinaryOperatorExpression(BinaryOperatorType.Modulo,
+                    StaticMemberAccess(
+                        NamedTypeIdentifier("a"), "b"
+                    ),
+                    VariableAccessor("c"))
             ),
             // __Not
             ( // fallout
@@ -3201,6 +3279,12 @@ public static class PopExpressionTestCases
                     UnaryOperatorExpression(UnaryOperatorType.Decrement,
                         VariableAccessor("a")))
             ),
+            ( // modulo
+                "!a % b",
+                BinaryOperatorExpression(BinaryOperatorType.Modulo,
+                    Not(VariableAccessor("a")),
+                    VariableAccessor("b"))
+            ),
             // __And
             ( // fallout
                 "a && !b",
@@ -3352,6 +3436,13 @@ public static class PopExpressionTestCases
                     VariableAccessor("a"),
                     UnaryOperatorExpression(UnaryOperatorType.Decrement,
                         VariableAccessor("b")))
+            ),
+            ( // modulo
+                "a && b % c",
+                BoolAnd(
+                    VariableAccessor("a"),
+                    Modulo(VariableAccessor("b"), VariableAccessor("c"))
+                )
             ),
             // __Or
             ( // fallout
@@ -3505,6 +3596,13 @@ public static class PopExpressionTestCases
                     UnaryOperatorExpression(UnaryOperatorType.Decrement,
                         VariableAccessor("b")))
             ),
+            ( // modulo
+                "a || b % c",
+                BoolOr(
+                    VariableAccessor("a"),
+                    Modulo(VariableAccessor("b"), VariableAccessor("c"))
+                )
+            ),
             // __Negate
             ( // fallout
                 "-a?",
@@ -3620,6 +3718,14 @@ public static class PopExpressionTestCases
                 UnaryOperatorExpression(UnaryOperatorType.Negate,
                     UnaryOperatorExpression(UnaryOperatorType.Decrement,
                         VariableAccessor("a")))
+            ),
+            ( // modulo
+                "-a % b",
+                BinaryOperatorExpression(BinaryOperatorType.Modulo,
+                    UnaryOperatorExpression(UnaryOperatorType.Negate,
+                        VariableAccessor("a")
+                    ),
+                    VariableAccessor("b"))
             ),
             // __greater than or equal
             ( // greater than
@@ -3825,6 +3931,13 @@ public static class PopExpressionTestCases
                     UnaryOperatorExpression(UnaryOperatorType.Decrement,
                         VariableAccessor("b")))
             ),
+            ( // modulo
+                "a >= b % c",
+                GreaterOrEqual(
+                    VariableAccessor("a"),
+                    Modulo(VariableAccessor("b"), VariableAccessor("c"))
+                )
+            ),
             // __Less than or equal
             ( // greater than
                 "a <= b > c",
@@ -4026,6 +4139,13 @@ public static class PopExpressionTestCases
                     UnaryOperatorExpression(UnaryOperatorType.Decrement,
                         VariableAccessor("b")))
             ),
+            ( // modulo
+                "a <= b % c",
+                LessOrEqual(
+                    VariableAccessor("a"),
+                    Modulo(VariableAccessor("b"), VariableAccessor("c"))
+                )
+            ),
             // __Increment
             ( // fallout
                 "a++?",
@@ -4194,6 +4314,14 @@ public static class PopExpressionTestCases
                     UnaryOperatorExpression(UnaryOperatorType.Increment,
                         VariableAccessor("a")))
             ),
+            ( // modulo
+                "a++ % b",
+                BinaryOperatorExpression(BinaryOperatorType.Modulo,
+                    UnaryOperatorExpression(UnaryOperatorType.Increment,
+                        VariableAccessor("a")
+                    ),
+                    VariableAccessor("b"))
+            ),
             // __Decrement
             ( // fallout
                 "a--?",
@@ -4361,6 +4489,156 @@ public static class PopExpressionTestCases
                 UnaryOperatorExpression(UnaryOperatorType.Decrement,
                     UnaryOperatorExpression(UnaryOperatorType.Decrement,
                         VariableAccessor("a")))
+            ),
+            ( // modulo
+                "a-- % b",
+                BinaryOperatorExpression(BinaryOperatorType.Modulo,
+                    UnaryOperatorExpression(UnaryOperatorType.Decrement,
+                        VariableAccessor("a")
+                    ),
+                    VariableAccessor("b"))
+            ),
+            // __modulo
+            ( // greater than
+                "a % b > c",
+                GreaterThan(
+                    Modulo(VariableAccessor("a"), VariableAccessor("b")),
+                    VariableAccessor("c"))
+            ),
+            ( // less than
+                "a % b < c",
+                LessThan(
+                    Modulo(VariableAccessor("a"), VariableAccessor("b")),
+                    VariableAccessor("c"))
+
+            ),
+            ( // multiply
+                "a % b * c",
+                Multiply(
+                    Modulo(VariableAccessor("a"), VariableAccessor("b")),
+                    VariableAccessor("c"))
+
+            ),
+            ( // divide
+                "a % b / c",
+                Divide(
+                    Modulo(VariableAccessor("a"), VariableAccessor("b")),
+                    VariableAccessor("c"))
+
+            ),
+            ( // plus
+                "a % b + c",
+                Plus(
+                    Modulo(VariableAccessor("a"), VariableAccessor("b")),
+                    VariableAccessor("c"))
+
+            ),
+            ( // minus
+                "a % b - c",
+                Minus(
+                    Modulo(VariableAccessor("a"), VariableAccessor("b")),
+                    VariableAccessor("c"))
+
+            ),
+            ( // fallOut
+                "a % b?",
+                Modulo(
+                    VariableAccessor("a"),
+                    FallOut(VariableAccessor("b")))
+            ),
+            ("a % b = c",
+                ValueAssignment(
+                    Modulo(VariableAccessor("a"), VariableAccessor("b")),
+                    VariableAccessor("c"))),
+            ( // equality check
+                "a % b == c",
+                EqualityCheck(
+                    Modulo(VariableAccessor("a"), VariableAccessor("b")),
+                    VariableAccessor("c"))
+
+            ),
+            ( // negative equality check
+                "a % b != c",
+                NegativeEqualityCheck(
+                    Modulo(VariableAccessor("a"), VariableAccessor("b")),
+                    VariableAccessor("c"))
+
+            ),
+            ( // member access
+                "a % b.c",
+                Modulo(
+                    VariableAccessor("a"),
+                    MemberAccess(VariableAccessor("b"), "c"))
+            ),
+            ( // static member access
+                "a % b::c",
+                Modulo(
+                    VariableAccessor("a"),
+                    StaticMemberAccess(NamedTypeIdentifier("b"), "c"))
+
+            ),
+            ( // not
+                "a % !b",
+                Modulo(
+                    VariableAccessor("a"),
+                    Not(VariableAccessor("b")))
+
+            ),
+            ( // and
+                "a % b && c",
+                BoolAnd(
+                    Modulo(VariableAccessor("a"), VariableAccessor("b")),
+                    VariableAccessor("c"))
+
+            ),
+            ( // or
+                "a % b || c",
+                BoolOr(
+                    Modulo(VariableAccessor("a"), VariableAccessor("b")),
+                    VariableAccessor("c"))
+
+            ),
+            ( // negate
+                "a % -b",
+                Modulo(
+                    VariableAccessor("a"),
+                    Negate(VariableAccessor("b"))
+                )
+            ),
+            ( // greater or equal to
+                "a % b >= c",
+                GreaterOrEqual(
+                    Modulo(VariableAccessor("a"), VariableAccessor("b")),
+                    VariableAccessor("c"))
+
+            ),
+            ( // less or equal to
+                "a % b <= c",
+                LessOrEqual(
+                    Modulo(VariableAccessor("a"), VariableAccessor("b")),
+                    VariableAccessor("c"))
+
+            ),
+            ( // increment
+                "a % b++",
+                Modulo(
+                    VariableAccessor("a"),
+                    Increment(VariableAccessor("b")))
+
+            ),
+            ( // decrement
+                "a % b--",
+                Modulo(
+                    VariableAccessor("a"),
+                    Decrement(VariableAccessor("b")))
+
+            ),
+            ( // modulo
+                "a % b % c",
+                Modulo(
+                    Modulo(VariableAccessor("a"), VariableAccessor("b")),
+                    VariableAccessor("c")
+                )
             ),
         }.Select(x => (x.Source, (IEnumerable<Token>)Tokenizer.Tokenize(x.Source).Tokens, x.ExpectedExpression))];
     }

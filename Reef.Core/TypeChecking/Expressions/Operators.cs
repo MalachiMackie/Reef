@@ -36,6 +36,7 @@ public partial class TypeChecker
             case BinaryOperatorType.Minus:
             case BinaryOperatorType.Multiply:
             case BinaryOperatorType.Divide:
+            case BinaryOperatorType.Modulo:
                 {
                     if (@operator.Left is not null)
                         TypeCheckExpression(@operator.Left);

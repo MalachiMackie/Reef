@@ -67,6 +67,41 @@ public class IntOperations : IntegrationTestBase
         result.StandardOutput.Should().Be("-1");
     }
 
+    [Theory]
+    [MemberData(nameof(IntTypes))]
+    public async Task ModuloIntTypes(string type)
+    {
+        await SetupTest(
+            $"""
+            var a: {type} = 6 % 4;
+            print_{type}(a);
+            """
+        );
+
+        var result = await Run();
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal("2", result.StandardOutput);
+    }
+
+    [Theory]
+    [InlineData(3, 5, 3)]
+    [InlineData(15, 5, 0)]
+    [InlineData(5, 5, 0)]
+    [InlineData(6, 5, 1)]
+    public async Task Modulo(int left, int right, int expected)
+    {
+        await SetupTest(
+            $"""
+            var a = {left} % {right};
+            print_u32(a);
+            """
+        );
+
+        var result = await Run();
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal(expected.ToString(), result.StandardOutput);
+    }
+
     [Fact]
     public async Task Increment()
     {

@@ -342,6 +342,7 @@ public class Tokenizer
             TokenType.Extern when source is "extern" => Token.Extern(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Grab when source is "grab" => Token.Grab(new SourceSpan(position, (ushort)source.Length)),
             TokenType.For when source is "for" => Token.For(new SourceSpan(position, (ushort)source.Length)),
+            TokenType.Percent when source is "%" => Token.Percent(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Boxed when source is "boxed" => Token.Boxed(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Attribute when source is "attribute" => Token.Attribute(new SourceSpan(position, (ushort)source.Length)),
             TokenType.Hash when source is "#" => Token.Hash(new SourceSpan(position, (ushort)source.Length)),
@@ -448,6 +449,9 @@ public class Tokenizer
             case '!':
                 tokens[i++] = TokenType.Bang;
                 tokens[i++] = TokenType.NotEquals;
+                break;
+            case '%':
+                tokens[i++] = TokenType.Percent;
                 break;
             case '(':
                 tokens[i++] = TokenType.LeftParenthesis;
@@ -611,6 +615,7 @@ public class Tokenizer
             TokenType.Extern => Matches(source, "extern"),
             TokenType.Where => Matches(source, "where"),
             TokenType.Hash => Matches(source, "#"),
+            TokenType.Percent => Matches(source, "%"),
             TokenType.Underscore => Matches(source, "_"),
             TokenType.Bang => Matches(source, "!"),
             TokenType.Semicolon => Matches(source, ";"),

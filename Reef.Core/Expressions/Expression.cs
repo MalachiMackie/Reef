@@ -712,7 +712,8 @@ public enum BinaryOperatorType
     NegativeEqualityCheck,
     ValueAssignment,
     BooleanAnd,
-    BooleanOr
+    BooleanOr,
+    Modulo
 }
 
 public enum ValueAccessType

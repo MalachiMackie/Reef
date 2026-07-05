@@ -246,6 +246,71 @@ public static class ExpressionHelpers
         return new GrabExpression(value, SourceRange.Default);
     }
 
+    public static BinaryOperatorExpression Modulo(IExpression left, IExpression right)
+    {
+        return BinaryOperatorExpression(BinaryOperatorType.Modulo, left, right);
+    }
+
+    public static BinaryOperatorExpression GreaterOrEqual(IExpression left, IExpression right)
+    {
+        return BinaryOperatorExpression(BinaryOperatorType.GreaterThanOrEqual, left, right);
+    }
+
+    public static BinaryOperatorExpression LessOrEqual(IExpression left, IExpression right)
+    {
+        return BinaryOperatorExpression(BinaryOperatorType.LessThanOrEqual, left, right);
+    }
+
+    public static BinaryOperatorExpression BoolOr(IExpression left, IExpression right)
+    {
+        return BinaryOperatorExpression(BinaryOperatorType.BooleanOr, left, right);
+    }
+
+    public static BinaryOperatorExpression BoolAnd(IExpression left, IExpression right)
+    {
+        return BinaryOperatorExpression(BinaryOperatorType.BooleanAnd, left, right);
+    }
+
+    public static BinaryOperatorExpression NegativeEqualityCheck(IExpression left, IExpression right)
+    {
+        return BinaryOperatorExpression(BinaryOperatorType.NegativeEqualityCheck, left, right);
+    }
+
+    public static BinaryOperatorExpression EqualityCheck(IExpression left, IExpression right)
+    {
+        return BinaryOperatorExpression(BinaryOperatorType.EqualityCheck, left, right);
+    }
+
+    public static BinaryOperatorExpression ValueAssignment(IExpression left, IExpression right)
+    {
+        return BinaryOperatorExpression(BinaryOperatorType.ValueAssignment, left, right);
+    }
+
+    public static BinaryOperatorExpression Minus(IExpression left, IExpression right)
+    {
+        return BinaryOperatorExpression(BinaryOperatorType.Minus, left, right);
+    }
+
+    public static BinaryOperatorExpression Plus(IExpression left, IExpression right)
+    {
+        return BinaryOperatorExpression(BinaryOperatorType.Plus, left, right);
+    }
+
+    public static BinaryOperatorExpression Divide(IExpression left, IExpression right)
+    {
+        return BinaryOperatorExpression(BinaryOperatorType.Divide, left, right);
+    }
+
+    public static BinaryOperatorExpression LessThan(IExpression left, IExpression right)
+    {
+        return BinaryOperatorExpression(BinaryOperatorType.LessThan, left, right);
+    }
+
+    public static BinaryOperatorExpression GreaterThan(IExpression left, IExpression right)
+    {
+        return BinaryOperatorExpression(BinaryOperatorType.GreaterThan, left, right);
+    }
+
     public static ValueAccessorExpression VariableAccessor(
         string name,
         IReadOnlyList<string>? modulePath = null,
@@ -583,6 +648,7 @@ public static class ExpressionHelpers
                 BinaryOperatorType.Minus => Token.Dash(SourceSpan.Default),
                 BinaryOperatorType.Multiply => Token.Star(SourceSpan.Default),
                 BinaryOperatorType.Divide => Token.ForwardSlash(SourceSpan.Default),
+                BinaryOperatorType.Modulo => Token.Percent(SourceSpan.Default),
                 BinaryOperatorType.EqualityCheck => Token.DoubleEquals(SourceSpan.Default),
                 BinaryOperatorType.NegativeEqualityCheck => Token.NotEquals(SourceSpan.Default),
                 BinaryOperatorType.ValueAssignment => Token.Equals(SourceSpan.Default),

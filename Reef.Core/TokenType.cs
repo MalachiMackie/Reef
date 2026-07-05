@@ -34,6 +34,7 @@ public enum TokenType
     Dash,
     Star,
     ForwardSlash,
+    Percent,
     Dot,
     Mut,
     Turbofish,

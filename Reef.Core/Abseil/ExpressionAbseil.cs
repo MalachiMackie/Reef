@@ -3051,6 +3051,7 @@ public partial class ProgramAbseil
                         BinaryOperatorType.Divide => BinaryOperationKind.Divide,
                         BinaryOperatorType.EqualityCheck => BinaryOperationKind.Equal,
                         BinaryOperatorType.NegativeEqualityCheck => BinaryOperationKind.NotEqual,
+                        BinaryOperatorType.Modulo => BinaryOperationKind.Modulo,
                         _ => throw new ArgumentOutOfRangeException()
                     };
 

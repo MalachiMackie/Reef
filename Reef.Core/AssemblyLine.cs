@@ -2221,6 +2221,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                     MoveIntoPlace(destination, leftOperandRegister, size);
                     break;
                 }
+            case BinaryOperationKind.Modulo:
             case BinaryOperationKind.Divide:
                 {
                     leftOperandRegister = Register.A;
@@ -2267,12 +2268,27 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                         _methodBody.AppendLine($"    div     {rightOperandRegister.ToAsm((byte)size)}");
                     }
 
-                    if (size != 1)
+                    if (kind == BinaryOperationKind.Divide)
                     {
-                        FreeRegister(Register.D);
-                    }
+                        if (size != 1)
+                        {
+                            FreeRegister(Register.D);
+                        }
 
-                    MoveIntoPlace(destination, leftOperandRegister, size);
+                        MoveIntoPlace(destination, leftOperandRegister, size);
+                    }
+                    else
+                    {
+                        if (size == 1)
+                        {
+                            MoveIntoPlace(destination, Register.AHigh, size: 1);
+                        }
+                        else
+                        {
+                            MoveIntoPlace(destination, Register.D, size);
+                            FreeRegister(Register.D);
+                        }
+                    }
 
                     break;
                 }
@@ -2787,6 +2803,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
     private sealed class Register : IAsmPlace
     {
         public static readonly Register A = new("a", false);
+        public static readonly Register AHigh = new("a-high", false);
         public static readonly Register B = new("b", false);
         public static readonly Register C = new("c", false);
         public static readonly Register D = new("d", false);
@@ -2849,6 +2866,14 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
 
         public string ToAsm(byte size)
         {
+            if (this == AHigh)
+            {
+                if (size != 1)
+                {
+                    throw new InvalidOperationException();
+                }
+                return "ah";
+            }
             if (Name is "rsi" or "rdi" or "rbp" or "rsp")
             {
                 return Name;

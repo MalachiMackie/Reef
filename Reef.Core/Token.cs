@@ -120,6 +120,7 @@ public record Token
             TokenType.DoublePlus => "++",
             TokenType.LeftAngleBracketEquals => "<=",
             TokenType.RightAngleBracketEquals => ">=",
+            TokenType.Percent => "%",
             _ => throw new UnreachableException(Type.ToString())
         };
     }
@@ -374,6 +375,11 @@ public record Token
     public static Token ForwardSlash(SourceSpan sourceSpan)
     {
         return new Token { Type = TokenType.ForwardSlash, SourceSpan = sourceSpan };
+    }
+
+    public static Token Percent(SourceSpan sourceSpan)
+    {
+        return new Token { Type = TokenType.Percent, SourceSpan = sourceSpan };
     }
 
     public static Token Plus(SourceSpan sourceSpan)

@@ -400,6 +400,37 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                     ])
             },
             {
+                "int modulo",
+                "var a = 1 % 2;",
+                LoweredProgram(ModuleId,
+                    methods: [
+                        Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
+                            [
+                                new BasicBlock(
+                                    BB0,
+                                    [
+                                        new Assign(
+                                            Local0,
+                                            new BinaryOperation(
+                                                new IntConstant(1, 4),
+                                                new IntConstant(2, 4),
+                                                BinaryOperationKind.Modulo))
+                                    ])
+                                {
+                                    Terminator = new GoTo(new BasicBlockId("bb1"))
+                                },
+                                new BasicBlock(
+                                    BB1,
+                                    [])
+                                {
+                                    Terminator = new Return()
+                                }
+                            ],
+                            Unit,
+                            locals: [new MethodLocal("_local0", "a", Int32T)])
+                    ])
+            },
+            {
                 "int plus",
                 "var a = 1 + 2;",
                 LoweredProgram(ModuleId,
