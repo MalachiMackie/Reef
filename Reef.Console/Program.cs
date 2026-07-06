@@ -2,7 +2,9 @@
 using Microsoft.Extensions.Logging;
 using Reef.Core;
 
-var cts = new CancellationTokenSource();
+var cts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+
+
 
 if (args.Length == 0)
 {
@@ -22,6 +24,7 @@ var command = argsQueue.Dequeue();
 
 string? workingDirectory = null;
 var logLevel = LogLevel.Information;
+var timeout = true;
 
 while (argsQueue.TryDequeue(out var nextArg))
 {
@@ -32,6 +35,11 @@ while (argsQueue.TryDequeue(out var nextArg))
             case "--log-level":
                 {
                     logLevel = Enum.Parse<LogLevel>(argsQueue.Dequeue(), ignoreCase: true);
+                    break;
+                }
+            case "--no-timeout":
+                {
+                    timeout = false;
                     break;
                 }
             default:
@@ -49,6 +57,25 @@ while (argsQueue.TryDequeue(out var nextArg))
     }
 
     throw new InvalidOperationException($"Unknown argument/option: \"{nextArg}\"");
+}
+
+if (timeout)
+{
+    _ = Task.Run(async () =>
+    {
+        while (!cts.IsCancellationRequested)
+        {
+            await Task.Delay(TimeSpan.FromSeconds(1));
+        }
+
+        // if we haven't exited the process 3 seconds after cancellation is requested, just kill the process
+        await Task.Delay(TimeSpan.FromSeconds(3));
+
+        await Console.Error.WriteLineAsync(
+            "Cancellation has been requested, and we haven't cancelled yet. probably stuck in a loop somewhere");
+
+        Environment.Exit(1);
+    });
 }
 
 var logger = new ConsoleLogger(logLevel);

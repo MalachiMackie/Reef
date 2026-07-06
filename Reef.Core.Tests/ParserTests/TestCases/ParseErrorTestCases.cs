@@ -9,6 +9,17 @@ public static class ParseErrorTestCases
         IEnumerable<(string, LangModule, IEnumerable<ParserError>)> data =
         [
             (
+                """
+                (true, => false);
+                """,
+                Program("ParseErrorTestCases", expressions: [Tuple(True(), False())]),
+                [
+
+                    ParserError.ExpectedExpression(Token.EqualsArrow(SourceSpan.Default)),
+                    ParserError.ExpectedToken(Token.False(SourceSpan.Default), TokenType.Comma, TokenType.RightParenthesis)
+                ]
+            ),
+            (
                 "var x: variantOf;",
                 Program("ParseErrorTestCases",
                     expressions: [

@@ -216,6 +216,9 @@ public static class ExpressionHelpers
         return new NamedTypeIdentifier(Identifier("int"), [], boxedSpecifier, [], false, SourceRange.Default);
     }
 
+    public static ValueAccessorExpression False() =>
+        new(new ValueAccessor(ValueAccessType.Literal, Token.False(SourceSpan.Default), null, [], false));
+
     public static ValueAccessorExpression True() =>
         new(new ValueAccessor(ValueAccessType.Literal, Token.True(SourceSpan.Default), null, [], false));
 

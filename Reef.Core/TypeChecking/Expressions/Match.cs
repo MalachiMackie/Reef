@@ -35,7 +35,7 @@ public partial class TypeChecker
                 ? UnknownType.Instance
                 : TypeCheckExpression(arm.Expression);
 
-            if (foundType is null)
+            if (foundType is null || foundType is InstantiatedClass { Signature.Id: var id } && id == DefId.Never)
             {
                 foundType = armType;
             }

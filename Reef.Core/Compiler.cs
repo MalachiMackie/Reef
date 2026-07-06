@@ -14,6 +14,7 @@ public class Compiler
         ILogger logger,
         CancellationToken ct)
     {
+        logger.LogInformation("Compiling...");
         if (string.IsNullOrEmpty(workingDirectory))
         {
             workingDirectory = "./";
@@ -95,6 +96,7 @@ public class Compiler
         ILogger logger,
         CancellationToken ct)
     {
+        logger.LogInformation("Compiling...");
         if (string.IsNullOrEmpty(workingDirectory))
         {
             workingDirectory = "./";

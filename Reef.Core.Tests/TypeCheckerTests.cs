@@ -128,6 +128,36 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     "main.rf",
                     """
+                    class MyClass{pub field val: string}
+                    var x = if (true) {
+                        return;
+                    }
+                    else {
+                        grab new MyClass{val = "hi"};
+                    };
+                    var y = x.val;
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    class MyClass{pub field val: string}
+                    var x = match (true) {
+                        bool => return,
+                        _ => new MyClass{val = "hi"},
+                    };
+                    var y = x.val;
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
                     var a: [string] = [""; 2];
                     """
                 },

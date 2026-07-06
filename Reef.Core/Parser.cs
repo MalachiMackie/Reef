@@ -1964,7 +1964,16 @@ public sealed class Parser : IDisposable
             expectExpression: true,
             expectType: false,
             expectPattern: false,
-            () => PopExpression());
+            () =>
+            {
+                var expr = PopExpression(out var consumedToken);
+                if (!consumedToken)
+                {
+                    _errors.Add(ParserError.ExpectedExpression(_hasNext ? Current : null));
+                    MoveNext();
+                }
+                return expr;
+            });
 
         return new CollectionExpression(
             expressions.Prepend(firstElement).ToArray(),
@@ -2067,7 +2076,17 @@ public sealed class Parser : IDisposable
                 expectExpression: true,
                 expectType: false,
                 expectPattern: false,
-                () => PopExpression());
+                () =>
+                {
+                    var expr = PopExpression(out var consumedToken);
+                    if (!consumedToken)
+                    {
+                        _errors.Add(ParserError.ExpectedExpression(_hasNext ? Current : null));
+                        MoveNext();
+                    }
+
+                    return expr;
+                });
 
         return new TupleExpression(elements, new SourceRange(startToken.SourceSpan, lastToken?.SourceSpan ?? startToken.SourceSpan));
     }

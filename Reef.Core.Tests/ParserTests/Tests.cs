@@ -49,18 +49,18 @@ public class ParserTests(ITestOutputHelper testOutputHelper)
     [Fact(Timeout = 3000)]
     public void SingleTest()
     {
-        var source = "for (true;;){}";
+        var source = """
+        (true, => false);
+        """;
         var expectedProgram = Program("ParseTestCases",
             expressions: [
-                ForLoop(
-                    Literal(true),
-                    null,
-                    null,
-                    Block()
-                )
+                Tuple(True(), False())
             ]);
 
-        IEnumerable<ParserError> expectedErrors = [];
+        IEnumerable<ParserError> expectedErrors = [
+            ParserError.ExpectedExpression(Token.EqualsArrow(SourceSpan.Default)),
+            ParserError.ExpectedToken(Token.False(SourceSpan.Default), TokenType.Comma, TokenType.RightParenthesis)
+        ];
 
         var tokens = Tokenizer.Tokenize(source);
 

@@ -115,7 +115,11 @@ public partial class TypeChecker
 
             if (elseIf.Body is not null)
             {
-                TypeCheckExpression(elseIf.Body);
+                var bodyType = TypeCheckExpression(elseIf.Body);
+                if (expectedBranchType is InstantiatedClass { Signature.Id: var id } && id == DefId.Never)
+                {
+                    expectedBranchType = bodyType;
+                }
                 ExpectExpressionType(expectedBranchType, elseIf.Body);
             }
 
@@ -134,7 +138,11 @@ public partial class TypeChecker
         if (ifExpression.ElseBody is not null)
         {
             using var __ = PushScope();
-            TypeCheckExpression(ifExpression.ElseBody);
+            var bodyType = TypeCheckExpression(ifExpression.ElseBody);
+            if (expectedBranchType is InstantiatedClass { Signature.Id: var id } && id == DefId.Never)
+            {
+                expectedBranchType = bodyType;
+            }
             ExpectExpressionType(expectedBranchType, ifExpression.ElseBody);
 
             foreach (var (variable, variableInstantiation) in uninstantiatedVariables)
