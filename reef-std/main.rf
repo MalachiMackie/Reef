@@ -164,6 +164,51 @@ pub unboxed class string_slice {
 
         return true;
     }
+
+    pub fn starts_with_string(str: string): bool {
+        print_string("todo - starts_with_string");
+        return todo!;
+    }
+
+    pub fn starts_with_char(ch: char): bool {
+        print_string("todo - starts_with_char");
+        return todo!;
+    }
+
+    pub fn starts_with_slice(other: string_slice): bool {
+        print_string("todo - starts_with_slice");
+        return todo!;
+    }
+
+    pub fn ends_with_char(ch: char): bool {
+        print_string("todo - ends_with_char");
+        return todo!;
+    }
+
+    pub fn ends_with_string(str: string): bool {
+        print_string("todo - ends_with_string");
+        return todo!;
+    }
+
+    pub fn contains_string(str: string): bool {
+        print_string("todo - contains_string");
+        return todo!;
+    }
+
+    pub fn contains_any_except_chars(chars: [char]): bool {
+        print_string("todo - contains_any_except_chars");
+        return todo!;
+    }
+
+    pub fn last_index_of_char(ch: char): option::<u64> {
+        print_string("todo - last_index_of_char");
+        return todo!;
+    }
+
+    pub fn trim_end_char(ch: char): string_slice {
+        print_string("todo - trim_end_char");
+        return todo!;
+    }
 }
 
 // private global function for easy ffi naming
@@ -265,7 +310,28 @@ pub class string {
 
 // todo: this would be nice. need to add support for values in attributes
 // #[extern_size{bytes = 4}]
-pub extern unboxed class char{}
+pub extern unboxed class char{
+    pub static fn is_digit(val: char): bool
+    {
+        print_string("todo - is_digit");
+        return todo!;
+    }
+
+    pub static fn is_whitespace(ch: char): bool {
+        print_string("todo - is_whitespace");
+        return todo!;
+    }
+
+    pub static fn is_punctuation(ch: char): bool {
+        print_string("todo - is_punctuation");
+        return todo!;
+    }
+
+    pub static fn is_symbol(ch: char): bool {
+        print_string("todo - is_symbol");
+        return todo!;
+    }
+}
 
 pub extern unboxed class methodPointer{}
 pub extern unboxed class rawPointer{}
@@ -623,6 +689,17 @@ pub unboxed union option<TValue> {
 pub unboxed union result<TValue, TError> {
     Ok(TValue),
     Error(TError),
+
+    pub static fn unwrap(res: result::<TValue, TError>): TValue {
+        return match (res) {
+            Self::Ok(var value) => value,
+            Self::Error => {
+                print_string("unwrap");
+                panic();
+                grab todo!;
+            }
+        };
+    }
 }
 
 pub unboxed class ObjectHeader {

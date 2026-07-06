@@ -85,11 +85,170 @@ fn get_possible_matches(slice: string_slice): mut PossibleMatches
     var mut options = [unboxed; option::None; 4];
     var i = 0;
     if (slice.char_at(0) matches option::Some(var first_char)) {
+        if (first_char == 'a') {
+            options[i++] = option::Some(variantOf Token::Attribute);
+        }
+        if (first_char == 'b') {
+            options[i++] = option::Some(variantOf Token::Break);
+            options[i++] = option::Some(variantOf Token::Boxed);
+        }
+        if (first_char == 'c') {
+            options[i++] = option::Some(variantOf Token::Continue);
+            options[i++] = option::Some(variantOf Token::Class);
+        }
+        if (first_char == 'e') {
+            options[i++] = option::Some(variantOf Token::Else);
+            options[i++] = option::Some(variantOf Token::Extern);
+        }
+        if (first_char == 'f') {
+            options[i++] = option::Some(variantOf Token::False);
+            options[i++] = option::Some(variantOf Token::For);
+            options[i++] = option::Some(variantOf Token::Fn);
+            options[i++] = option::Some(variantOf Token::Field);
+        }
+        if (first_char == 'g') {
+            options[i++] = option::Some(variantOf Token::Grab);
+        }
+        if (first_char == 'i') {
+            options[i++] = option::Some(variantOf Token::If);
+        }
+        if (first_char == 'm') {
+            options[i++] = option::Some(variantOf Token::Mut);
+            options[i++] = option::Some(variantOf Token::Matches);
+            options[i++] = option::Some(variantOf Token::Match);
+        }
+        if (first_char == 'n') {
+            options[i++] = option::Some(variantOf Token::New);
+        }
         if (first_char == 'p') {
             options[i++] = option::Some(variantOf Token::Pub);
         }
-        else if (first_char == 'f') {
-            options[i++] = option::Some(variantOf Token::Fn);
+        if (first_char == 'r') {
+            options[i++] = option::Some(variantOf Token::Return);
+        }
+        if (first_char == 's') {
+            options[i++] = option::Some(variantOf Token::Static);
+        }
+        if (first_char == 't') {
+            options[i++] = option::Some(variantOf Token::True);
+            options[i++] = option::Some(variantOf Token::Todo);
+        }
+        if (first_char == 'u') {
+            options[i++] = option::Some(variantOf Token::Union);
+            options[i++] = option::Some(variantOf Token::Unboxed);
+            options[i++] = option::Some(variantOf Token::Use);
+        }
+        if (first_char == 'v') {
+            options[i++] = option::Some(variantOf Token::Var);
+            options[i++] = option::Some(variantOf Token::VariantOf);
+        }
+        if (first_char == 'w') {
+            options[i++] = option::Some(variantOf Token::While);
+            options[i++] = option::Some(variantOf Token::Where);
+        }
+        if (first_char == '0'
+            || first_char == '1'
+            || first_char == '2'
+            || first_char == '3'
+            || first_char == '4'
+            || first_char == '5'
+            || first_char == '6'
+            || first_char == '7'
+            || first_char == '8'
+            || first_char == '9'
+        ) {
+            options[i++] = option::Some(variantOf Token::IntLiteral);
+        }
+        if (first_char == '(') {
+            options[i++] = option::Some(variantOf Token::LeftParenthesis);
+        }
+        if (first_char == ')') {
+            options[i++] = option::Some(variantOf Token::RightParenthesis);
+        }
+        if (first_char == '[') {
+            options[i++] = option::Some(variantOf Token::LeftSquareBracket);
+        }
+        if (first_char == ']') {
+            options[i++] = option::Some(variantOf Token::RightSquareBracket);
+        }
+        if (first_char == '{') {
+            options[i++] = option::Some(variantOf Token::LeftBrace);
+        }
+        if (first_char == '}') {
+            options[i++] = option::Some(variantOf Token::RightBrace);
+        }
+        if (first_char == '<') {
+            options[i++] = option::Some(variantOf Token::LeftAngleBracket);
+            options[i++] = option::Some(variantOf Token::LeftAngleBracketEquals);
+        }
+        if (first_char == '>') {
+            options[i++] = option::Some(variantOf Token::RightAngleBracket);
+            options[i++] = option::Some(variantOf Token::RightAngleBracketEquals);
+        }
+        if (first_char == '#') {
+            options[i++] = option::Some(variantOf Token::Hash);
+        }
+        if (first_char == '!') {
+            options[i++] = option::Some(variantOf Token::Bang);
+            options[i++] = option::Some(variantOf Token::NotEquals);
+        }
+        if (first_char == ';') {
+            options[i++] = option::Some(variantOf Token::Semicolon);
+        }
+        if (first_char == ':') {
+            options[i++] = option::Some(variantOf Token::Colon);
+            options[i++] = option::Some(variantOf Token::DoubleColon);
+            options[i++] = option::Some(variantOf Token::TripleColon);
+            options[i++] = option::Some(variantOf Token::Turbofish);
+        }
+        if (first_char == '=') {
+            options[i++] = option::Some(variantOf Token::Equals);
+            options[i++] = option::Some(variantOf Token::DoubleEquals);
+            options[i++] = option::Some(variantOf Token::EqualsArrow);
+        }
+        if (first_char == ',') {
+            options[i++] = option::Some(variantOf Token::Comma);
+        }
+        if (first_char == '?') {
+            options[i++] = option::Some(variantOf Token::QuestionMark);
+        }
+        if (first_char == '*') {
+            options[i++] = option::Some(variantOf Token::Star);
+        }
+        if (first_char == '%') {
+            options[i++] = option::Some(variantOf Token::Percent);
+        }
+        if (first_char == '/') {
+            options[i++] = option::Some(variantOf Token::ForwardSlash);
+            options[i++] = option::Some(variantOf Token::SingleLineComment);
+            options[i++] = option::Some(variantOf Token::MultiLineComment);
+        }
+        if (first_char == '+') {
+            options[i++] = option::Some(variantOf Token::Plus);
+            options[i++] = option::Some(variantOf Token::DoublePlus);
+        }
+        if (first_char == '-') {
+            options[i++] = option::Some(variantOf Token::Dash);
+            options[i++] = option::Some(variantOf Token::DoubleDash);
+            options[i++] = option::Some(variantOf Token::IntLiteral);
+        }
+        if (first_char == '\'') {
+            options[i++] = option::Some(variantOf Token::CharLiteral);
+        }
+        if (first_char == '"') {
+            options[i++] = option::Some(variantOf Token::StringLiteral);
+        }
+        if (first_char == '.') {
+            options[i++] = option::Some(variantOf Token::Dot);
+        }
+        if (first_char == '_') {
+            options[i++] = option::Some(variantOf Token::Underscore);
+        }
+        if (first_char == '&') {
+            options[i++] = option::Some(variantOf Token::DoubleAmpersand);
+        }
+        if (first_char == '|') {
+            options[i++] = option::Some(variantOf Token::DoubleBar);
         }
     }
 
@@ -97,11 +256,141 @@ fn get_possible_matches(slice: string_slice): mut PossibleMatches
 }
 
 fn is_potentially_valid(slice: string_slice, type: variantOf Token): bool {
-    return match (type) {
-        variantOf Token::Pub => "pub".starts_with_slice(slice),
-        variantOf Token::Fn => "fn".starts_with_slice(slice),
-        _ => false
+    if (slice.length == 0)
+    {
+        return false;
+    }
+    return match (type)
+    {
+        variantOf Token::Identifier => is_valid_identifier(slice),
+        variantOf Token::If => slice.starts_with_string("if"),
+        variantOf Token::LeftParenthesis => slice.starts_with_string("("),
+        variantOf Token::RightParenthesis => slice.starts_with_string(")"),
+        variantOf Token::Todo => slice.starts_with_string("todo!"),
+        variantOf Token::Attribute => slice.starts_with_string("attribute"),
+        variantOf Token::VariantOf => slice.starts_with_string("variantOf"),
+        variantOf Token::Percent => slice.starts_with_string("%"),
+        variantOf Token::Use => slice.starts_with_string("use"),
+        variantOf Token::Extern => slice.starts_with_string("extern"),
+        variantOf Token::Where => slice.starts_with_string("where"),
+        variantOf Token::Hash => slice.starts_with_string("#"),
+        variantOf Token::Underscore => slice.starts_with_string("_"),
+        variantOf Token::Bang => slice.starts_with_string("!"),
+        variantOf Token::Semicolon => slice.starts_with_string(";"),
+        variantOf Token::Grab => slice.starts_with_string("grab"),
+        variantOf Token::LeftBrace => slice.starts_with_string("{"),
+        variantOf Token::LeftSquareBracket => slice.starts_with_string("["),
+        variantOf Token::RightSquareBracket => slice.starts_with_string("]"),
+        variantOf Token::Union => slice.starts_with_string("union"),
+        variantOf Token::For => slice.starts_with_string("for"),
+        variantOf Token::Unboxed => slice.starts_with_string("unboxed"),
+        variantOf Token::Boxed => slice.starts_with_string("boxed"),
+        variantOf Token::Mut => slice.starts_with_string("mut"),
+        variantOf Token::While => slice.starts_with_string("while"),
+        variantOf Token::Break => slice.starts_with_string("break"),
+        variantOf Token::Continue => slice.starts_with_string("continue"),
+        variantOf Token::Match => slice.starts_with_string("match"),
+        variantOf Token::Matches => slice.starts_with_string("matches"),
+        variantOf Token::New => slice.starts_with_string("new"),
+        variantOf Token::Static => slice.starts_with_string("static"),
+        variantOf Token::Class => slice.starts_with_string("class"),
+        variantOf Token::RightBrace => slice.starts_with_string("}"),
+        variantOf Token::Pub => slice.starts_with_string("pub"),
+        variantOf Token::Fn => slice.starts_with_string("fn"),
+        variantOf Token::Field => slice.starts_with_string("field"),
+        variantOf Token::Turbofish => slice.starts_with_string("::<"),
+        variantOf Token::EqualsArrow => slice.starts_with_string("=>"),
+        variantOf Token::Colon => slice.starts_with_string(":"),
+        variantOf Token::LeftAngleBracket => slice.starts_with_string("<"),
+        variantOf Token::LeftAngleBracketEquals => slice.starts_with_string("<="),
+        variantOf Token::RightAngleBracket => slice.starts_with_slice(slice),
+        variantOf Token::RightAngleBracketEquals => slice.starts_with_string(">="),
+        variantOf Token::Var => slice.starts_with_string("var"),
+        variantOf Token::Equals => slice.starts_with_string("="),
+        variantOf Token::Comma => slice.starts_with_string(","),
+        variantOf Token::DoubleEquals => slice.starts_with_string("=="),
+        variantOf Token::NotEquals => slice.starts_with_string("!="),
+        variantOf Token::Else => slice.starts_with_string("else"),
+        variantOf Token::IntLiteral => (slice.starts_with_char('-') || char::is_digit(option::unwrap(slice.char_at(0))))
+            && (slice.length == 1 || !result::unwrap(slice.slice(1, slice.length - 1)).contains_any_except_chars(['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'])),
+        variantOf Token::StringLiteral => possibly_matches_string_or_char_literal(slice, '"'),
+        variantOf Token::CharLiteral => possibly_matches_string_or_char_literal(slice, '\''),
+        variantOf Token::QuestionMark => slice.starts_with_string("?"),
+        variantOf Token::Return => slice.starts_with_string("return"),
+        variantOf Token::True => slice.starts_with_string("true"),
+        variantOf Token::False => slice.starts_with_string("false"),
+        variantOf Token::DoubleColon => slice.starts_with_string("::"),
+        variantOf Token::TripleColon => slice.starts_with_string(":::"),
+        variantOf Token::Star => slice.starts_with_string("*"),
+        variantOf Token::ForwardSlash => slice.starts_with_string("/"),
+        variantOf Token::Plus => slice.starts_with_string("+"),
+        variantOf Token::DoublePlus => slice.starts_with_string("++"),
+        variantOf Token::Dash => slice.starts_with_string("-"),
+        variantOf Token::DoubleDash => slice.starts_with_string("--"),
+        variantOf Token::Dot => slice.starts_with_string("."),
+        variantOf Token::DoubleAmpersand => slice.starts_with_string("&&"),
+        variantOf Token::DoubleBar => slice.starts_with_string("||"),
+        variantOf Token::SingleLineComment => slice.starts_with_string("//") && !slice.ends_with_char('\r'),
+        variantOf Token::MultiLineComment => slice.starts_with_string("/*") &&
+                                        (slice.ends_with_string("*/") || !slice.contains_string("*/")),
     };
+}
+
+fn is_valid_identifier(slice: string_slice): bool
+{
+    if (slice.length == 0) {
+        return false;
+    }
+
+    if (char::is_digit(option::unwrap(slice.char_at(0))))
+    {
+        return false;
+    }
+
+    for (var i = 0; i < slice.length; i++)
+    {
+        var ch = option::unwrap(slice.char_at(i));
+        if (char::is_whitespace(ch) || char::is_symbol(ch) || (ch != '_' && char::is_punctuation(ch)))
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+fn possibly_matches_string_or_char_literal(slice: string_slice, wrapping_char: char): bool
+{
+    if (!slice.starts_with_char(wrapping_char))
+    {
+        return false;
+    }
+
+    // single quote mark will be the beginning of a string literal
+    if (slice.length == 1)
+    {
+        return true;
+    }
+
+    var rest = result::unwrap(slice.slice(1, slice.length - 1));
+
+    var last_quote_index = match (rest.last_index_of_char(wrapping_char)) {
+        // haven't found the ending quote yet
+        option::None => return true,
+        option::Some(var val) => val,
+    };
+
+    var until_quote = match (rest.slice(0, last_quote_index + 1)) {
+        // the last quote is at the end of the string
+        result::Error => return true,
+        result::Ok(var until_quote_val) => until_quote_val,
+    };
+
+    var without_backslashes = until_quote.trim_end_char('\\');
+    var trailing_backslashes_count = until_quote.length - without_backslashes.length;
+
+    // there are an odd number of trailing backslashes, so the last one escapes the quote mark we found
+    return trailing_backslashes_count % 2 == 1;
 }
 
 fn try_match(slice: string_slice, type: variantOf Token): option::<Token>
@@ -114,10 +403,81 @@ fn try_match(slice: string_slice, type: variantOf Token): option::<Token>
 }
 
 #[test]
-pub fn tokenize_keywords() {
+pub fn tokenize_single_tokens() {
     var tests = [
+        ("some_string", Token::Identifier("some_string")),
+        ("grab", Token::Grab),
+        ("if", Token::If),
+        ("(", Token::LeftParenthesis),
+        ("%", Token::Percent),
+        (")", Token::RightParenthesis),
+        (";", Token::Semicolon),
+        ("{", Token::LeftBrace),
+        ("}", Token::RightBrace),
         ("pub", Token::Pub),
         ("fn", Token::Fn),
+        ("class", Token::Class),
+        ("field", Token::Field),
+        (":", Token::Colon),
+        ("<", Token::LeftAngleBracket),
+        (">", Token::RightAngleBracket),
+        ("var", Token::Var),
+        ("=", Token::Equals),
+        (",", Token::Comma),
+        ("==", Token::DoubleEquals),
+        ("!=", Token::NotEquals),
+        ("else", Token::Else),
+        ("-4", Token::IntLiteral(IntLiteral::Neg(-4))),
+        ("4", Token::IntLiteral(IntLiteral::Pos(4))),
+        ("0", Token::IntLiteral(IntLiteral::Zero)),
+        ("\"some string literal\"", Token::StringLiteral("some string literal")),
+        ("'c'", Token::CharLiteral("c")),
+        ("'\\n'", Token::CharLiteral("\\n")),
+        ("'\\''", Token::CharLiteral("\\'")),
+        ("?", Token::QuestionMark),
+        ("return", Token::Return),
+        ("true", Token::True),
+        ("false", Token::False),
+        ("+", Token::Plus),
+        ("-", Token::Dash),
+        ("*", Token::Star),
+        ("/", Token::ForwardSlash),
+        (".", Token::Dot),
+        ("mut", Token::Mut),
+        ("::<", Token::Turbofish),
+        ("::", Token::DoubleColon),
+        (":::", Token::TripleColon),
+        ("new", Token::New),
+        ("static", Token::Static),
+        ("//comment", Token::SingleLineComment("comment")),
+        ("/*comment*/", Token::MultiLineComment("comment")),
+        ("union", Token::Union),
+        ("match", Token::Match),
+        ("while", Token::While),
+        ("for", Token::For),
+        ("break", Token::Break),
+        ("continue", Token::Continue),
+        ("matches", Token::Matches),
+        ("_", Token::Underscore),
+        ("!", Token::Bang),
+        ("=>", Token::EqualsArrow),
+        ("todo!", Token::Todo),
+        ("&&", Token::DoubleAmpersand),
+        ("||", Token::DoubleBar),
+        ("unboxed", Token::Unboxed),
+        ("boxed", Token::Boxed),
+        ("]", Token::RightSquareBracket),
+        ("[", Token::LeftSquareBracket),
+        ("use", Token::Use),
+        ("extern", Token::Extern),
+        ("where", Token::Where),
+        ("#", Token::Hash),
+        ("attribute", Token::Attribute),
+        ("--", Token::DoubleDash),
+        ("++", Token::DoublePlus),
+        ("<=", Token::LeftAngleBracketEquals),
+        (">=", Token::RightAngleBracketEquals),
+        ("variantOf", Token::VariantOf),
     ];
 
     var failed_tests = 0;
@@ -129,19 +489,24 @@ pub fn tokenize_keywords() {
 
         var result = tokenize(source);
 
-        print_string("expected token: ");
-        print_string(expected_token.to_string());
-        print_string("\n");
 
         if (result.get(0) matches option::Some(var found_token)) {
-            print_string("found token ");
-            print_string(found_token.to_string());
-            print_string("\n");
             if (!Token::eq(found_token, expected_token)) {
+                print_string("expected token: ");
+                print_string(expected_token.to_string());
+                print_string("\n");
+                print_string("found token ");
+                print_string(found_token.to_string());
+                print_string("\n");
+
                 failed_tests = failed_tests + 1;
             }
         }
         else {
+            print_string("expected token: ");
+            print_string(expected_token.to_string());
+            print_string("\n");
+
             print_string("no token was found\n");
             failed_tests = failed_tests + 1;
         }
