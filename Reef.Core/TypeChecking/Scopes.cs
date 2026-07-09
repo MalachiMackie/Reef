@@ -27,10 +27,10 @@ public partial class TypeChecker
                 (variable is FunctionSignatureParameter { ContainingFunction: var parameterOwner }
                 && parameterOwner != CurrentFunctionSignature)
             || (variable is FieldVariable { IsStaticField: false }
-                && CurrentFunctionSignature.OwnerType is null)
+                && InLocalFunction)
             || (variable is LocalVariable { ContainingFunction: var localOwner }
                 && localOwner != CurrentFunctionSignature)
-            || (variable is ThisVariable && CurrentFunctionSignature.OwnerType is null))
+            || (variable is ThisVariable && InLocalFunction))
             && !CurrentFunctionSignature.AccessedOuterVariables.Contains(variable))
         {
             if (CurrentFunctionSignature.IsStatic)
@@ -143,7 +143,9 @@ public partial class TypeChecker
             moduleId ?? currentScope.ModuleId,
             moduleImports ?? [],
             block,
-            loopExpression ?? currentScope.LoopExpression));
+            loopExpression ?? currentScope.LoopExpression,
+            InLocalFunction: currentScope.InLocalFunction
+                || currentScope.CurrentFunctionSignature is not null && currentFunctionSignature is not null));
 
         return new ScopeDisposable(PopScope);
     }
@@ -161,7 +163,8 @@ public partial class TypeChecker
         ModuleId? ModuleId,
         IReadOnlyList<ModuleImport> ModuleImports,
         Block? Block,
-        IExpression? LoopExpression)
+        IExpression? LoopExpression,
+        bool InLocalFunction)
     {
         private Dictionary<string, IVariable> CurrentScopeVariables { get; } = [];
         public GrabExpression? GrabExpression { get; set; }

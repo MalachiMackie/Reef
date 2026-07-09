@@ -24,6 +24,7 @@ public partial class TypeChecker
 
         var parameters = new OrderedDictionary<string, FunctionSignatureParameter>();
         var attributes = new List<AttributeReference>();
+        var selfConstraints = new List<ITypeConstraint>();
 
         var name = fn.Name.StringValue;
         var typeParameters = new List<GenericPlaceholder>(fn.TypeParameters.Count);
@@ -38,7 +39,8 @@ public partial class TypeChecker
             ExternName: fn.ExternModifier is { Token.Type: TokenType.Extern } ? fn.Name.StringValue : null,
             fn.ReturnMutabilityModifier is { Type: TokenType.Mut },
             fn.AccessModifier is { Token.Type: TokenType.Pub },
-            attributes)
+            attributes,
+            SelfConstraints: selfConstraints)
         {
             ReturnType = null!,
             OwnerType = ownerType
@@ -80,6 +82,7 @@ public partial class TypeChecker
         var foundTypeParameters = new HashSet<string>();
         var genericPlaceholdersDictionary = GenericPlaceholders.ToDictionary(x => x.GenericName);
         var typeParameterConstraints = new Dictionary<GenericPlaceholder, List<ITypeConstraint>>();
+
         foreach (var typeParameter in fn.TypeParameters)
         {
             if (!foundTypeParameters.Add(typeParameter.StringValue))
@@ -127,10 +130,18 @@ public partial class TypeChecker
 
         foreach (var constraint in fn.Constraints)
         {
-            var typeParameter = typeParameters.FirstOrDefault(x => x.GenericName == constraint.ConstrainedType.Identifier.StringValue);
-            if (typeParameter is null)
+            var isSelf = constraint.ConstrainedType.Identifier.StringValue == "Self";
+
+            if (isSelf && (ownerType is null || fnSignature.IsStatic))
             {
-                AddError(TypeCheckerError.NonTypeParameterConstrained(constraint.ConstrainedType));
+                AddError(TypeCheckerError.SelfConstraintOnNonInstanceFunction(constraint.SourceRange));
+                continue;
+            }
+
+            var typeParameter = typeParameters.FirstOrDefault(x => x.GenericName == constraint.ConstrainedType.Identifier.StringValue);
+            if (typeParameter is null && !isSelf)
+            {
+                AddError(TypeCheckerError.InvalidConstrainedType(constraint.ConstrainedType));
             }
             switch (constraint)
             {
@@ -140,6 +151,10 @@ public partial class TypeChecker
                         {
                             typeParameterConstraints[typeParameter].Add(new BoxedTypeConstraint());
                         }
+                        if (isSelf)
+                        {
+                            selfConstraints.Add(new BoxedTypeConstraint());
+                        }
                         break;
                     }
                 case UnboxedConstraint boxed:
@@ -148,30 +163,42 @@ public partial class TypeChecker
                         {
                             typeParameterConstraints[typeParameter].Add(new UnboxedTypeConstraint());
                         }
+                        if (isSelf)
+                        {
+                            selfConstraints.Add(new UnboxedTypeConstraint());
+                        }
                         break;
                     }
                 case BoxedOfConstraint boxedOfConstraint:
                     {
-                        var boxedOf = GetTypeReference(boxedOfConstraint.BoxedOfType);
                         if (typeParameter is not null)
                         {
+                            var boxedOf = GetTypeReference(boxedOfConstraint.BoxedOfType);
                             typeParameterConstraints[typeParameter].Add(new BoxedOfTypeConstraint(boxedOf));
+                        }
+                        if (isSelf)
+                        {
+                            AddError(TypeCheckerError.InvalidSelfTypeConstraint(constraint.SourceRange));
                         }
 
                         break;
                     }
                 case UnboxedOfConstraint unboxed:
                     {
-                        var unboxedOf = GetTypeReference(unboxed.UnboxedOfType);
-
-                        if (IsBoxedOnlyType(unboxedOf))
-                        {
-                            AddError(TypeCheckerError.BoxedOnlyTypeCannotBeUnboxed(unboxedOf, unboxed.UnboxedOfType.SourceRange));
-                        }
-
                         if (typeParameter is not null)
                         {
+                            var unboxedOf = GetTypeReference(unboxed.UnboxedOfType);
+                            if (IsBoxedOnlyType(unboxedOf))
+                            {
+                                AddError(TypeCheckerError.BoxedOnlyTypeCannotBeUnboxed(unboxedOf, unboxed.UnboxedOfType.SourceRange));
+                            }
+
                             typeParameterConstraints[typeParameter].Add(new UnboxedOfTypeConstraint(unboxedOf));
+                        }
+
+                        if (isSelf)
+                        {
+                            AddError(TypeCheckerError.InvalidSelfTypeConstraint(constraint.SourceRange));
                         }
 
                         break;
@@ -343,7 +370,7 @@ public partial class TypeChecker
             };
         }
 
-        private FunctionSignature Signature { get; }
+        public FunctionSignature Signature { get; }
 
         public bool IsStatic => Signature.IsStatic;
         public bool IsMutable => Signature.IsMutable;
@@ -433,7 +460,8 @@ public partial class TypeChecker
         string? ExternName,
         bool IsMutableReturn,
         bool IsPublic,
-        IReadOnlyList<AttributeReference> Attributes) : ITypeSignature
+        IReadOnlyList<AttributeReference> Attributes,
+        IReadOnlyList<ITypeConstraint> SelfConstraints) : ITypeSignature
     {
         public DefId? LocalsTypeId { get; set; }
         public DefId? ClosureTypeId { get; set; }

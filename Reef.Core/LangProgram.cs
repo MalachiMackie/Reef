@@ -241,12 +241,13 @@ public record ExternModifier(Token Token)
 public interface IConstraint
 {
     NamedTypeIdentifier ConstrainedType { get; }
+    SourceRange SourceRange { get; }
 }
 
-public record BoxedConstraint(NamedTypeIdentifier ConstrainedType) : IConstraint;
-public record BoxedOfConstraint(NamedTypeIdentifier ConstrainedType, ITypeIdentifier BoxedOfType) : IConstraint;
-public record UnboxedConstraint(NamedTypeIdentifier ConstrainedType) : IConstraint;
-public record UnboxedOfConstraint(NamedTypeIdentifier ConstrainedType, ITypeIdentifier UnboxedOfType) : IConstraint;
+public record BoxedConstraint(NamedTypeIdentifier ConstrainedType, SourceRange SourceRange) : IConstraint;
+public record BoxedOfConstraint(NamedTypeIdentifier ConstrainedType, ITypeIdentifier BoxedOfType, SourceRange SourceRange) : IConstraint;
+public record UnboxedConstraint(NamedTypeIdentifier ConstrainedType, SourceRange SourceRange) : IConstraint;
+public record UnboxedOfConstraint(NamedTypeIdentifier ConstrainedType, ITypeIdentifier UnboxedOfType, SourceRange SourceRange) : IConstraint;
 
 
 // #[:::my_module:::my_attribute]

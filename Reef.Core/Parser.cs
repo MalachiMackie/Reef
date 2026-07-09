@@ -1265,6 +1265,7 @@ public sealed class Parser : IDisposable
 
     private IConstraint? GetConstraint()
     {
+        var start = Current;
         if (!ExpectNextNamedTypeIdentifier(out var constrainedType))
         {
             return null;
@@ -1283,31 +1284,33 @@ public sealed class Parser : IDisposable
 
         if (Current.Type == TokenType.Boxed)
         {
+            var end = Current;
             if (!MoveNext())
             {
-                return new BoxedConstraint(constrainedType);
+                return new BoxedConstraint(constrainedType, new SourceRange(start.SourceSpan, end.SourceSpan));
             }
 
             if (TryGetTypeIdentifier() is { } boxedOfType)
             {
-                return new BoxedOfConstraint(constrainedType, boxedOfType);
+                return new BoxedOfConstraint(constrainedType, boxedOfType, boxedOfType.SourceRange with { Start = start.SourceSpan });
             }
 
-            return new BoxedConstraint(constrainedType);
+            return new BoxedConstraint(constrainedType, new SourceRange(start.SourceSpan, end.SourceSpan));
         }
         if (Current.Type == TokenType.Unboxed)
         {
+            var end = Current;
             if (!MoveNext())
             {
-                return new UnboxedConstraint(constrainedType);
+                return new UnboxedConstraint(constrainedType, new SourceRange(start.SourceSpan, end.SourceSpan));
             }
 
             if (TryGetTypeIdentifier() is { } unboxedOfType)
             {
-                return new UnboxedOfConstraint(constrainedType, unboxedOfType);
+                return new UnboxedOfConstraint(constrainedType, unboxedOfType, unboxedOfType.SourceRange with { Start = start.SourceSpan });
             }
 
-            return new UnboxedConstraint(constrainedType);
+            return new UnboxedConstraint(constrainedType, new SourceRange(start.SourceSpan, end.SourceSpan));
         }
 
         _errors.Add(ParserError.ExpectedConstraint(Current));

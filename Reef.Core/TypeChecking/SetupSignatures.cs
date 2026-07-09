@@ -248,7 +248,8 @@ public partial class TypeChecker
                             ExternName: $"{unionSignature.Id.FullName}__Create__{variant.Name.StringValue}",
                             IsMutableReturn: true,
                             IsPublic: true,
-                            Attributes: [])
+                            Attributes: [],
+                            SelfConstraints: [])
                         {
                             OwnerType = unionSignature,
                             ReturnType = createFunctionReturnType
@@ -266,7 +267,8 @@ public partial class TypeChecker
                                                     ExternName: $"{unionSignature.Id.FullName}__unboxed__Create__{variant.Name.StringValue}",
                                                     IsMutableReturn: true,
                                                     IsPublic: true,
-                                                    Attributes: [])
+                                                    Attributes: [],
+                                                    SelfConstraints: [])
                         {
                             OwnerType = unionSignature,
                             ReturnType = unboxedCreateFunctionReturnType

@@ -380,7 +380,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                  {
                      field MyField: string,
 
-                     fn MyFn()
+                     fn MyFn() where Self: boxed
                      {
                          var a = MyField;
                          fn InnerFn()
@@ -452,7 +452,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                  {
                      static field MyField: string = "",
 
-                     fn MyFn()
+                     fn MyFn() where Self: boxed
                      {
                          fn InnerFn()
                          {
@@ -591,7 +591,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                  """
                  class MyClass
                  {
-                     fn MyFn()
+                     fn MyFn() where Self: boxed
                      {
                          fn InnerFn()
                          {
@@ -682,7 +682,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                  {
                      mut field MyField: string,
 
-                     mut fn MyFn()
+                     mut fn MyFn() where Self: boxed
                      {
                          MyField = "hi";
                          mut fn InnerFn()
@@ -758,7 +758,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                  {
                      field MyField: string,
 
-                     fn MyFn(param: string)
+                     fn MyFn(param: string) where Self: boxed
                      {
                          var a = "";
                          fn InnerFn(b: i64)
@@ -930,7 +930,7 @@ public class ClosureTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                  {
                      field MyField: string,
 
-                     fn MyFn(param: string)
+                     fn MyFn(param: string) where Self: boxed
                      {
                          var a = "";
                          fn MiddleFn(b: i64)

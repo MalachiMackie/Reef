@@ -66,6 +66,14 @@ public partial class TypeChecker
     {
         if (TryGetScopedVariable(variableName, out var valueVariable))
         {
+            if (valueVariable is FieldVariable { IsStaticField: false } or ThisVariable && InLocalFunction)
+            {
+                if (!TopFunctionSignature.NotNull().SelfConstraints.OfType<BoxedTypeConstraint>().Any())
+                {
+                    AddError(TypeCheckerError.InstanceMemberInClosureInNonBoxedConstrainedMethod(expression.SourceRange));
+                }
+            }
+
             expression.ReferencedVariable = valueVariable;
 
             if (!allowUninstantiated && valueVariable is LocalVariable { Instantiated: false, ContainingFunction: var containingFunction }
@@ -125,6 +133,38 @@ public partial class TypeChecker
                     expression.SourceRange,
                     GenericPlaceholders);
 
+                if (InLocalFunction
+                    && !unionFunction.IsStatic
+                    && !TopFunctionSignature.NotNull().SelfConstraints.OfType<BoxedTypeConstraint>().Any())
+                {
+                    AddError(TypeCheckerError.InstanceMemberInClosureInNonBoxedConstrainedMethod(expression.SourceRange));
+                }
+
+                foreach (var constraint in instantiatedFunction.Signature.SelfConstraints)
+                {
+                    switch (constraint)
+                    {
+                        case BoxedTypeConstraint:
+                            {
+                                if (!(CurrentFunctionSignature is { } currentSig) || !currentSig.SelfConstraints.OfType<BoxedTypeConstraint>().Any())
+                                {
+                                    AddError(TypeCheckerError.MethodConstrainedToBoxedInstances(variableName));
+                                }
+                                break;
+                            }
+                        case UnboxedTypeConstraint:
+                            {
+                                if (!(CurrentFunctionSignature is { } currentSig) || !currentSig.SelfConstraints.OfType<UnboxedTypeConstraint>().Any())
+                                {
+                                    AddError(TypeCheckerError.MethodConstrainedToUnboxedInstances(variableName));
+                                }
+                                break;
+                            }
+                        default:
+                            throw new UnreachableException(constraint.GetType().ToString());
+                    }
+                }
+
                 expression.FunctionInstantiation = instantiatedFunction;
 
                 return new FunctionObject(
@@ -150,6 +190,38 @@ public partial class TypeChecker
                     typeArguments,
                     expression.SourceRange,
                     GenericPlaceholders);
+
+                if (InLocalFunction
+                    && !classFunction.IsStatic
+                    && !TopFunctionSignature.NotNull().SelfConstraints.OfType<BoxedTypeConstraint>().Any())
+                {
+                    AddError(TypeCheckerError.InstanceMemberInClosureInNonBoxedConstrainedMethod(expression.SourceRange));
+                }
+
+                foreach (var constraint in instantiatedFunction.Signature.SelfConstraints)
+                {
+                    switch (constraint)
+                    {
+                        case BoxedTypeConstraint:
+                            {
+                                if (!(CurrentFunctionSignature is { } currentSig) || !currentSig.SelfConstraints.OfType<BoxedTypeConstraint>().Any())
+                                {
+                                    AddError(TypeCheckerError.MethodConstrainedToBoxedInstances(variableName));
+                                }
+                                break;
+                            }
+                        case UnboxedTypeConstraint:
+                            {
+                                if (!(CurrentFunctionSignature is { } currentSig) || !currentSig.SelfConstraints.OfType<UnboxedTypeConstraint>().Any())
+                                {
+                                    AddError(TypeCheckerError.MethodConstrainedToUnboxedInstances(variableName));
+                                }
+                                break;
+                            }
+                        default:
+                            throw new UnreachableException(constraint.GetType().ToString());
+                    }
+                }
 
                 expression.FunctionInstantiation = instantiatedFunction;
 

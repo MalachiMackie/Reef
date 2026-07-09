@@ -570,7 +570,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                  {
                      mut field MyField: string,
 
-                     mut fn MyFn(param: string)
+                     mut fn MyFn(param: string) where Self: boxed
                      {
                          var a = "";
                          fn InnerFn()

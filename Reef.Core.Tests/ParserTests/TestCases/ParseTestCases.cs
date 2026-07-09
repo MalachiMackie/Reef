@@ -283,7 +283,7 @@ public static class ParseTestCases
                             typeParameters: ["T"],
                             block: Block().Block,
                             constraints: [
-                                new UnboxedConstraint(NamedTypeIdentifier("T"))
+                                new UnboxedConstraint(NamedTypeIdentifier("T"), SourceRange.Default)
                             ])
                     ]
                 )
@@ -301,7 +301,7 @@ public static class ParseTestCases
                             typeParameters: ["T"],
                             block: Block().Block,
                             constraints: [
-                                new BoxedConstraint(NamedTypeIdentifier("T"))
+                                new BoxedConstraint(NamedTypeIdentifier("T"), SourceRange.Default)
                             ])
                     ]
                 )
@@ -319,7 +319,7 @@ public static class ParseTestCases
                             typeParameters: ["T", "T2"],
                             block: Block().Block,
                             constraints: [
-                                new BoxedOfConstraint(NamedTypeIdentifier("T"), NamedTypeIdentifier("T2"))
+                                new BoxedOfConstraint(NamedTypeIdentifier("T"), NamedTypeIdentifier("T2"), SourceRange.Default)
                             ])
                     ]
                 )
@@ -337,8 +337,8 @@ public static class ParseTestCases
                             typeParameters: ["T", "T2"],
                             block: Block().Block,
                             constraints: [
-                                new BoxedOfConstraint(NamedTypeIdentifier("T"), NamedTypeIdentifier("T2")),
-                                new UnboxedOfConstraint(NamedTypeIdentifier("T2"), NamedTypeIdentifier("T")),
+                                new BoxedOfConstraint(NamedTypeIdentifier("T"), NamedTypeIdentifier("T2"), SourceRange.Default),
+                                new UnboxedOfConstraint(NamedTypeIdentifier("T2"), NamedTypeIdentifier("T"), SourceRange.Default),
                             ])
                     ]
                 )
@@ -355,7 +355,7 @@ public static class ParseTestCases
                             typeParameters: ["T", "T2"],
                             isExtern: true,
                             returnType: StringType(),
-                            constraints: [new BoxedOfConstraint(NamedTypeIdentifier("T"), NamedTypeIdentifier("T2"))]
+                            constraints: [new BoxedOfConstraint(NamedTypeIdentifier("T"), NamedTypeIdentifier("T2"), SourceRange.Default)]
                         )
                     ])
             ),
@@ -370,7 +370,7 @@ public static class ParseTestCases
                             isPublic: true,
                             typeParameters: ["T", "T2"],
                             isExtern: true,
-                            constraints: [new BoxedOfConstraint(NamedTypeIdentifier("T"), NamedTypeIdentifier("T2"))]
+                            constraints: [new BoxedOfConstraint(NamedTypeIdentifier("T"), NamedTypeIdentifier("T2"), SourceRange.Default)]
                         )
                     ])
             ),
@@ -385,7 +385,7 @@ public static class ParseTestCases
                             isPublic: true,
                             typeParameters: ["T", "T2"],
                             isExtern: true,
-                            constraints: [new UnboxedOfConstraint(NamedTypeIdentifier("T"), NamedTypeIdentifier("T2"))]
+                            constraints: [new UnboxedOfConstraint(NamedTypeIdentifier("T"), NamedTypeIdentifier("T2"), SourceRange.Default)]
                         )
                     ])
             ),

@@ -128,6 +128,148 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     "main.rf",
                     """
+                    class MyClass{
+                        pub fn other_fn() where Self: unboxed {}
+                    }
+                    var x = new unboxed MyClass{};
+                    x.other_fn();
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    union MyUnion{
+                        A,
+                        pub fn other_fn() where Self: unboxed {}
+                    }
+                    var x = unboxed MyUnion::A;
+                    x.other_fn();
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    class MyClass{
+                        pub fn some_method() where Self: boxed {}
+                        pub fn other_fn() where Self: boxed {
+                            some_method();
+                        }
+                    }
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    class MyClass{
+                        pub fn some_method() where Self: boxed {}
+                    }
+
+                    var x = new MyClass{};
+                    x.some_method();
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    class MyClass{
+                        pub mut field val: u32,
+
+                        pub fn some_method()
+                            where Self: boxed {
+                            fn x(){
+                                var y = val;
+                            }
+                        }
+                    }
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    class MyClass{
+                        pub mut field val: u32,
+
+                        pub fn some_method()
+                            where Self: boxed {
+                            fn x(){
+                                var y = this;
+                            }
+                        }
+                    }
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    class MyClass{
+                        pub fn other_fn(){}
+                        pub fn some_method()
+                            where Self: boxed {
+                            fn x(){
+                                other_fn();
+                            }
+                        }
+                    }
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    class MyClass{
+                        pub static field val: u32 = 2,
+
+                        pub fn some_method() {
+                            fn x(){
+                                var y = val;
+                            }
+                        }
+                    }
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    class MyClass{
+                        pub fn some_method() {
+                            fn x(){
+                                other_fn();
+                            }
+                        }
+
+                        pub static fn other_fn(){}
+                    }
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
                     class MyClass{pub field val: string}
                     var x = if (true) {
                         return;
@@ -1793,7 +1935,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                                {
                                    field MyField: string,
 
-                                   fn MyFn(param: string)
+                                   fn MyFn(param: string) where Self: boxed
                                    {
                                        var a = "";
                                        fn MiddleFn(b: i64)
@@ -2079,7 +2221,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     "main.rf", """
                                class MyClass<T> {
-                                   fn MyFn() {
+                                   fn MyFn() where Self: boxed {
                                        fn InnerFn(param: T): T {
                                            return param;
                                        }
@@ -3132,7 +3274,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                                class MyClass {
                                    mut field MyField: string,
 
-                                   mut fn MyFn() {
+                                   mut fn MyFn() where Self: boxed {
                                        mut fn InnerFn() {
                                            MyField = "";
                                        }
@@ -3964,6 +4106,236 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
     {
         return new TheoryData<string, Dictionary<string, (string contents, IReadOnlyList<TypeCheckerError> expectedErrors)>>
         {
+            {
+                "access boxed constrained type on unboxed class",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            class MyClass {
+                                pub fn some_fn() where Self: boxed {}
+                            }
+                            var x = new unboxed MyClass{};
+                            x.some_fn();
+                            """,
+                            [TypeCheckerError.MethodConstrainedToBoxedInstances(Identifier("some_fn"))]
+                        )
+                    }
+                }
+            },
+            {
+                "access boxed constrained type on unboxed union",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            union MyUnion {
+                                A,
+
+                                pub fn some_fn() where Self: boxed {}
+                            }
+                            var x = unboxed MyUnion::A;
+                            x.some_fn();
+                            """,
+                            [TypeCheckerError.MethodConstrainedToBoxedInstances(Identifier("some_fn"))]
+                        )
+                    }
+                }
+            },
+            {
+                "this referenced in non Self: boxed constrained method",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            class MyClass {
+                                fn some_fn() {
+                                    fn inner_fn() {
+                                        var x = this;
+                                    }
+                                }
+                            }
+                            """,
+                            [TypeCheckerError.InstanceMemberInClosureInNonBoxedConstrainedMethod(SourceRange.Default)]
+                        )
+                    }
+                }
+            },
+            {
+                "field referenced in non Self: boxed constrained method",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            class MyClass {
+                                field some_field: string,
+                                fn some_fn() {
+                                    fn inner_fn() {
+                                        var x = some_field;
+                                    }
+                                }
+                            }
+                            """,
+                            [TypeCheckerError.InstanceMemberInClosureInNonBoxedConstrainedMethod(SourceRange.Default)]
+                        )
+                    }
+                }
+            },
+            {
+                "instance function referenced in non Self: boxed constrained method",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            class MyClass {
+                                field some_field: string,
+                                fn some_fn() {
+                                    fn inner_fn() {
+                                        other_fn();
+                                    }
+                                }
+                                fn other_fn() {}
+                            }
+                            """,
+                            [TypeCheckerError.InstanceMemberInClosureInNonBoxedConstrainedMethod(SourceRange.Default)]
+                        )
+                    }
+                }
+            },
+            {
+                "Self: boxed constrained method referenced in non constrained method ",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            class MyClass {
+                                fn some_fn() where Self: boxed {}
+                                fn other_fn() {
+                                    some_fn();
+                                }
+                            }
+                            """,
+                            [TypeCheckerError.MethodConstrainedToBoxedInstances(Identifier("some_fn"))]
+                        )
+                    }
+                }
+            },
+            {
+                "Self: boxed constrained method referenced on unboxed instance",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            class MyClass {
+                                pub fn some_fn() where Self: boxed {}
+                            }
+                            var x = new unboxed MyClass{};
+                            x.some_fn();
+                            """,
+                            [TypeCheckerError.MethodConstrainedToBoxedInstances(Identifier("some_fn"))]
+                        )
+                    }
+                }
+            },
+            {
+                "BoxedOf type constraint on Self",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            class MyClass {
+                                pub fn some_fn() where Self: boxed string {}
+                            }
+                            """,
+                            [TypeCheckerError.InvalidSelfTypeConstraint(SourceRange.Default)]
+                        )
+                    }
+                }
+            },
+            {
+                "UnboxedOf type constraint on Self",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            class MyClass {
+                                pub fn some_fn() where Self: unboxed string {}
+                            }
+                            """,
+                            [TypeCheckerError.InvalidSelfTypeConstraint(SourceRange.Default)]
+                        )
+                    }
+                }
+            },
+            {
+                "UnboxedOf type constraint on Self",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            class MyClass {
+                                pub fn some_fn() where Self: unboxed {}
+                            }
+                            var x = new MyClass{};
+                            x.some_fn();
+                            """,
+                            [TypeCheckerError.MethodConstrainedToUnboxedInstances(Identifier("some_fn"))]
+                        )
+                    }
+                }
+            },
+            {
+                "Self constraint on static function",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            class MyClass {
+                                pub static fn some_fn() where Self: boxed {}
+                            }
+                            """,
+                            [TypeCheckerError.SelfConstraintOnNonInstanceFunction(SourceRange.Default)]
+                        )
+                    }
+                }
+            },
+            {
+                "Self constraint on global function",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            pub fn some_fn() where Self: boxed {}
+                            """,
+                            [TypeCheckerError.SelfConstraintOnNonInstanceFunction(SourceRange.Default)]
+                        )
+                    }
+                }
+            },
             {
                 "modulo on char",
                 new()
@@ -4912,7 +5284,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                             """
                             pub extern fn some_fn<T>() where int: unboxed T;
                             """,
-                            [TypeCheckerError.NonTypeParameterConstrained(NamedTypeIdentifier("int"))]
+                            [TypeCheckerError.InvalidConstrainedType(NamedTypeIdentifier("int"))]
                         )
                     }
                 }
@@ -6741,7 +7113,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                                    class MyClass {
                                        mut field MyField: string,
 
-                                       mut fn MyFn() {
+                                       mut fn MyFn() where Self: boxed {
                                            fn InnerFn() {
                                                MyField = "";
                                            }
@@ -6761,7 +7133,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                                    class MyClass {
                                        mut field MyField: string,
 
-                                       fn MyFn() {
+                                       fn MyFn() where Self: boxed {
                                            mut fn InnerFn() {
                                                MyField = "";
                                            }

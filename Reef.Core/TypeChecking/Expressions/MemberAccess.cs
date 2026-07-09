@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Reef.Core.Expressions;
 
 namespace Reef.Core.TypeChecking;
@@ -113,10 +114,34 @@ public partial class TypeChecker
             return field.Type;
         }
 
-
         if (function.IsStatic)
         {
             AddError(TypeCheckerError.InstanceMemberAccessOnStaticMember(memberAccessExpression.SourceRange, memberAccessExpression.MemberAccess.MemberName?.StringValue ?? ""));
+        }
+
+        foreach (var constraint in function.Signature.SelfConstraints)
+        {
+            switch (constraint)
+            {
+                case BoxedTypeConstraint:
+                    {
+                        if (!IsTypeReferenceBoxed(ownerExpression.ResolvedType.NotNull()))
+                        {
+                            AddError(TypeCheckerError.MethodConstrainedToBoxedInstances(stringToken));
+                        }
+                        break;
+                    }
+                case UnboxedTypeConstraint:
+                    {
+                        if (IsTypeReferenceBoxed(ownerExpression.ResolvedType.NotNull()))
+                        {
+                            AddError(TypeCheckerError.MethodConstrainedToUnboxedInstances(stringToken));
+                        }
+                        break;
+                    }
+                default:
+                    throw new UnreachableException(constraint.GetType().ToString());
+            }
         }
 
         memberAccessExpression.MemberAccess.MemberType = MemberType.Function;
@@ -169,6 +194,31 @@ public partial class TypeChecker
         if (function.IsMutable)
         {
             ExpectMutableExpression(ownerExpression);
+        }
+
+        foreach (var constraint in function.Signature.SelfConstraints)
+        {
+            switch (constraint)
+            {
+                case BoxedTypeConstraint:
+                    {
+                        if (!IsTypeReferenceBoxed(ownerExpression.ResolvedType.NotNull()))
+                        {
+                            AddError(TypeCheckerError.MethodConstrainedToBoxedInstances(stringToken));
+                        }
+                        break;
+                    }
+                case UnboxedTypeConstraint:
+                    {
+                        if (IsTypeReferenceBoxed(ownerExpression.ResolvedType.NotNull()))
+                        {
+                            AddError(TypeCheckerError.MethodConstrainedToUnboxedInstances(stringToken));
+                        }
+                        break;
+                    }
+                default:
+                    throw new UnreachableException(constraint.GetType().ToString());
+            }
         }
 
         memberAccessExpression.MemberAccess.MemberType = MemberType.Function;

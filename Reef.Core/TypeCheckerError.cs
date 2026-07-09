@@ -435,12 +435,12 @@ public record TypeCheckerError
         );
     }
 
-    public static TypeCheckerError NonTypeParameterConstrained(NamedTypeIdentifier namedTypeIdentifier)
+    public static TypeCheckerError InvalidConstrainedType(NamedTypeIdentifier namedTypeIdentifier)
     {
         return new(
-            TypeCheckerErrorType.NonTypeParameterConstrained,
+            TypeCheckerErrorType.InvalidConstrainedType,
             namedTypeIdentifier.SourceRange,
-            $"Cannot constrain non type parameter {namedTypeIdentifier}"
+            $"Type constraint must be either a type parameter or Self: {namedTypeIdentifier}"
         );
     }
 
@@ -548,6 +548,47 @@ public record TypeCheckerError
             $"variantOf must be for a union");
     }
 
+    public static TypeCheckerError MethodConstrainedToBoxedInstances(Token methodName)
+    {
+        return new(
+            TypeCheckerErrorType.MethodConstrainedToBoxedInstances,
+            methodName.SourceSpan.ToRange(),
+            $"Method {methodName} accessed on an unboxed instance, but is constrained to boxed instances");
+    }
+
+    public static TypeCheckerError MethodConstrainedToUnboxedInstances(Token methodName)
+    {
+        return new(
+            TypeCheckerErrorType.MethodConstrainedToUnboxedInstances,
+            methodName.SourceSpan.ToRange(),
+            $"Method {methodName} accessed on an boxed instance, but is constrained to unboxed instances");
+    }
+
+    public static TypeCheckerError InstanceMemberInClosureInNonBoxedConstrainedMethod(SourceRange sourceRange)
+    {
+        return new(
+            TypeCheckerErrorType.InstanceMemberInClosureInNonBoxedConstrainedMethod,
+            sourceRange,
+            "Accessing instance members within a closure is only allowed when the method constrains Self to being boxed: `where Self: boxed`");
+    }
+
+    public static TypeCheckerError InvalidSelfTypeConstraint(SourceRange sourceRange)
+    {
+        return new(
+            TypeCheckerErrorType.InvalidSelfTypeConstraint,
+            sourceRange,
+            "Type constraint is invalid for Self");
+
+    }
+
+    public static TypeCheckerError SelfConstraintOnNonInstanceFunction(SourceRange sourceRange)
+    {
+        return new(
+            TypeCheckerErrorType.SelfConstraintOnNonInstanceFunction,
+            sourceRange,
+            "Self constraint is not valid on a non instance function");
+    }
+
 }
 
 public enum TypeCheckerErrorType
@@ -612,7 +653,7 @@ public enum TypeCheckerErrorType
     TopLevelStatementsInNonMainModule,
     ExternFunctionDefinesBody,
     NonExternFunctionDoesNotDefineBody,
-    NonTypeParameterConstrained,
+    InvalidConstrainedType,
     UnsupportedFalloutReturnType,
     TypeArgumentMustBeBoxed,
     GrabNotLastInBlock,
@@ -623,6 +664,10 @@ public enum TypeCheckerErrorType
     ContinueUsedInValueLoop,
     BreakUsedInValueLoop,
     VariantOfOnNonUnion,
-    TypeArgumentMustBeUnboxed
-
+    TypeArgumentMustBeUnboxed,
+    MethodConstrainedToBoxedInstances,
+    InstanceMemberInClosureInNonBoxedConstrainedMethod,
+    MethodConstrainedToUnboxedInstances,
+    InvalidSelfTypeConstraint,
+    SelfConstraintOnNonInstanceFunction
 }

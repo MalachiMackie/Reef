@@ -185,6 +185,11 @@ public partial class TypeChecker
     private HashSet<GenericPlaceholder> GenericPlaceholders => _typeCheckingScopes.Peek().GenericPlaceholders;
     private ITypeSignature? CurrentTypeSignature => _typeCheckingScopes.Peek().CurrentTypeSignature;
     private FunctionSignature? CurrentFunctionSignature => _typeCheckingScopes.Peek().CurrentFunctionSignature;
+    private FunctionSignature? TopFunctionSignature => _typeCheckingScopes
+        .Reverse()
+        .Where(x => x.CurrentFunctionSignature is not null)
+        .Select(x => x.CurrentFunctionSignature).FirstOrDefault();
+    private bool InLocalFunction => _typeCheckingScopes.Peek().InLocalFunction;
     private ITypeReference? ExpectedReturnType => _typeCheckingScopes.Peek().ExpectedReturnType;
     private DefId? CurrentDefId => _typeCheckingScopes.Peek().CurrentDefId;
     private ModuleId CurrentModuleId => _typeCheckingScopes.Peek().ModuleId ?? throw new InvalidOperationException("No current module id");
@@ -342,7 +347,8 @@ public partial class TypeChecker
                         UseAll: false))
             ],
             null,
-            null));
+            null,
+            false));
 
         SetupSignatures();
 

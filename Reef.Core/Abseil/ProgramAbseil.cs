@@ -370,7 +370,8 @@ public partial class ProgramAbseil
                 ExternName: null,
                 false,
                 IsPublic: true,
-                Attributes: [])
+                Attributes: [],
+                SelfConstraints: [])
         {
             ReturnType = unit,
             OwnerType = null,
