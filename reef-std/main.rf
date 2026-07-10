@@ -216,6 +216,7 @@ extern fn string_chars(str: string): [char]
 extern fn string_char_at(str: string, at: u64): char
 extern fn string_concat(left: string, right: string): string;
 
+#[boxed_only]
 pub class string {
     // If these are renamed or reordered, serialization within AssemblyLine needs to be updated wherever we write strings
     pub field length: u64,
@@ -670,14 +671,14 @@ pub unboxed union option<TValue> {
     None,
     Some(TValue),
 
-    pub static fn unwrap(val: option::<TValue>): TValue {
+    pub static fn unwrap(val: Self): TValue {
         return match(val) {
             Self::None => panic(),
             Self::Some(var value) => value,
         };
     }
 
-    pub static fn ok_or<TError>(val: option::<TValue>, err: TError): result::<TValue, TError> {
+    pub static fn ok_or<TError>(val: Self, err: TError): result::<TValue, TError> {
         return match (val)
         {
             Self::Some(var value) => ok(value),
@@ -690,7 +691,7 @@ pub unboxed union result<TValue, TError> {
     Ok(TValue),
     Error(TError),
 
-    pub static fn unwrap(res: result::<TValue, TError>): TValue {
+    pub static fn unwrap(res: Self): TValue {
         return match (res) {
             Self::Ok(var value) => value,
             Self::Error => {
@@ -867,3 +868,4 @@ pub fn catch_unwind<TResult>(callee: Fn(): TResult): result::<TResult, ()> {
 }
 
 pub attribute test{}
+pub attribute boxed_only{}

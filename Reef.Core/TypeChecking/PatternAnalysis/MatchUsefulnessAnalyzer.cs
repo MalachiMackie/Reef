@@ -653,16 +653,14 @@ public static class MatchUsefulnessAnalyzer
                 }
             case UnionVariantPattern { VariantName.StringValue: { } variantName }:
                 {
-                    var unionType = type switch
+                    var (index, variant) = type switch
                     {
-                        TypeChecker.InstantiatedUnion x => x,
-                        TypeChecker.VariantOfType(var x) => x,
+                        TypeChecker.InstantiatedUnion x => x.GetVariants().Index().FirstOrDefault(y => y.Item.Name == variantName),
+                        TypeChecker.VariantOfType(var x) => x.GetVariants().Index().FirstOrDefault(y => y.Item.Name == variantName),
+                        TypeChecker.SelfTypeReference{Signature: TypeChecker.UnionSignature signature} => signature.Variants.Index().FirstOrDefault(y => y.Item.Name == variantName),
                         _ => throw new InvalidOperationException("Expected union type"),
                     };
 
-                    var (index, variant) = unionType.GetVariants()
-                        .Index()
-                        .FirstOrDefault(x => x.Item.Name == variantName);
                     constructor = new VariantConstructor((uint)index);
                     fields = variant switch
                     {
@@ -704,11 +702,13 @@ public static class MatchUsefulnessAnalyzer
                 TupleParamPatterns: { } tupleParamPatterns
             }:
                 {
-                    var unionType = type as TypeChecker.InstantiatedUnion
-                                    ?? throw new InvalidOperationException("Expected union type");
-                    var index = unionType.GetVariants()
-                        .Index()
-                        .FirstOrDefault(x => x.Item.Name == variantName).Index;
+                    var (index, variant) = type switch
+                    {
+                        TypeChecker.InstantiatedUnion x => x.GetVariants().Index().FirstOrDefault(y => y.Item.Name == variantName),
+                        TypeChecker.VariantOfType(var x) => x.GetVariants().Index().FirstOrDefault(y => y.Item.Name == variantName),
+                        TypeChecker.SelfTypeReference{Signature: TypeChecker.UnionSignature signature} => signature.Variants.Index().FirstOrDefault(y => y.Item.Name == variantName),
+                        _ => throw new InvalidOperationException("Expected union type"),
+                    };
                     constructor = new VariantConstructor((uint)index);
                     // we assume that every tuple member has been specified, so we don't need to get it from type
                     fields = tupleParamPatterns.Index()
@@ -728,11 +728,13 @@ public static class MatchUsefulnessAnalyzer
                 FieldPatterns: { } fieldPatterns
             }:
                 {
-                    var unionType = type as TypeChecker.InstantiatedUnion
-                                    ?? throw new InvalidOperationException("Expected union type");
-                    var (index, variant) = unionType.GetVariants()
-                        .Index()
-                        .FirstOrDefault(x => x.Item.Name == variantName);
+                    var (index, variant) = type switch
+                    {
+                        TypeChecker.InstantiatedUnion x => x.GetVariants().Index().FirstOrDefault(y => y.Item.Name == variantName),
+                        TypeChecker.VariantOfType(var x) => x.GetVariants().Index().FirstOrDefault(y => y.Item.Name == variantName),
+                        TypeChecker.SelfTypeReference{Signature: TypeChecker.UnionSignature signature} => signature.Variants.Index().FirstOrDefault(y => y.Item.Name == variantName),
+                        _ => throw new InvalidOperationException("Expected union type"),
+                    };
                     if (variant is not TypeChecker.ClassUnionVariant classUnionVariant)
                     {
                         throw new InvalidOperationException("Expected class union variant");

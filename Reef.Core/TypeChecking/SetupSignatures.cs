@@ -1,12 +1,13 @@
 using System.Diagnostics;
+using Reef.Core.Expressions;
 
 namespace Reef.Core.TypeChecking;
 
 public partial class TypeChecker
 {
-    private sealed record ClassInfo(ProgramClass ProgramClass, ClassSignature Signature, List<FunctionSignature> Functions, List<TypeField> Fields);
+    private sealed record ClassInfo(ProgramClass ProgramClass, ClassSignature Signature, List<FunctionSignature> Functions, List<TypeField> Fields, List<AttributeReference> Attributes);
     private sealed record AttributeInfo(AttributeDefinition Definition, AttributeSignature Signature);
-    private sealed record UnionInfo(ProgramUnion ProgramUnion, UnionSignature Signature, List<FunctionSignature> Functions, List<IUnionVariant> Variants);
+    private sealed record UnionInfo(ProgramUnion ProgramUnion, UnionSignature Signature, List<FunctionSignature> Functions, List<IUnionVariant> Variants, List<AttributeReference> Attributes);
     private sealed record ModuleInfo(ModuleId ModuleId, IReadOnlyList<ClassInfo> Classes, IReadOnlyList<UnionInfo> Unions, IReadOnlyList<AttributeInfo> Attributes);
 
     private List<ModuleInfo> CreateBareSignatures()
@@ -32,6 +33,7 @@ public partial class TypeChecker
                 var variants = new List<IUnionVariant>();
                 var functions = new List<FunctionSignature>();
                 var typeParameters = new List<GenericPlaceholder>(union.TypeParameters.Count);
+                var unionAttributes = new List<AttributeReference>(union.Attributes.Count);
                 var unionSignature = new UnionSignature
                 {
                     Id = new DefId(moduleId, $"{moduleId}:::{union.Name.StringValue}"),
@@ -46,7 +48,8 @@ public partial class TypeChecker
                         { Token.Type: TokenType.Unboxed } => false,
                         { Token.Type: var type } => throw new InvalidOperationException(type.ToString())
                     },
-                    IsPublic = union.AccessModifier is { Token.Type: TokenType.Pub }
+                    IsPublic = union.AccessModifier is { Token.Type: TokenType.Pub },
+                    Attributes = unionAttributes
                 };
 
                 if (union.Name.StringValue == "Self")
@@ -78,7 +81,7 @@ public partial class TypeChecker
                 typeParameters.AddRange(union.TypeParameters.Select(typeParameter => new GenericPlaceholder
                 { GenericName = typeParameter.StringValue, OwnerType = unionSignature, Constraints = [] }));
 
-                unions.Add(new UnionInfo(union, unionSignature, functions, variants));
+                unions.Add(new UnionInfo(union, unionSignature, functions, variants, unionAttributes));
             }
 
             foreach (var klass in module.Classes)
@@ -87,6 +90,7 @@ public partial class TypeChecker
                 var functions = new List<FunctionSignature>(klass.Functions.Count);
                 var fields = new List<TypeField>(klass.Fields.Count);
                 var typeParameters = new List<GenericPlaceholder>(klass.TypeParameters.Count);
+                var classAttributes = new List<AttributeReference>(klass.Attributes.Count);
                 var classSignature = new ClassSignature
                 {
                     Id = new DefId(CurrentModuleId, $"{CurrentModuleId}:::{klass.Name.StringValue}"),
@@ -101,7 +105,8 @@ public partial class TypeChecker
                         { Token.Type: TokenType.Unboxed } => false,
                         { Token.Type: var type } => throw new InvalidOperationException(type.ToString())
                     },
-                    IsPublic = klass.AccessModifier is { Token.Type: TokenType.Pub }
+                    IsPublic = klass.AccessModifier is { Token.Type: TokenType.Pub },
+                    Attributes = classAttributes
                 };
 
 
@@ -139,7 +144,7 @@ public partial class TypeChecker
                     }
                 }
 
-                classes.Add(new ClassInfo(klass, classSignature, functions, fields));
+                classes.Add(new ClassInfo(klass, classSignature, functions, fields, classAttributes));
             }
 
             foreach (var attributeDef in module.Attributes)
@@ -181,12 +186,27 @@ public partial class TypeChecker
         {
             using var __ = PushScope(moduleId: moduleId, moduleImports: _modules[moduleId].TopLevelImports);
 
-            foreach (var (union, unionSignature, functions, variants) in unions)
+            foreach (var (union, unionSignature, functions, variants, unionAttributes) in unions)
             {
                 using var _ = PushScope(
                     unionSignature,
                     genericPlaceholders: unionSignature.TypeParameters,
                     defId: unionSignature.Id);
+
+                foreach (var attribute in union.Attributes)
+                {
+                    if (SearchForAttribute(
+                            attribute.Identifier.StringValue,
+                            [.. attribute.ModulePath.Select(x => x.StringValue)],
+                            attribute.ModulePathIsGlobal) is { } foundAttribute)
+                    {
+                        unionAttributes.Add(new AttributeReference(foundAttribute.Id));
+                    }
+                    else
+                    {
+                        AddError(TypeCheckerError.SymbolNotFound(attribute.Identifier));
+                    }
+                }
 
                 foreach (var function in union.Functions)
                 {
@@ -229,12 +249,14 @@ public partial class TypeChecker
                         var createFunctionReturnType = InstantiatedUnion.Create(
                             unionSignature,
                             unionSignature.TypeParameters,
-                            boxed: true);
+                            boxed: true,
+                            UInt64());
 
                         var unboxedCreateFunctionReturnType = InstantiatedUnion.Create(
                             unionSignature,
                             unionSignature.TypeParameters,
-                            boxed: false);
+                            boxed: false,
+                            UInt64());
 
                         var createFunction = new FunctionSignature(
                             new DefId(unionSignature.Id.ModuleId, unionSignature.Id.FullName + $"__Create__{variant.Name.StringValue}"),
@@ -358,9 +380,24 @@ public partial class TypeChecker
                 unionSignature.Initialized = true;
             }
 
-            foreach (var (klass, classSignature, functions, fields) in classes)
+            foreach (var (klass, classSignature, functions, fields, classAttributes) in classes)
             {
                 using var _ = PushScope(classSignature, genericPlaceholders: classSignature.TypeParameters, defId: classSignature.Id);
+
+                foreach (var attribute in klass.Attributes)
+                {
+                    if (SearchForAttribute(
+                            attribute.Identifier.StringValue,
+                            [.. attribute.ModulePath.Select(x => x.StringValue)],
+                            attribute.ModulePathIsGlobal) is { } foundAttribute)
+                    {
+                        classAttributes.Add(new AttributeReference(foundAttribute.Id));
+                    }
+                    else
+                    {
+                        AddError(TypeCheckerError.SymbolNotFound(attribute.Identifier));
+                    }
+                }
 
                 foreach (var fn in klass.Functions)
                 {

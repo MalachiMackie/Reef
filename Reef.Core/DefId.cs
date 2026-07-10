@@ -24,6 +24,7 @@ public record DefId(ModuleId ModuleId, string FullName)
     public static DefId VariablePlace { get; } = new(ReflectionModuleId, $"{ReflectionModuleId}:::VariablePlace");
 
     public static DefId Test { get; } = new(CoreLibModuleId, $"{CoreLibModuleId}:::test");
+    public static DefId BoxedOnly { get; } = new(CoreLibModuleId, $"{CoreLibModuleId}:::boxed_only");
     public static DefId BoxedValue { get; } = new(CoreLibModuleId, $"{CoreLibModuleId}:::BoxedValue");
     public static DefId ObjectHeader { get; } = new(CoreLibModuleId, $"{CoreLibModuleId}:::ObjectHeader");
     public static DefId Panic { get; } = new(CoreLibModuleId, $"{CoreLibModuleId}:::panic");

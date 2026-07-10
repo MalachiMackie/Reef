@@ -354,8 +354,12 @@ public partial class ProgramAbseil
             }
         }
 
+
+        var u64Signature = _modules[DefId.UInt64.ModuleId].Classes.First(x => x.Signature.NotNull().Id == DefId.UInt64).Signature.NotNull();
+        var u64Type = TypeChecker.InstantiatedClass.Create(u64Signature, [], boxed: false, u64Type: null!);
+
         var unitSignature = _modules[DefId.Unit.ModuleId].Classes.Select(x => x.Signature.NotNull()).First(x => x.Id == DefId.Unit);
-        var unit = TypeChecker.InstantiatedClass.Create(unitSignature, [], boxed: false);
+        var unit = TypeChecker.InstantiatedClass.Create(unitSignature, [], boxed: false, u64Type);
 
         var mainExpressions = new List<Expressions.IExpression>(_mainModule.Expressions);
 
@@ -393,8 +397,8 @@ public partial class ProgramAbseil
             var catchUnwindSignature = _modules[DefId.CatchUnwind.ModuleId].Functions.First(
                 x => x.Signature.NotNull().Id == DefId.CatchUnwind).Signature.NotNull();
 
-            var u32Type = TypeChecker.InstantiatedClass.Create(u32Signature, [], u32Signature.Boxed);
-            var boolType = TypeChecker.InstantiatedClass.Create(boolSignature, [], boolSignature.Boxed);
+            var u32Type = TypeChecker.InstantiatedClass.Create(u32Signature, [], u32Signature.Boxed, u64Type);
+            var boolType = TypeChecker.InstantiatedClass.Create(boolSignature, [], boolSignature.Boxed, u64Type);
             var printStringSignature = _modules[DefId.PrintString.ModuleId].Functions
                 .First(x => x.Signature.NotNull().Id == DefId.PrintString).Signature.NotNull();
             var printu32Signature = _modules[DefId.PrintU32.ModuleId].Functions
@@ -403,22 +407,22 @@ public partial class ProgramAbseil
                 x.Signature.NotNull().Id == DefId.FunctionObject(1)).Signature.NotNull();
             var functionObject0Signature = _modules[DefId.FunctionObject(0).ModuleId].Classes.First(x =>
                 x.Signature.NotNull().Id == DefId.FunctionObject(0)).Signature.NotNull();
-            var unitType = TypeChecker.InstantiatedClass.Create(unitSignature, [], unitSignature.Boxed);
-            var stringType = TypeChecker.InstantiatedClass.Create(stringSignature, [], stringSignature.Boxed);
+            var unitType = TypeChecker.InstantiatedClass.Create(unitSignature, [], unitSignature.Boxed, u64Type);
+            var stringType = TypeChecker.InstantiatedClass.Create(stringSignature, [], stringSignature.Boxed, u64Type);
             var resultUnitUnitType = TypeChecker.InstantiatedUnion.Create(
-                resultSignature, [unitType, unitType], resultSignature.Boxed);
+                resultSignature, [unitType, unitType], resultSignature.Boxed, u64Type);
 
             var functionObjectStringUnit = TypeChecker.InstantiatedClass.Create(
                 functionObject1Signature,
-                [stringType, unitType], functionObject1Signature.Boxed);
+                [stringType, unitType], functionObject1Signature.Boxed, u64Type);
 
             var functionObjectUnit = TypeChecker.InstantiatedClass.Create(
                 functionObject0Signature,
-                [unitType], functionObject0Signature.Boxed);
+                [unitType], functionObject0Signature.Boxed, u64Type);
 
             var functionObject_functionObjectUnit_resultUnitUnit = TypeChecker.InstantiatedClass.Create(
                 functionObject1Signature,
-                [functionObjectUnit, resultUnitUnitType], functionObject1Signature.Boxed);
+                [functionObjectUnit, resultUnitUnitType], functionObject1Signature.Boxed, u64Type);
 
             var passedCountVariable = new TypeChecker.LocalVariable(
                 mainSignature,
@@ -498,7 +502,7 @@ public partial class ProgramAbseil
                 ResolvedType = new TypeChecker.FunctionObject(
                     [new TypeChecker.FunctionParameter(stringType, false)], unitType, false, true),
                 // ResolvedType = functionObjectStringUnit,
-                FunctionInstantiation = new TypeChecker.InstantiatedFunction(null, printStringSignature, [])
+                FunctionInstantiation = new TypeChecker.InstantiatedFunction(null, printStringSignature, [], u64Type)
             };
 
             var printU32MethodExpression = new Expressions.ValueAccessorExpression(
@@ -510,10 +514,10 @@ public partial class ProgramAbseil
             {
                 ResolvedType = new TypeChecker.FunctionObject(
                                 [new TypeChecker.FunctionParameter(u32Type, false)], unitType, false, true),
-                FunctionInstantiation = new TypeChecker.InstantiatedFunction(null, printu32Signature, [])
+                FunctionInstantiation = new TypeChecker.InstantiatedFunction(null, printu32Signature, [], u64Type)
             };
 
-            var catch_unwind_instantiated_function = new TypeChecker.InstantiatedFunction(null, catchUnwindSignature, []);
+            var catch_unwind_instantiated_function = new TypeChecker.InstantiatedFunction(null, catchUnwindSignature, [], u64Type);
             catch_unwind_instantiated_function.TypeArguments[0].ResolvedType = unitType;
 
             var catchUnwindMethodExpression = new Expressions.ValueAccessorExpression(
@@ -526,7 +530,6 @@ public partial class ProgramAbseil
                 ResolvedType = new TypeChecker.FunctionObject(
                 [new TypeChecker.FunctionParameter(
                     new TypeChecker.FunctionObject([], unitType, false, true), false)], resultUnitUnitType, false, true),
-                // ResolvedType = functionObject_functionObjectUnit_resultUnitUnit,
                 FunctionInstantiation = catch_unwind_instantiated_function
             };
 
@@ -600,7 +603,7 @@ public partial class ProgramAbseil
                                                     true
                                                 )) {
                                                     FunctionInstantiation =
-                                                        new TypeChecker.InstantiatedFunction(null, testMethod, []),
+                                                        new TypeChecker.InstantiatedFunction(null, testMethod, [], u64Type),
                                                     ResolvedType = new TypeChecker.FunctionObject([], unitType, false, true)
                                                 }
                                             ]

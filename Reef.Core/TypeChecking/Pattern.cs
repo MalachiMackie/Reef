@@ -26,18 +26,19 @@ public partial class TypeChecker
 
                     ExpectType(valueTypeReference, patternUnionType, variantPattern.SourceRange);
 
-                    var union = patternUnionType switch
+                    var unionSignature = patternUnionType switch
                     {
-                        InstantiatedUnion x => x,
-                        VariantOfType(var x) => x,
+                        InstantiatedUnion x => x.Signature,
+                        VariantOfType(var x) => x.Signature,
+                        SelfTypeReference{ Signature: UnionSignature signature } => signature,
                         _ => throw new InvalidOperationException($"{patternUnionType} is not a union")
                     };
 
                     if (variantPattern.VariantName is not null)
                     {
-                        if (union.Signature.Variants.All(x => x.Name != variantPattern.VariantName.StringValue))
+                        if (unionSignature.Variants.All(x => x.Name != variantPattern.VariantName.StringValue))
                         {
-                            AddError(TypeCheckerError.UnknownTypeMember(variantPattern.VariantName, union.Name));
+                            AddError(TypeCheckerError.UnknownTypeMember(variantPattern.VariantName, unionSignature.Name));
                             break;
                         }
                     }
@@ -165,12 +166,15 @@ public partial class TypeChecker
 
                     ExpectType(patternType, valueTypeReference, pattern.SourceRange);
 
-                    if (patternType is not InstantiatedUnion union)
+                    var union = patternType switch
                     {
-                        throw new InvalidOperationException($"{patternType} is not a union");
-                    }
+                        InstantiatedUnion x => x,
+                        VariantOfType(var x) => x,
+                        SelfTypeReference{ Signature: UnionSignature signature } => InstantiateUnion(signature, [], null, SourceRange.Default),
+                        _ => throw new InvalidOperationException($"{patternType} is not a union")
+                    };
 
-                    var variant = GetUnionVariant(union, classVariantPattern.VariantName.StringValue)
+                    var variant = GetUnionVariant(union, classVariantPattern.VariantName.StringValue, UInt64())
                                   ?? throw new InvalidOperationException(
                                       $"No variant found named {classVariantPattern.VariantName.StringValue}");
 
@@ -252,12 +256,15 @@ public partial class TypeChecker
                         break;
                     }
 
-                    if (patternType is not InstantiatedUnion unionType)
+                    var unionType = patternType switch
                     {
-                        throw new InvalidOperationException($"{valueTypeReference} is not a union");
-                    }
+                        InstantiatedUnion x => x,
+                        VariantOfType(var x) => x,
+                        SelfTypeReference { Signature: UnionSignature signature } => InstantiateUnion(signature, [], null, SourceRange.Default),
+                        _ => throw new InvalidOperationException($"{patternType} is not a union")
+                    };
 
-                    var variant = GetUnionVariant(unionType, unionTupleVariantPattern.VariantName.StringValue)
+                    var variant = GetUnionVariant(unionType, unionTupleVariantPattern.VariantName.StringValue, UInt64())
                         ?? throw new InvalidOperationException(
                                                           $"No union variant found with name {unionTupleVariantPattern.VariantName.StringValue}");
 

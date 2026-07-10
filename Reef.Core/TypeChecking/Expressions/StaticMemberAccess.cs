@@ -25,112 +25,14 @@ public partial class TypeChecker
 
         switch (type)
         {
+            case SelfTypeReference { Signature: ClassSignature classSignature }:
+                return FromClass(InstantiateClass(classSignature, null, UInt64()));
+            case SelfTypeReference { Signature: UnionSignature unionSignature }:
+                return FromUnion(InstantiateUnion(unionSignature, [], null, SourceRange.Default));
             case InstantiatedClass instantiatedClass:
-                {
-                    if (instantiatedClass.GetFields().FirstOrDefault(x => x.Name == staticMemberAccess.MemberName!.StringValue) is { } field)
-                    {
-                        staticMemberAccess.MemberType = MemberType.Field;
-
-                        if (!field.IsPublic && !CanAccessPrivateMembers(instantiatedClass.Signature))
-                        {
-                            AddError(TypeCheckerError.PrivateMemberReferenced(staticMemberAccess.MemberName!));
-                        }
-
-                        if (staticMemberAccess.TypeArguments is not null)
-                        {
-                            AddError(TypeCheckerError.GenericTypeArgumentsOnNonFunctionValue(staticMemberAccessExpression.SourceRange));
-                        }
-
-                        if (!field.IsStatic)
-                        {
-                            AddError(TypeCheckerError.StaticMemberAccessOnInstanceMember(staticMemberAccessExpression.SourceRange, memberName));
-                        }
-
-                        return field.Type;
-                    }
-
-                    if (!TryInstantiateClassFunction(
-                            instantiatedClass,
-                            memberName,
-                            typeArguments,
-                            staticMemberAccessExpression.SourceRange,
-                            out var function))
-                    {
-                        AddError(TypeCheckerError.UnknownTypeMember(staticMemberAccess.MemberName!, instantiatedClass.Signature.Name));
-                        return UnknownType.Instance;
-                    }
-
-                    if (!function.IsStatic)
-                    {
-                        AddError(TypeCheckerError.StaticMemberAccessOnInstanceMember(staticMemberAccessExpression.SourceRange, memberName));
-                    }
-
-                    staticMemberAccess.MemberType = MemberType.Function;
-
-                    staticMemberAccess.InstantiatedFunction = function;
-
-                    return new FunctionObject(function.GetParameters(), function.GetReturnType(), function.MutableReturn, true);
-
-                }
+                return FromClass(instantiatedClass);
             case InstantiatedUnion instantiatedUnion:
-                {
-                    var variant = GetUnionVariant(instantiatedUnion, memberName);
-                    if (variant is not null)
-                    {
-                        staticMemberAccess.MemberType = MemberType.Variant;
-
-                        if (staticMemberAccess.TypeArguments is not null)
-                        {
-                            AddError(TypeCheckerError.GenericTypeArgumentsOnNonFunctionValue(staticMemberAccessExpression.SourceRange));
-                        }
-
-                        switch (variant)
-                        {
-                            case TupleUnionVariant tupleVariant:
-                                {
-                                    var tupleVariantFunction = GetUnionTupleVariantFunction(tupleVariant, instantiatedUnion);
-                                    staticMemberAccess.InstantiatedFunction = tupleVariantFunction;
-
-                                    return new FunctionObject(
-                                        tupleVariantFunction.GetParameters(),
-                                        tupleVariantFunction.GetReturnType(),
-                                        isMutableReturn: true,
-                                        true);
-                                }
-                            case UnitUnionVariant:
-                                return type;
-                            case ClassUnionVariant:
-                                AddError(TypeCheckerError.UnionClassVariantWithoutInitializer(staticMemberAccessExpression.SourceRange));
-                                return type;
-                            default:
-                                throw new UnreachableException();
-                        }
-                    }
-
-                    if (!TryInstantiateUnionFunction(instantiatedUnion,
-                            memberName,
-                            typeArguments,
-                            staticMemberAccessExpression.SourceRange,
-                            out var function))
-                    {
-                        AddError(TypeCheckerError.UnknownTypeMember(staticMemberAccess.MemberName!, instantiatedUnion.Name));
-                        return UnknownType.Instance;
-                    }
-
-                    if (!function.IsStatic)
-                    {
-                        AddError(TypeCheckerError.StaticMemberAccessOnInstanceMember(staticMemberAccessExpression.SourceRange, memberName));
-                    }
-
-                    staticMemberAccess.MemberType = MemberType.Function;
-                    staticMemberAccess.InstantiatedFunction = function;
-
-                    return new FunctionObject(
-                        function.GetParameters(),
-                        function.GetReturnType(),
-                        function.MutableReturn,
-                        true);
-                }
+                return FromUnion(instantiatedUnion);
             case GenericTypeReference or GenericPlaceholder:
                 AddError(TypeCheckerError.StaticMemberAccessOnGenericReference(staticMemberAccessExpression));
                 return UnknownType.Instance;
@@ -150,6 +52,116 @@ public partial class TypeChecker
                 }
             default:
                 throw new UnreachableException(type.GetType().ToString());
+        }
+
+        ITypeReference FromUnion(InstantiatedUnion instantiatedUnion)
+        {
+            var variant = GetUnionVariant(instantiatedUnion, memberName, UInt64());
+            if (variant is not null)
+            {
+                staticMemberAccess.MemberType = MemberType.Variant;
+
+                if (staticMemberAccess.TypeArguments is not null)
+                {
+                    AddError(TypeCheckerError.GenericTypeArgumentsOnNonFunctionValue(staticMemberAccessExpression.SourceRange));
+                }
+
+                switch (variant)
+                {
+                    case TupleUnionVariant tupleVariant:
+                        {
+                            var tupleVariantFunction = GetUnionTupleVariantFunction(tupleVariant, instantiatedUnion);
+                            staticMemberAccess.InstantiatedFunction = tupleVariantFunction;
+
+                            return new FunctionObject(
+                                tupleVariantFunction.GetParameters(),
+                                tupleVariantFunction.GetReturnType(),
+                                isMutableReturn: true,
+                                true);
+                        }
+                    case UnitUnionVariant:
+                        return type;
+                    case ClassUnionVariant:
+                        AddError(TypeCheckerError.UnionClassVariantWithoutInitializer(staticMemberAccessExpression.SourceRange));
+                        return type;
+                    default:
+                        throw new UnreachableException();
+                }
+            }
+
+            if (!TryInstantiateUnionFunction(
+                    instantiatedUnion,
+                    instantiatedUnion.Signature,
+                    memberName,
+                    typeArguments,
+                    staticMemberAccessExpression.SourceRange,
+                    out var function))
+            {
+                AddError(TypeCheckerError.UnknownTypeMember(staticMemberAccess.MemberName!, instantiatedUnion.Name));
+                return UnknownType.Instance;
+            }
+
+            if (!function.IsStatic)
+            {
+                AddError(TypeCheckerError.StaticMemberAccessOnInstanceMember(staticMemberAccessExpression.SourceRange, memberName));
+            }
+
+            staticMemberAccess.MemberType = MemberType.Function;
+            staticMemberAccess.InstantiatedFunction = function;
+
+            return new FunctionObject(
+                function.GetParameters(),
+                function.GetReturnType(),
+                function.MutableReturn,
+                true);
+        }
+
+        ITypeReference FromClass(InstantiatedClass instantiatedClass)
+        {
+            if (instantiatedClass.GetFields().FirstOrDefault(x => x.Name == staticMemberAccess.MemberName!.StringValue) is { } field)
+            {
+                staticMemberAccess.MemberType = MemberType.Field;
+
+                if (!field.IsPublic && !CanAccessPrivateMembers(instantiatedClass.Signature))
+                {
+                    AddError(TypeCheckerError.PrivateMemberReferenced(staticMemberAccess.MemberName!));
+                }
+
+                if (staticMemberAccess.TypeArguments is not null)
+                {
+                    AddError(TypeCheckerError.GenericTypeArgumentsOnNonFunctionValue(staticMemberAccessExpression.SourceRange));
+                }
+
+                if (!field.IsStatic)
+                {
+                    AddError(TypeCheckerError.StaticMemberAccessOnInstanceMember(staticMemberAccessExpression.SourceRange, memberName));
+                }
+
+                return field.Type;
+            }
+
+            if (!TryInstantiateClassFunction(
+                    instantiatedClass,
+                    instantiatedClass.Signature,
+                    memberName,
+                    typeArguments,
+                    staticMemberAccessExpression.SourceRange,
+                    out var function))
+            {
+                AddError(TypeCheckerError.UnknownTypeMember(staticMemberAccess.MemberName!, instantiatedClass.Signature.Name));
+                return UnknownType.Instance;
+            }
+
+            if (!function.IsStatic)
+            {
+                AddError(TypeCheckerError.StaticMemberAccessOnInstanceMember(staticMemberAccessExpression.SourceRange, memberName));
+            }
+
+            staticMemberAccess.MemberType = MemberType.Function;
+
+            staticMemberAccess.InstantiatedFunction = function;
+
+                    return new FunctionObject(function.GetParameters(), function.GetReturnType(), function.MutableReturn, true);
         }
     }
 }

@@ -342,7 +342,8 @@ public static class ExpressionHelpers
             [.. typeParameters?.Select(x => Token.Identifier(x, SourceSpan.Default)) ?? []],
             functions ?? [],
             fields ?? [],
-            null);
+            null,
+            []);
     }
 
     public static ProgramUnion Union(
@@ -358,7 +359,8 @@ public static class ExpressionHelpers
             [.. typeParameters?.Select(x => Token.Identifier(x, SourceSpan.Default)) ?? []],
             functions ?? [],
             variants ?? [],
-            null);
+            null,
+            []);
     }
 
     public static TypeChecker.FunctionObject FunctionObject(

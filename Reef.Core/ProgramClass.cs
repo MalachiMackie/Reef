@@ -10,7 +10,8 @@ public record ProgramClass(
     IReadOnlyList<StringToken> TypeParameters,
     IReadOnlyCollection<LangFunction> Functions,
     IReadOnlyCollection<ClassField> Fields,
-    BoxingModifier? BoxingModifier)
+    BoxingModifier? BoxingModifier,
+    IReadOnlyList<LangAttribute> Attributes)
 {
     public TypeChecker.ClassSignature? Signature { get; set; }
 

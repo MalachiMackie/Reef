@@ -85,23 +85,23 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
             {
                 "main.rf",
                 ("""
-                union MyUnion
-                {
-                    A,
-                    B(string),
-                    C
+                class MyClass{
+                    pub fn get_this(): Self {
+                        return this;
+                    }
                 }
 
-                var x: variantOf MyUnion = variantOf MyUnion::A;
-
-                var b = match (x)
-                {
-                    variantOf MyUnion::A => 0,
-                    variantOf MyUnion::B => 1,
-                    variantOf MyUnion::C => 2,
-                };
-                """, [])
+                var x = new MyClass{};
+                var y: unboxed MyClass = x.get_this();
+                """,
+                [TypeCheckerError.MismatchedTypeBoxing(
+                    SourceRange.Default,
+                    new TestClassReference(new DefId(ModuleId, $"{ModuleId}:::MyClass"), [], Boxed: false),
+                    false,
+                    new TestClassReference(new DefId(ModuleId, $"{ModuleId}:::MyClass"), [], Boxed: true),
+                    true)])
             }
+
         };
 
         foreach (var (path, (contents, _)) in sourceFiles)
@@ -123,6 +123,47 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
     {
         IEnumerable<Dictionary<string, string>> sources =
         [
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    class MyClass<TValue>{
+                        pub field val: option::<TValue>
+                    }
+
+                    fn some_fn<TValue2>() {
+                        var x = new MyClass::<TValue2>{val = option::None};
+                        var y: option::<TValue2> = x.val;
+                    }
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    class MyClass {
+                        pub fn boxed_only(): Self
+                            where Self: boxed {
+                            return this;
+                        }
+
+                        pub fn unboxed_only(): Self
+                            where Self: unboxed {
+                            return this;
+                        }
+                    }
+
+                    var val_boxed = new MyClass{};
+                    var val_unboxed = new unboxed MyClass{};
+
+                    var x: boxed MyClass = val_boxed.boxed_only();
+                    var y: unboxed MyClass = val_unboxed.unboxed_only();
+                    """
+                }
+            },
             new()
             {
                 {
@@ -171,6 +212,20 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                     """
                     class MyClass{
                         pub fn some_method() where Self: boxed {}
+                        pub fn other_fn() where Self: boxed {
+                            this.some_method();
+                        }
+                    }
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    class MyClass{
+                        pub fn some_method() where Self: boxed {}
                     }
 
                     var x = new MyClass{};
@@ -207,6 +262,24 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                         pub fn some_method()
                             where Self: boxed {
                             fn x(){
+                                var y = this.val;
+                            }
+                        }
+                    }
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    class MyClass{
+                        pub mut field val: u32,
+
+                        pub fn some_method()
+                            where Self: boxed {
+                            fn x(){
                                 var y = this;
                             }
                         }
@@ -225,6 +298,23 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                             where Self: boxed {
                             fn x(){
                                 other_fn();
+                            }
+                        }
+                    }
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    class MyClass{
+                        pub fn other_fn(){}
+                        pub fn some_method()
+                            where Self: boxed {
+                            fn x(){
+                                this.other_fn();
                             }
                         }
                     }
@@ -3067,7 +3157,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                     "main.rf", """
                                class MyClass {
                                    fn SomeFn() {
-                                       var a: MyClass = this;
+                                       var a: Self = this;
                                    }
                                }
                                """
@@ -3081,7 +3171,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                                    A,
 
                                    fn SomeFn() {
-                                       var a: MyUnion = this;
+                                       var a: Self = this;
                                    }
                                }
                                """
@@ -4107,6 +4197,56 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
         return new TheoryData<string, Dictionary<string, (string contents, IReadOnlyList<TypeCheckerError> expectedErrors)>>
         {
             {
+                "mismatched boxing on boxed Self return",
+                new()
+                {
+                    {
+                        "main.rf",
+                        ("""
+                        class MyClass{
+                            pub fn get_this(): Self {
+                                return this;
+                            }
+                        }
+
+                        var x = new MyClass{};
+                        var y: unboxed MyClass = x.get_this();
+                        """,
+                        [TypeCheckerError.MismatchedTypeBoxing(
+                            SourceRange.Default,
+                            new TestClassReference(new DefId(ModuleId, $"{ModuleId}:::MyClass"), [], Boxed: false),
+                            false,
+                            new TestClassReference(new DefId(ModuleId, $"{ModuleId}:::MyClass"), [], Boxed: true),
+                            true)])
+                    }
+                }
+            },
+            {
+                "mismatched boxing on unboxed Self return",
+                new()
+                {
+                    {
+                        "main.rf",
+                        ("""
+                        class MyClass{
+                            pub fn get_this(): Self {
+                                return this;
+                            }
+                        }
+
+                        var x = new unboxed MyClass{};
+                        var y: MyClass = x.get_this();
+                        """,
+                        [TypeCheckerError.MismatchedTypeBoxing(
+                            SourceRange.Default,
+                            new TestClassReference(new DefId(ModuleId, $"{ModuleId}:::MyClass"), [], Boxed: true),
+                            true,
+                            new TestClassReference(new DefId(ModuleId, $"{ModuleId}:::MyClass"), [], Boxed: false),
+                            false)])
+                    }
+                }
+            },
+            {
                 "access boxed constrained type on unboxed class",
                 new()
                 {
@@ -4190,6 +4330,28 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 }
             },
             {
+                "this.field referenced in non Self: boxed constrained method",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            class MyClass {
+                                field some_field: string,
+                                fn some_fn() {
+                                    fn inner_fn() {
+                                        var x = this.some_field;
+                                    }
+                                }
+                            }
+                            """,
+                            [TypeCheckerError.InstanceMemberInClosureInNonBoxedConstrainedMethod(SourceRange.Default)]
+                        )
+                    }
+                }
+            },
+            {
                 "instance function referenced in non Self: boxed constrained method",
                 new()
                 {
@@ -4213,6 +4375,29 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 }
             },
             {
+                "this.instance function referenced in non Self: boxed constrained method",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            class MyClass {
+                                field some_field: string,
+                                fn some_fn() {
+                                    fn inner_fn() {
+                                        this.other_fn();
+                                    }
+                                }
+                                fn other_fn() {}
+                            }
+                            """,
+                            [TypeCheckerError.InstanceMemberInClosureInNonBoxedConstrainedMethod(SourceRange.Default)]
+                        )
+                    }
+                }
+            },
+            {
                 "Self: boxed constrained method referenced in non constrained method ",
                 new()
                 {
@@ -4224,6 +4409,26 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                                 fn some_fn() where Self: boxed {}
                                 fn other_fn() {
                                     some_fn();
+                                }
+                            }
+                            """,
+                            [TypeCheckerError.MethodConstrainedToBoxedInstances(Identifier("some_fn"))]
+                        )
+                    }
+                }
+            },
+            {
+                "Self: boxed constrained this.method referenced in non constrained method ",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            class MyClass {
+                                fn some_fn() where Self: boxed {}
+                                fn other_fn() {
+                                    this.some_fn();
                                 }
                             }
                             """,
@@ -5269,7 +5474,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                             """
                             pub extern fn some_fn<T>() where T: unboxed [string]
                             """,
-                            [TypeCheckerError.BoxedOnlyTypeCannotBeUnboxed(new ArrayType(String), SourceRange.Default)]
+                            [TypeCheckerError.BoxedOnlyTypeCannotBeUnboxed(new ArrayType(String, UInt64), SourceRange.Default)]
                         )
                     }
                 }
@@ -5671,9 +5876,9 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                                    """, [
                                    TypeCheckerError.MismatchedTypeBoxing(
                                    SourceRange.Default,
-                                   new ArrayType(String, false, 2),
+                                   new ArrayType(String, false, 2, UInt64),
                                    false,
-                                   new ArrayType(String, true, 2),
+                                   new ArrayType(String, true, 2, UInt64),
                                    true)
                                    ])
                     }
@@ -5690,9 +5895,9 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                                    """, [
                                    TypeCheckerError.MismatchedTypeBoxing(
                                    SourceRange.Default,
-                                   new ArrayType(String, true, 2),
+                                   new ArrayType(String, true, 2, UInt64),
                                    true,
-                                   new ArrayType(String, false, 2),
+                                   new ArrayType(String, false, 2, UInt64),
                                    false)
                                    ])
                     }
@@ -5993,7 +6198,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                                    {
                                        mut fn SomeFn()
                                        {
-                                           this = new MyClass{};
+                                           this = this;
                                        }
                                    }
                                    """, [TypeCheckerError.NonMutableAssignment("this", SourceRange.Default)])
@@ -10029,15 +10234,15 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
 
             fn SomeMethod() {
                 var foo = match (this) {
-                    MyUnion::A => "",
-                    MyUnion::B { MyField } => MyField,
-                    MyUnion::C(var value) => value
+                    Self::A => "",
+                    Self::B { MyField } => MyField,
+                    Self::C(var value) => value
                 };
 
                 var bar = match (this) {
-                    MyUnion::A => 1,
-                    MyUnion::B => 2,
-                    MyUnion::C => 3
+                    Self::A => 1,
+                    Self::B => 2,
+                    Self::C => 3
                 };
             }
         }

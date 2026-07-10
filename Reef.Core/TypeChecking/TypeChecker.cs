@@ -593,7 +593,9 @@ public partial class TypeChecker
     private static ITypeReference InstantiateTypeReference(
         ITypeReference typeReference,
         IEnumerable<GenericTypeReference> typeArguments,
-        IEnumerable<GenericPlaceholder> inScopeTypeParameters)
+        IEnumerable<GenericPlaceholder> inScopeTypeParameters,
+        ITypeReference u64Type,
+        ITypeReference? instanceOwnerType)
     {
         return typeReference switch
         {
@@ -601,23 +603,26 @@ public partial class TypeChecker
                 y.OwnerType.Id == genericTypeReference.OwnerType.Id && y.GenericName == genericTypeReference.GenericName)
                 ?? (ITypeReference?)inScopeTypeParameters.FirstOrDefault(x => x.OwnerType.Id == genericTypeReference.OwnerType.Id && x.GenericName == genericTypeReference.GenericName)
                 ?? genericTypeReference,
-            GenericTypeReference { ResolvedType: { } resolvedType } => InstantiateTypeReference(resolvedType, typeArguments, inScopeTypeParameters),
+            GenericTypeReference { ResolvedType: { } resolvedType } => InstantiateTypeReference(resolvedType, typeArguments, inScopeTypeParameters, u64Type, instanceOwnerType),
             GenericPlaceholder placeholder =>
                 (ITypeReference?)typeArguments.FirstOrDefault(y => y.OwnerType.Id == placeholder.OwnerType.Id && y.GenericName == placeholder.GenericName)
                 ?? (ITypeReference?)inScopeTypeParameters.FirstOrDefault(x => x.OwnerType.Id == placeholder.OwnerType.Id && x.GenericName == placeholder.GenericName)
                 ?? placeholder,
-            InstantiatedUnion union => union.CloneWithTypeFilter(x => InstantiateTypeReference(x, typeArguments, inScopeTypeParameters)),
-            InstantiatedClass klass => klass.CloneWithTypeFilter(x => InstantiateTypeReference(x, typeArguments, inScopeTypeParameters)),
-            ArrayType { Length: not null } arrayType => new ArrayType(InstantiateTypeReference(arrayType.ElementType, typeArguments, inScopeTypeParameters), arrayType.Boxed, arrayType.Length.Value),
-            ArrayType { Length: null } arrayType => new ArrayType(InstantiateTypeReference(arrayType.ElementType, typeArguments, inScopeTypeParameters)),
+            InstantiatedUnion union => union.CloneWithTypeFilter(x => InstantiateTypeReference(x, typeArguments, inScopeTypeParameters, u64Type, instanceOwnerType)),
+            InstantiatedClass klass => klass.CloneWithTypeFilter(x => InstantiateTypeReference(x, typeArguments, inScopeTypeParameters, u64Type, instanceOwnerType)),
+            ArrayType { Length: not null } arrayType => new ArrayType(InstantiateTypeReference(arrayType.ElementType, typeArguments, inScopeTypeParameters, u64Type, instanceOwnerType), arrayType.Boxed, arrayType.Length.Value, u64Type),
+            ArrayType { Length: null } arrayType => new ArrayType(InstantiateTypeReference(arrayType.ElementType, typeArguments, inScopeTypeParameters, u64Type, instanceOwnerType), u64Type),
             FunctionObject functionObject => new FunctionObject(
-                [.. functionObject.Parameters.Select(x => new FunctionParameter(InstantiateTypeReference(x.Type, typeArguments, inScopeTypeParameters), x.Mutable))],
-                InstantiateTypeReference(functionObject.ReturnType, typeArguments, inScopeTypeParameters),
+                [.. functionObject.Parameters.Select(x => new FunctionParameter(InstantiateTypeReference(x.Type, typeArguments, inScopeTypeParameters, u64Type, instanceOwnerType), x.Mutable))],
+                InstantiateTypeReference(functionObject.ReturnType, typeArguments, inScopeTypeParameters, u64Type, instanceOwnerType),
                 functionObject.MutableReturn,
                 functionObject.IsBoxed
             ),
             VariantOfType x => x,
             UnknownType => typeReference,
+            SelfTypeReference => instanceOwnerType.NotNull(),
+            // SelfTypeReference { Signature: var signature } when signature.Id == CurrentTypeSignature?.Id => typeReference,
+            // SelfTypeReference {Signature: var signature } => throw new NotImplementedException(),
             _ => throw new InvalidOperationException(typeReference.GetType().ToString())
         };
     }
@@ -723,7 +728,7 @@ public partial class TypeChecker
     {
         if (arrayTypeIdentifier.LengthSpecifier is null)
         {
-            var type = new ArrayType(GetTypeReference(arrayTypeIdentifier.ElementTypeIdentifier));
+            var type = new ArrayType(GetTypeReference(arrayTypeIdentifier.ElementTypeIdentifier), UInt64());
             if (arrayTypeIdentifier.BoxingSpecifier is { Type: TokenType.Unboxed })
             {
                 AddError(TypeCheckerError.BoxedOnlyTypeCannotBeUnboxed(type, arrayTypeIdentifier.SourceRange));
@@ -741,7 +746,8 @@ public partial class TypeChecker
                 null => ArrayTypeSignature.Instance.Boxed,
                 _ => throw new UnreachableException(arrayTypeIdentifier.BoxingSpecifier.Type.ToString())
             },
-            arrayTypeIdentifier.LengthSpecifier.UnsignedValue ?? (ulong)arrayTypeIdentifier.LengthSpecifier.SignedValue.NotNull());
+            arrayTypeIdentifier.LengthSpecifier.UnsignedValue ?? (ulong)arrayTypeIdentifier.LengthSpecifier.SignedValue.NotNull(),
+            UInt64());
     }
 
     private InstantiatedClass Unit() => GetBuiltInType(DefId.Unit);
@@ -759,17 +765,33 @@ public partial class TypeChecker
     private InstantiatedClass Int8() => GetBuiltInType(DefId.Int8);
     private IReadOnlyList<InstantiatedClass> IntTypes() => [.. DefId.IntTypes.Select(GetBuiltInType)];
 
+    private readonly Dictionary<DefId, InstantiatedClass> _builtInTypes = [];
     private InstantiatedClass GetBuiltInType(DefId defId)
     {
+        if (_builtInTypes.TryGetValue(defId, out var value))
+        {
+            return value;
+        }
+
         var signature = GetClassSignature(defId);
         Debug.Assert(signature.TypeParameters.Count == 0);
-        return InstantiateClass(signature, null);
+        value = new InstantiatedClass(
+            signature,
+            [],
+            boxed: signature.Boxed,
+            u64Type: defId == DefId.UInt64
+                ? null!
+                : GetBuiltInType(DefId.UInt64));
+        // value = InstantiateClass(signature, null);
+        _builtInTypes[defId] = value;
+
+        return value;
     }
 
     private FunctionObject GetFnTypeReference(FnTypeIdentifier identifier)
     {
         var unitSignature = GetClassSignature(DefId.Unit);
-        var unit = InstantiateClass(unitSignature, null);
+        var unit = InstantiateClass(unitSignature, null, UInt64());
 
         return new FunctionObject(
             [.. identifier.Parameters.Select(x => new FunctionParameter(GetTypeReference(x.ParameterType), x.Mut))],
@@ -798,40 +820,13 @@ public partial class TypeChecker
 
         if (identifierName == "Self")
         {
-            switch (CurrentTypeSignature)
+            if (CurrentTypeSignature is null)
             {
-                case null:
-                    {
-                        AddError(TypeCheckerError.SymbolNotFound(typeIdentifier.Identifier));
-                        return UnknownType.Instance;
-                    }
-                case ClassSignature classSignature:
-                    {
-                        return InstantiateClass(
-                            classSignature,
-                            [.. classSignature.TypeParameters.Select(x => (x, SourceRange.Default))],
-                            CurrentFunctionSignature is { IsStatic: false }
-                                // if we're in an instance function, then self type should be boxed
-                                ? Token.Boxed(SourceSpan.Default)
-                                : null,
-                            SourceRange.Default);
-                    }
-                case UnionSignature unionSignature:
-                    {
-                        return InstantiateUnion(
-                            unionSignature,
-                            [.. unionSignature.TypeParameters.Select(x => (x, SourceRange.Default))],
-                            CurrentFunctionSignature is { IsStatic: false }
-                                // if we're in an instance function, then self type should be boxed
-                                ? Token.Boxed(SourceSpan.Default)
-                                : null,
-                            SourceRange.Default);
-                    }
-                default:
-                    {
-                        throw new InvalidOperationException(CurrentTypeSignature.GetType().ToString());
-                    }
+                AddError(TypeCheckerError.SymbolNotFound(typeIdentifier.Identifier));
+                return UnknownType.Instance;
             }
+
+            return new SelfTypeReference(CurrentTypeSignature);
         }
 
         if (SearchForType(
@@ -1124,13 +1119,14 @@ public partial class TypeChecker
         return false;
     }
 
-    private static bool IsTypeReferenceBoxed(ITypeReference typeReference)
+    private bool IsTypeReferenceBoxed(ITypeReference typeReference)
     {
         return typeReference switch
         {
             FunctionObject functionObject => functionObject.IsBoxed,
             GenericPlaceholder genericPlaceholder1 => throw new NotImplementedException(),
-            GenericTypeReference genericTypeReference => throw new NotImplementedException(),
+            GenericTypeReference { ResolvedType: { } resolved } => IsTypeReferenceBoxed(resolved),
+            GenericTypeReference { ResolvedType: null } => throw new NotImplementedException(),
             InstantiatedClass instantiatedClass => instantiatedClass.Boxed,
             InstantiatedUnion instantiatedUnion => instantiatedUnion.Boxed,
             ArrayType array => array.Boxed,
@@ -1138,8 +1134,30 @@ public partial class TypeChecker
             UnknownType unknownType => throw new NotImplementedException(),
             UnspecifiedSizedIntType { Boxed: var boxed } => boxed,
             VariantOfType => false,
+            SelfTypeReference { Signature: var signature } => SelfCase(signature),
             _ => throw new ArgumentOutOfRangeException(nameof(typeReference))
         };
+
+        bool SelfCase(ITypeSignature signature)
+        {
+            if (signature.Id == CurrentTypeSignature?.Id)
+            {
+                if (CurrentTypeSignature.Attributes.Any(x => x.AttributeId == DefId.BoxedOnly))
+                {
+                    return true;
+                }
+
+                if (CurrentFunctionSignature is not null
+                    && CurrentFunctionSignature.SelfConstraints.OfType<BoxedTypeConstraint>().Any())
+                {
+                    return true;
+                }
+
+                return false;
+            }
+
+            throw new NotImplementedException();
+        }
     }
 
     private bool ExpectTypeConstraint(
@@ -1181,9 +1199,9 @@ public partial class TypeChecker
                                         FunctionObject functionObject => throw new NotImplementedException(),
                                         GenericPlaceholder genericPlaceholder1 => throw new NotImplementedException(),
                                         GenericTypeReference genericTypeReference => throw new NotImplementedException(),
-                                        InstantiatedClass instantiatedClass => InstantiatedClass.Create(instantiatedClass.Signature, instantiatedClass.TypeArguments, boxed: !isBoxed),
-                                        InstantiatedUnion instantiatedUnion => InstantiatedUnion.Create(instantiatedUnion.Signature, instantiatedUnion.TypeArguments, boxed: !isBoxed),
-                                        ArrayType { Length: not null } array => new ArrayType(array.ElementType.ResolvedType, boxed: !isBoxed, array.Length.Value),
+                                        InstantiatedClass instantiatedClass => InstantiatedClass.Create(instantiatedClass.Signature, instantiatedClass.TypeArguments, boxed: !isBoxed, UInt64()),
+                                        InstantiatedUnion instantiatedUnion => InstantiatedUnion.Create(instantiatedUnion.Signature, instantiatedUnion.TypeArguments, boxed: !isBoxed, UInt64()),
+                                        ArrayType { Length: not null } array => new ArrayType(array.ElementType.ResolvedType, boxed: !isBoxed, array.Length.Value, UInt64()),
                                         ArrayType { IsDynamic: true } array => throw new UnreachableException(),
                                         UnknownInferredType unknownInferredType => throw new NotImplementedException(),
                                         UnknownType unknownType => throw new NotImplementedException(),
@@ -1191,7 +1209,7 @@ public partial class TypeChecker
                                         UnspecifiedSizedIntType { ResolvedIntType: var resolvedIntType } => new UnspecifiedSizedIntType
                                         {
                                             Boxed = !isBoxed,
-                                            ResolvedIntType = InstantiatedClass.Create(resolvedIntType.Signature, resolvedIntType.TypeArguments, boxed: !isBoxed)
+                                            ResolvedIntType = InstantiatedClass.Create(resolvedIntType.Signature, resolvedIntType.TypeArguments, boxed: !isBoxed, UInt64())
                                         },
                                         _ => throw new ArgumentOutOfRangeException(nameof(typeReference))
                                     };
@@ -1212,7 +1230,7 @@ public partial class TypeChecker
                             {
                                 var expectedType = IsTypeReferenceBoxed(instantiatedClass)
                                     ? instantiatedClass
-                                    : InstantiatedClass.Create(instantiatedClass.Signature, instantiatedClass.TypeArguments, boxed: true);
+                                    : InstantiatedClass.Create(instantiatedClass.Signature, instantiatedClass.TypeArguments, boxed: true, UInt64());
 
                                 return ExpectType(typeReference, expectedType, actualSourceRange, reportError, checkConstraints: false);
                             }
@@ -1280,9 +1298,9 @@ public partial class TypeChecker
                                         FunctionObject functionObject => throw new NotImplementedException(),
                                         GenericPlaceholder genericPlaceholder1 => throw new NotImplementedException(),
                                         GenericTypeReference genericTypeReference => throw new NotImplementedException(),
-                                        InstantiatedClass instantiatedClass => InstantiatedClass.Create(instantiatedClass.Signature, instantiatedClass.TypeArguments, boxed: !isBoxed),
-                                        InstantiatedUnion instantiatedUnion => InstantiatedUnion.Create(instantiatedUnion.Signature, instantiatedUnion.TypeArguments, boxed: !isBoxed),
-                                        ArrayType { Length: not null } arrayType => new ArrayType(arrayType.ElementType.ResolvedType, boxed: !isBoxed, arrayType.Length.Value),
+                                        InstantiatedClass instantiatedClass => InstantiatedClass.Create(instantiatedClass.Signature, instantiatedClass.TypeArguments, boxed: !isBoxed, UInt64()),
+                                        InstantiatedUnion instantiatedUnion => InstantiatedUnion.Create(instantiatedUnion.Signature, instantiatedUnion.TypeArguments, boxed: !isBoxed, UInt64()),
+                                        ArrayType { Length: not null } arrayType => new ArrayType(arrayType.ElementType.ResolvedType, boxed: !isBoxed, arrayType.Length.Value, UInt64()),
                                         ArrayType { IsDynamic: true } => throw new UnreachableException(),
                                         UnknownInferredType unknownInferredType => throw new NotImplementedException(),
                                         UnknownType unknownType => unknownType,
@@ -1290,7 +1308,7 @@ public partial class TypeChecker
                                         UnspecifiedSizedIntType { ResolvedIntType: var resolvedIntType } => new UnspecifiedSizedIntType
                                         {
                                             Boxed = !isBoxed,
-                                            ResolvedIntType = InstantiatedClass.Create(resolvedIntType.Signature, resolvedIntType.TypeArguments, boxed: !isBoxed)
+                                            ResolvedIntType = InstantiatedClass.Create(resolvedIntType.Signature, resolvedIntType.TypeArguments, boxed: !isBoxed, UInt64())
                                         },
                                         _ => throw new ArgumentOutOfRangeException(nameof(typeReference))
                                     };
@@ -1310,7 +1328,7 @@ public partial class TypeChecker
                         case InstantiatedClass instantiatedClass:
                             {
                                 var expectedType = IsTypeReferenceBoxed(instantiatedClass) && !IsBoxedOnlyType(instantiatedClass)
-                                    ? InstantiatedClass.Create(instantiatedClass.Signature, instantiatedClass.TypeArguments, boxed: false)
+                                    ? InstantiatedClass.Create(instantiatedClass.Signature, instantiatedClass.TypeArguments, boxed: false, UInt64())
                                     : instantiatedClass;
 
                                 return ExpectType(typeReference, expectedType, actualSourceRange, reportError, checkConstraints: false);
@@ -1598,6 +1616,162 @@ public partial class TypeChecker
                         }
                     }
 
+                    break;
+                }
+            case (GenericTypeReference actualGeneric, SelfTypeReference expectedSelfTypeReference):
+                {
+                    if (actualGeneric.ResolvedType is not null)
+                    {
+                        result &= ExpectType(actualGeneric.ResolvedType, expectedSelfTypeReference, actualSourceRange, reportError, assignInferredTypes);
+                    }
+                    else
+                    {
+                        var genericPlaceholder =
+                            actualGeneric.OwnerType.TypeParameters.First(z => z.GenericName == actualGeneric.GenericName);
+
+                        if (checkConstraints)
+                        {
+                            foreach (var constraint in genericPlaceholder.Constraints)
+                            {
+                                result &= ExpectTypeConstraint(genericPlaceholder, constraint, actualGeneric.InstantiatedFrom, expectedSelfTypeReference, actualSourceRange, reportError);
+                            }
+                        }
+
+                        if (assignInferredTypes)
+                        {
+                            actualGeneric.ResolvedType = expectedSelfTypeReference;
+                        }
+                    }
+                    break;
+                }
+            case (SelfTypeReference actualSelfTypeReference, GenericTypeReference expectedGeneric):
+                {
+                    if (expectedGeneric.ResolvedType is not null)
+                    {
+                        result &= ExpectType(actualSelfTypeReference, expectedGeneric.ResolvedType, actualSourceRange, reportError, assignInferredTypes);
+                    }
+                    else
+                    {
+                        var genericPlaceholder =
+                            expectedGeneric.OwnerType.TypeParameters.First(z => z.GenericName == expectedGeneric.GenericName);
+
+                        if (checkConstraints)
+                        {
+                            foreach (var constraint in genericPlaceholder.Constraints)
+                            {
+                                result &= ExpectTypeConstraint(genericPlaceholder, constraint, expectedGeneric.InstantiatedFrom, actualSelfTypeReference, actualSourceRange, reportError);
+                            }
+                        }
+
+                        if (assignInferredTypes)
+                        {
+                            expectedGeneric.ResolvedType = actualSelfTypeReference;
+                        }
+                    }
+                    break;
+                }
+            case (SelfTypeReference actualSelf, SelfTypeReference expectedSelf):
+                {
+                    if (actualSelf.Signature.Id != expectedSelf.Signature.Id)
+                    {
+                        if (reportError)
+                        {
+                            AddError(TypeCheckerError.MismatchedTypes(actualSourceRange, expectedSelf, actualSelf));
+                        }
+                        result = false;
+                    }
+                    break;
+                }
+            case (SelfTypeReference actualSelf, InstantiatedUnion expectedUnion):
+                {
+                    if (actualSelf.Signature.Id != expectedUnion.Signature.Id)
+                    {
+                        if (reportError)
+                        {
+                            AddError(TypeCheckerError.MismatchedTypes(actualSourceRange, expectedUnion, actualSelf));
+                        }
+                        result = false;
+                    }
+                    else
+                    {
+                        // Self only is satisfied against a known instantiated union if it is expected to be boxed and Self can only be boxed
+                        if (!expectedUnion.Boxed || !expectedUnion.Signature.Attributes.Any(x => x.AttributeId == DefId.BoxedOnly))
+                        {
+                            if (reportError)
+                            {
+                                AddError(TypeCheckerError.MismatchedTypeBoxing(actualSourceRange, expectedUnion, expectedUnion.Boxed, actualSelf, !expectedUnion.Boxed));
+                            }
+                        }
+                    }
+                    break;
+                }
+            case (InstantiatedUnion actualUnion, SelfTypeReference expectedSelf):
+                {
+                    if (expectedSelf.Signature.Id != actualUnion.Signature.Id)
+                    {
+                        if (reportError)
+                        {
+                            AddError(TypeCheckerError.MismatchedTypes(actualSourceRange, expectedSelf, actualUnion));
+                        }
+                        result = false;
+                    }
+                    else
+                    {
+                        // Self only is satisfied against a known instantiated union if it is expected to be boxed and Self can only be boxed
+                        if (!actualUnion.Boxed || !actualUnion.Signature.Attributes.Any(x => x.AttributeId == DefId.BoxedOnly))
+                        {
+                            if (reportError)
+                            {
+                                AddError(TypeCheckerError.MismatchedTypeBoxing(actualSourceRange, expectedSelf, !actualUnion.Boxed, actualUnion, actualUnion.Boxed));
+                            }
+                        }
+                    }
+                    break;
+                }
+            case (SelfTypeReference actualSelf, InstantiatedClass expectedClass):
+                {
+                    if (actualSelf.Signature.Id != expectedClass.Signature.Id)
+                    {
+                        if (reportError)
+                        {
+                            AddError(TypeCheckerError.MismatchedTypes(actualSourceRange, expectedClass, actualSelf));
+                        }
+                        result = false;
+                    }
+                    else
+                    {
+                        // Self only is satisfied against a known instantiated class if it is expected to be boxed and Self can only be boxed
+                        if (!expectedClass.Boxed || !expectedClass.Signature.Attributes.Any(x => x.AttributeId == DefId.BoxedOnly))
+                        {
+                            if (reportError)
+                            {
+                                AddError(TypeCheckerError.MismatchedTypeBoxing(actualSourceRange, expectedClass, expectedClass.Boxed, actualSelf, !expectedClass.Boxed));
+                            }
+                        }
+                    }
+                    break;
+                }
+            case (InstantiatedClass actualClass, SelfTypeReference expectedSelf):
+                {
+                    if (expectedSelf.Signature.Id != actualClass.Signature.Id)
+                    {
+                        if (reportError)
+                        {
+                            AddError(TypeCheckerError.MismatchedTypes(actualSourceRange, expectedSelf, actualClass));
+                        }
+                        result = false;
+                    }
+                    else
+                    {
+                        // Self only is satisfied against a known instantiated class if it is expected to be boxed and Self can only be boxed
+                        if (!actualClass.Boxed || !actualClass.Signature.Attributes.Any(x => x.AttributeId == DefId.BoxedOnly))
+                        {
+                            if (reportError)
+                            {
+                                AddError(TypeCheckerError.MismatchedTypeBoxing(actualSourceRange, expectedSelf, !actualClass.Boxed, actualClass, actualClass.Boxed));
+                            }
+                        }
+                    }
                     break;
                 }
             case (GenericTypeReference actualGeneric, VariantOfType expectedVariantOfType):
@@ -2081,6 +2255,7 @@ public partial class TypeChecker
         DefId Id { get; }
         IReadOnlyList<GenericPlaceholder> TypeParameters { get; }
         bool IsPublic { get; }
+        IReadOnlyList<AttributeReference> Attributes { get; }
     }
 
     public record TypeField

@@ -312,7 +312,7 @@ public class TypeTwoTypeChecker(
         }
 
         var neverTypeSignature = _moduleSignatures[DefId.Never.ModuleId].Classes.First(x => x.Id == DefId.Never);
-        var neverType = TypeChecker.InstantiatedClass.Create(neverTypeSignature, [], boxed: false);
+        var neverType = new TypeChecker.InstantiatedClass(neverTypeSignature, [], boxed: false, u64Type: null!);
 
         var usefulnessReport = MatchUsefulnessAnalyzer.ComputeMatchUsefulness(
             matchExpression.Arms,
@@ -604,7 +604,7 @@ public class TypeTwoTypeChecker(
             case TypeChecker.UnspecifiedSizedIntType unspecifiedIntType:
                 {
                     var signature = _moduleSignatures[DefId.Int32.ModuleId].Classes.First(x => x.Id == DefId.Int32);
-                    unspecifiedIntType.ResolvedIntType ??= TypeChecker.InstantiatedClass.Create(signature, [], boxed: unspecifiedIntType.Boxed);
+                    unspecifiedIntType.ResolvedIntType ??= new TypeChecker.InstantiatedClass(signature, [], boxed: unspecifiedIntType.Boxed, u64Type: null!);
                     break;
                 }
             case TypeChecker.UnknownInferredType unknownInferredType:
@@ -632,6 +632,7 @@ public class TypeTwoTypeChecker(
             case TypeChecker.GenericPlaceholder:
             case TypeChecker.UnknownType:
             case TypeChecker.VariantOfType:
+            case TypeChecker.SelfTypeReference:
                 break;
             default:
                 throw new ArgumentOutOfRangeException(typeReference.GetType().ToString());

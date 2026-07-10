@@ -74,7 +74,7 @@ public partial class TypeChecker
         if (e.Index is { } indexExpression)
         {
             var indexType = TypeCheckExpression(indexExpression);
-            ExpectType(indexType, InstantiatedClass.UInt64, indexExpression.SourceRange);
+            ExpectType(indexType, UInt64(), indexExpression.SourceRange);
         }
 
         return arrayType.ElementType;
@@ -99,7 +99,8 @@ public partial class TypeChecker
                 null => ArrayTypeSignature.Instance.Boxed,
                 _ => throw new UnreachableException(e.BoxingSpecifier.Type.ToString())
             },
-            length: (uint)e.Elements.Count);
+            length: (uint)e.Elements.Count,
+            u64Type: UInt64());
     }
 
     private ArrayType TypeCheckFillCollectionExpression(FillCollectionExpression e)
@@ -114,7 +115,8 @@ public partial class TypeChecker
                 null => ArrayTypeSignature.Instance.Boxed,
                 _ => throw new UnreachableException(e.BoxingSpecifier.Type.ToString())
             },
-            length: e.LengthSpecifier.UnsignedValue ?? (ulong)e.LengthSpecifier.SignedValue.NotNull());
+            length: e.LengthSpecifier.UnsignedValue ?? (ulong)e.LengthSpecifier.SignedValue.NotNull(),
+            u64Type: UInt64());
     }
 
     private ITypeReference TypeCheckTypeIdentifierExpression(TypeIdentifierExpression e)

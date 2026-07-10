@@ -222,8 +222,13 @@ public partial class TypeChecker
 
     private static bool IsBoxedOnlyType(ITypeReference typeReference)
     {
-        return typeReference is ArrayType { IsDynamic: true }
-            || (typeReference is InstantiatedClass { Signature.Id: var id } && id == DefId.String);
+        return typeReference switch
+        {
+            ArrayType { IsDynamic: true } => true,
+            InstantiatedClass { Signature: var signature } => signature.Attributes.Any(x => x.AttributeId == DefId.BoxedOnly),
+            InstantiatedUnion { Signature: var signature } => signature.Attributes.Any(x => x.AttributeId == DefId.BoxedOnly),
+            _ => false,
+        };
     }
 
     private void TypeCheckFunctionBody(FunctionSignature fnSignature)
@@ -246,20 +251,7 @@ public partial class TypeChecker
         {
             AddScopedVariable(
                     "this",
-                    new ThisVariable(fnSignature.OwnerType switch
-                    {
-                        ClassSignature c => InstantiateClass(
-                            c,
-                            typeArguments: [.. c.TypeParameters.Select(x => (x, SourceRange.Default))],
-                            boxedSpecifier: Token.Boxed(SourceSpan.Default),
-                            SourceRange.Default),
-                        UnionSignature u => InstantiateUnion(
-                            u,
-                            [.. u.TypeParameters.Select(x => (x, SourceRange.Default))],
-                            boxingSpecifier: Token.Boxed(SourceSpan.Default),
-                            sourceRange: SourceRange.Default),
-                        _ => throw new UnreachableException()
-                    }));
+                    new ThisVariable(new SelfTypeReference(fnSignature.OwnerType.NotNull())));
         }
 
         foreach (var fn in fnSignature.LocalFunctions)
@@ -353,8 +345,10 @@ public partial class TypeChecker
         public InstantiatedFunction(
             ITypeReference? ownerType,
             FunctionSignature signature,
-            IReadOnlyCollection<GenericPlaceholder> inScopeTypeParameters)
+            IReadOnlyCollection<GenericPlaceholder> inScopeTypeParameters,
+            ITypeReference u64Type)
         {
+            _u64Type = u64Type;
             OwnerType = ownerType;
             Signature = signature;
 
@@ -366,6 +360,7 @@ public partial class TypeChecker
                 null => [],
                 InstantiatedClass ownerClass => ownerClass.TypeArguments,
                 InstantiatedUnion ownerUnion => ownerUnion.TypeArguments,
+                SelfTypeReference selfTypeReference => selfTypeReference.TypeArguments,
                 _ => throw new InvalidOperationException($"Unexpected owner type {ownerType.GetType()}")
             };
         }
@@ -386,11 +381,12 @@ public partial class TypeChecker
         public DefId? ClosureTypeId => Signature.ClosureTypeId;
         public List<(DefId fieldTypeId, List<(IVariable fieldVariable, uint fieldIndex)> referencedVariables)> ClosureTypeFields =>
             Signature.ClosureTypeFields;
+        private ITypeReference _u64Type;
 
         private ITypeReference? _returnType;
         public ITypeReference GetReturnType()
         {
-            _returnType ??= InstantiateTypeReference(Signature.ReturnType, [.. TypeArguments, .. OwnerTypeArguments], InScopeTypeParameters);
+            _returnType ??= InstantiateTypeReference(Signature.ReturnType, [.. TypeArguments, .. OwnerTypeArguments], InScopeTypeParameters, _u64Type, OwnerType);
             return _returnType;
         }
 
@@ -411,7 +407,7 @@ public partial class TypeChecker
                 var functionParameter = new FunctionParameter(InstantiateTypeReference(
                     parameter.Value.Type,
                     [.. TypeArguments, .. OwnerTypeArguments],
-                    InScopeTypeParameters), parameter.Value.Mutable);
+                    InScopeTypeParameters, _u64Type, OwnerType), parameter.Value.Mutable);
                 parametersList.Add(functionParameter);
             }
 
@@ -425,7 +421,7 @@ public partial class TypeChecker
         SourceRange typeArgumentsSourceRange,
         IReadOnlyCollection<GenericPlaceholder> inScopeTypeParameters)
     {
-        var instantiatedFunction = new InstantiatedFunction(ownerType, signature, inScopeTypeParameters);
+        var instantiatedFunction = new InstantiatedFunction(ownerType, signature, inScopeTypeParameters, UInt64());
         if (typeArguments.Count > 0)
         {
             if (typeArguments.Count != instantiatedFunction.TypeArguments.Count)

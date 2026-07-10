@@ -25,7 +25,7 @@ public partial class TypeChecker
         switch (ownerType)
         {
             case InstantiatedClass classType:
-                return TypeCheckClassMemberAccess(classType, memberAccessExpression, stringToken, typeArgumentsIdentifiers,
+                return TypeCheckClassMemberAccess(classType, classType.Signature, memberAccessExpression, stringToken, typeArgumentsIdentifiers,
                     ownerExpression);
             case ArrayType:
                 {
@@ -37,10 +37,26 @@ public partial class TypeChecker
                         return UnknownType.Instance;
                     }
 
-                    return InstantiatedClass.UInt64;
+                    return UInt64();
+                }
+            case SelfTypeReference { Signature: var signature }:
+                {
+                    switch (signature)
+                    {
+                        case UnionSignature unionSignature:
+                            {
+                                return TypeCheckUnionMemberAccess(ownerType, unionSignature, memberAccessExpression, stringToken, typeArgumentsIdentifiers, ownerExpression);
+                            }
+                        case ClassSignature classSignature:
+                            {
+                                return TypeCheckClassMemberAccess(ownerType, classSignature, memberAccessExpression, stringToken, typeArgumentsIdentifiers, ownerExpression);
+                            }
+                        default:
+                            throw new UnreachableException(signature.GetType().ToString());
+                    }
                 }
             case InstantiatedUnion instantiatedUnion:
-                return TypeCheckUnionMemberAccess(instantiatedUnion, memberAccessExpression, stringToken, typeArgumentsIdentifiers,
+                return TypeCheckUnionMemberAccess(instantiatedUnion, instantiatedUnion.Signature, memberAccessExpression, stringToken, typeArgumentsIdentifiers,
                     ownerExpression);
             case GenericTypeReference or GenericPlaceholder:
                 // todo: generic parameter constraints with interfaces?
@@ -54,7 +70,7 @@ public partial class TypeChecker
                 {
                     if (resolvedIntType is not null)
                     {
-                        return TypeCheckClassMemberAccess(resolvedIntType, memberAccessExpression, stringToken, typeArgumentsIdentifiers, ownerExpression);
+                        return TypeCheckClassMemberAccess(resolvedIntType, resolvedIntType.Signature, memberAccessExpression, stringToken, typeArgumentsIdentifiers, ownerExpression);
                     }
 
                     // todo: this may actually have members, need to figure that out
@@ -70,19 +86,21 @@ public partial class TypeChecker
     }
 
     private ITypeReference TypeCheckClassMemberAccess(
-        InstantiatedClass classType,
+        ITypeReference ownerType,
+        ClassSignature classSignature,
         MemberAccessExpression memberAccessExpression,
         StringToken stringToken,
         IReadOnlyList<ITypeIdentifier>? typeArgumentsIdentifiers,
         IExpression ownerExpression)
     {
-        memberAccessExpression.MemberAccess.OwnerType = classType;
+        memberAccessExpression.MemberAccess.OwnerType = ownerType;
 
         var typeArguments = (typeArgumentsIdentifiers ?? [])
             .Select(x => (GetTypeReference(x), x.SourceRange)).ToArray();
 
         if (!TryInstantiateClassFunction(
-                classType,
+                ownerType,
+                classSignature,
                 stringToken.StringValue,
                 typeArguments,
                 memberAccessExpression.SourceRange,
@@ -93,13 +111,15 @@ public partial class TypeChecker
                 AddError(TypeCheckerError.GenericTypeArgumentsOnNonFunctionValue(memberAccessExpression.SourceRange));
             }
 
-            if (classType.GetFields().FirstOrDefault(x => x.Name == stringToken.StringValue) is not { } field)
+            var fields = (ownerType as InstantiatedClass)?.GetFields() ?? classSignature.Fields;
+
+            if (fields.FirstOrDefault(x => x.Name == stringToken.StringValue) is not { } field)
             {
-                AddError(TypeCheckerError.UnknownTypeMember(stringToken, classType.Signature.Name));
+                AddError(TypeCheckerError.UnknownTypeMember(stringToken, classSignature.Name));
                 return UnknownType.Instance;
             }
 
-            if (!field.IsPublic && !CanAccessPrivateMembers(classType.Signature))
+            if (!field.IsPublic && !CanAccessPrivateMembers(classSignature))
             {
                 AddError(TypeCheckerError.PrivateMemberReferenced(stringToken));
             }
@@ -119,13 +139,15 @@ public partial class TypeChecker
             AddError(TypeCheckerError.InstanceMemberAccessOnStaticMember(memberAccessExpression.SourceRange, memberAccessExpression.MemberAccess.MemberName?.StringValue ?? ""));
         }
 
+        var ownerIsBoxed = IsTypeReferenceBoxed(ownerExpression.ResolvedType.NotNull());
+
         foreach (var constraint in function.Signature.SelfConstraints)
         {
             switch (constraint)
             {
                 case BoxedTypeConstraint:
                     {
-                        if (!IsTypeReferenceBoxed(ownerExpression.ResolvedType.NotNull()))
+                        if (!ownerIsBoxed)
                         {
                             AddError(TypeCheckerError.MethodConstrainedToBoxedInstances(stringToken));
                         }
@@ -133,7 +155,7 @@ public partial class TypeChecker
                     }
                 case UnboxedTypeConstraint:
                     {
-                        if (IsTypeReferenceBoxed(ownerExpression.ResolvedType.NotNull()))
+                        if (ownerIsBoxed)
                         {
                             AddError(TypeCheckerError.MethodConstrainedToUnboxedInstances(stringToken));
                         }
@@ -159,25 +181,27 @@ public partial class TypeChecker
     }
 
     private ITypeReference TypeCheckUnionMemberAccess(
-        InstantiatedUnion unionType,
+        ITypeReference ownerType,
+        UnionSignature unionSignature,
         MemberAccessExpression memberAccessExpression,
         StringToken stringToken,
         IReadOnlyList<ITypeIdentifier>? typeArgumentsIdentifiers,
         IExpression ownerExpression)
     {
-        memberAccessExpression.MemberAccess.OwnerType = unionType;
+        memberAccessExpression.MemberAccess.OwnerType = ownerType;
 
         var typeArguments = (typeArgumentsIdentifiers ?? [])
             .Select(x => (GetTypeReference(x), x.SourceRange)).ToArray();
 
         if (!TryInstantiateUnionFunction(
-                unionType,
+                ownerType,
+                unionSignature,
                 stringToken.StringValue,
                 typeArguments,
                 memberAccessExpression.SourceRange,
                 out var function))
         {
-            AddError(TypeCheckerError.UnknownTypeMember(stringToken, unionType.Name));
+            AddError(TypeCheckerError.UnknownTypeMember(stringToken, unionSignature.Name));
             return UnknownType.Instance;
         }
 

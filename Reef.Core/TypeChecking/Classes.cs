@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
+using Reef.Core.Expressions;
 
 namespace Reef.Core.TypeChecking;
 
@@ -8,9 +9,6 @@ public partial class TypeChecker
     public class ClassSignature : ITypeSignature
     {
         public static string TupleFieldName(int index) => $"Item{index}";
-
-        public static Lazy<ClassSignature> UInt64 { get; } = new(() => new ClassSignature()
-        { Id = DefId.UInt64, TypeParameters = [], Name = "u64", Fields = [], Functions = [], Boxed = false, IsPublic = true });
 
         public required bool Boxed { get; init; }
         public required IReadOnlyList<GenericPlaceholder> TypeParameters { get; init; }
@@ -27,10 +25,11 @@ public partial class TypeChecker
         public required string Name { get; init; }
         public required DefId Id { get; init; }
         public required bool IsPublic { get; init; }
+        public required IReadOnlyList<AttributeReference> Attributes { get; init; }
         public bool Initialized { get; set; }
     }
 
-    private static InstantiatedClass InstantiateClass(ClassSignature signature, Token? boxedSpecifier)
+    private static InstantiatedClass InstantiateClass(ClassSignature signature, Token? boxedSpecifier, ITypeReference u64Type)
     {
         return InstantiatedClass.Create(
             signature,
@@ -39,8 +38,9 @@ public partial class TypeChecker
             {
                 { Type: TokenType.Boxed } => true,
                 { Type: TokenType.Unboxed } => false,
-                _ => signature.Boxed
-            });
+                _ => signature.Boxed,
+            },
+            u64Type);
     }
 
     private InstantiatedClass InstantiateClass(
@@ -58,7 +58,7 @@ public partial class TypeChecker
 
         if (typeArguments.Count <= 0)
         {
-            return InstantiatedClass.Create(signature, [], boxed);
+            return InstantiatedClass.Create(signature, [], boxed, UInt64());
         }
 
         if (typeArguments.Count != signature.TypeParameters.Count)
@@ -66,7 +66,7 @@ public partial class TypeChecker
             AddError(TypeCheckerError.IncorrectNumberOfTypeArguments(sourceRange, typeArguments.Count, signature.TypeParameters.Count));
         }
 
-        var instantiatedClass = InstantiatedClass.Create(signature, [.. typeArguments.Select(x => x.Item1)], boxed);
+        var instantiatedClass = InstantiatedClass.Create(signature, [.. typeArguments.Select(x => x.Item1)], boxed, UInt64());
 
         for (var i = 0; i < Math.Min(instantiatedClass.TypeArguments.Count, typeArguments.Count); i++)
         {
@@ -78,13 +78,14 @@ public partial class TypeChecker
     }
 
     private bool TryInstantiateClassFunction(
-        InstantiatedClass @class,
+        ITypeReference ownerType,
+        ClassSignature classSignature,
         string functionName,
         IReadOnlyList<(ITypeReference, SourceRange)> typeArguments,
         SourceRange typeArgumentsSourceRange,
         [NotNullWhen(true)] out InstantiatedFunction? function)
     {
-        var signature = @class.Signature.Functions.FirstOrDefault(x => x.Name == functionName);
+        var signature = classSignature.Functions.FirstOrDefault(x => x.Name == functionName);
 
         if (signature is null)
         {
@@ -92,7 +93,7 @@ public partial class TypeChecker
             return false;
         }
 
-        function = InstantiateFunction(signature, @class, typeArguments, typeArgumentsSourceRange, inScopeTypeParameters: []);
+        function = InstantiateFunction(signature, ownerType, typeArguments, typeArgumentsSourceRange, inScopeTypeParameters: []);
         return true;
     }
 
@@ -127,6 +128,7 @@ public partial class TypeChecker
         public DefId Id => DefId.Array;
         public GenericPlaceholder ElementGenericPlaceholder { get; }
         public IReadOnlyList<GenericPlaceholder> TypeParameters => [ElementGenericPlaceholder];
+        public IReadOnlyList<AttributeReference> Attributes => [];
         public bool Boxed => true;
         public bool IsPublic => true;
 
@@ -150,7 +152,8 @@ public partial class TypeChecker
         public ArrayType(
             ITypeReference? elementType,
             bool boxed,
-            ulong length)
+            ulong length,
+            ITypeReference u64Type)
         {
             ElementType = ArrayTypeSignature.Instance.ElementGenericPlaceholder.Instantiate(this, elementType);
             Boxed = boxed;
@@ -162,13 +165,13 @@ public partial class TypeChecker
                     IsStatic = false,
                     NameToken = Token.Identifier("length", SourceSpan.Default),
                     StaticInitializer = null,
-                    Type = InstantiatedClass.UInt64
+                    Type = u64Type
                 }
             ];
             Length = length;
         }
 
-        public ArrayType(ITypeReference? elementType)
+        public ArrayType(ITypeReference? elementType, ITypeReference u64Type)
         {
             ElementType = ArrayTypeSignature.Instance.ElementGenericPlaceholder.Instantiate(this, elementType);
             // dynamic array has to be boxed
@@ -181,7 +184,7 @@ public partial class TypeChecker
                     IsStatic = false,
                     NameToken = Token.Identifier("length", SourceSpan.Default),
                     StaticInitializer = null,
-                    Type = InstantiatedClass.UInt64
+                    Type = u64Type
                 }
             ];
         }
@@ -196,6 +199,33 @@ public partial class TypeChecker
         public IReadOnlyList<TypeField> Fields { get; }
     }
 
+    public class SelfTypeReference : ITypeReference, IInstantiatedGeneric
+    {
+        public SelfTypeReference(ITypeSignature signature)
+        {
+            Signature = signature;
+            TypeArguments = [.. signature.TypeParameters.Select(x => x.Instantiate(this, x))];
+        }
+
+        public ITypeSignature Signature { get; }
+        public IReadOnlyList<GenericTypeReference> TypeArguments { get; }
+
+        public override string ToString()
+        {
+            var sb = new StringBuilder(Signature.Id.FullName);
+            if (TypeArguments.Count == 0)
+            {
+                return sb.ToString();
+            }
+
+            sb.Append("::<");
+            sb.AppendJoin(",", TypeArguments.Select(x => x));
+            sb.Append('>');
+
+            return sb.ToString();
+        }
+    }
+
     public class InstantiatedClass : ITypeReference, IInstantiatedGeneric
     {
         public InstantiatedClass CloneWithTypeFilter(Func<ITypeReference, ITypeReference> typeFilter)
@@ -204,7 +234,8 @@ public partial class TypeChecker
             var instantiatedClass = new InstantiatedClass(
                 Signature,
                 instantiatedTypeArguments,
-                Boxed);
+                Boxed,
+                _u64Type);
 
             instantiatedTypeArguments.AddRange(Signature.TypeParameters.Zip(TypeArguments)
                 .Select(x =>
@@ -218,20 +249,22 @@ public partial class TypeChecker
 
         }
 
-        private InstantiatedClass(
+        public InstantiatedClass(
             ClassSignature signature,
             IReadOnlyList<GenericTypeReference> typeArguments,
-            bool boxed)
+            bool boxed,
+            ITypeReference u64Type)
         {
             Signature = signature;
             TypeArguments = typeArguments;
             Boxed = boxed;
+            _u64Type = u64Type;
         }
 
-        public static InstantiatedClass Create(ClassSignature signature, IReadOnlyList<ITypeReference> typeArguments, bool boxed)
+        public static InstantiatedClass Create(ClassSignature signature, IReadOnlyList<ITypeReference> typeArguments, bool boxed, ITypeReference u64Type)
         {
             var typeArgumentReferences = new List<GenericTypeReference>(typeArguments.Count);
-            var instantiatedClass = new InstantiatedClass(signature, typeArgumentReferences, boxed);
+            var instantiatedClass = new InstantiatedClass(signature, typeArgumentReferences, boxed, u64Type);
 
             typeArgumentReferences.AddRange(
                 signature.TypeParameters.Select((t, i) => t.Instantiate(instantiatedClass, typeArguments.Count > i ? typeArguments[i] : null)));
@@ -239,12 +272,12 @@ public partial class TypeChecker
             return instantiatedClass;
         }
 
-        public static InstantiatedClass UInt64 => new(ClassSignature.UInt64.Value, [], boxed: ClassSignature.UInt64.Value.Boxed);
-
         public bool Boxed { get; }
 
         public IReadOnlyList<GenericTypeReference> TypeArguments { get; }
         public ClassSignature Signature { get; }
+
+        private readonly ITypeReference _u64Type;
 
         private IReadOnlyList<TypeField>? _fields;
         public IReadOnlyList<TypeField> GetFields()
@@ -257,7 +290,7 @@ public partial class TypeChecker
                                 IsStatic = field.IsStatic,
                                 NameToken = field.NameToken,
                                 StaticInitializer = field.StaticInitializer,
-                                Type = InstantiateTypeReference(field.Type, TypeArguments, [])
+                                Type = InstantiateTypeReference(field.Type, TypeArguments, [], _u64Type, this)
                             })];
             return _fields;
         }

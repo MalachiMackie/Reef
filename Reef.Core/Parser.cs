@@ -429,15 +429,12 @@ public sealed class Parser : IDisposable
 
             if (allowedScopeTypes.Contains(Scope.ScopeType.TypeDefinition) && Current.Type is TokenType.Union or TokenType.Class)
             {
-                // todo: attributes on type definitions
-                _errors.AddRange(attributes.Select(ParserError.UnexpectedAttribute));
-
                 if (mutabilityModifier is not null)
                     _errors.Add(ParserError.UnexpectedModifier(mutabilityModifier.Modifier, TokenType.Pub));
                 if (staticModifier is not null)
                     _errors.Add(ParserError.UnexpectedModifier(staticModifier.Token, TokenType.Pub));
 
-                var (union, @class) = GetTypeDefinition(accessModifier, boxingModifier);
+                var (union, @class) = GetTypeDefinition(accessModifier, boxingModifier, attributes);
                 if (@class is not null)
                 {
                     classes.Add(@class);
@@ -699,16 +696,16 @@ public sealed class Parser : IDisposable
                || (allowVariant && tokenType == TokenType.Identifier);
     }
 
-    private (ProgramUnion? Union, ProgramClass? Class) GetTypeDefinition(AccessModifier? accessModifier, BoxingModifier? boxingModifier)
+    private (ProgramUnion? Union, ProgramClass? Class) GetTypeDefinition(AccessModifier? accessModifier, BoxingModifier? boxingModifier, IReadOnlyList<LangAttribute> attributes)
     {
         if (Current.Type == TokenType.Union)
         {
-            return (GetUnionDefinition(accessModifier, boxingModifier), null);
+            return (GetUnionDefinition(accessModifier, boxingModifier, attributes), null);
         }
 
         if (Current.Type == TokenType.Class)
         {
-            return (null, GetClassDefinition(accessModifier, boxingModifier));
+            return (null, GetClassDefinition(accessModifier, boxingModifier, attributes));
         }
 
         List<TokenType> expectedTokens = [TokenType.Union, TokenType.Class];
@@ -1175,7 +1172,7 @@ public sealed class Parser : IDisposable
             });
     }
 
-    private ProgramUnion? GetUnionDefinition(AccessModifier? accessModifier, BoxingModifier? boxingModifier)
+    private ProgramUnion? GetUnionDefinition(AccessModifier? accessModifier, BoxingModifier? boxingModifier, IReadOnlyList<LangAttribute> attributes)
     {
         if (!ExpectNextIdentifier(out var name))
         {
@@ -1186,7 +1183,7 @@ public sealed class Parser : IDisposable
         if (!MoveNext())
         {
             _errors.Add(ParserError.ExpectedToken(null, TokenType.LeftAngleBracket, TokenType.LeftBrace));
-            return new ProgramUnion(accessModifier, name, [], [], [], boxingModifier);
+            return new ProgramUnion(accessModifier, name, [], [], [], boxingModifier, attributes);
         }
 
         IReadOnlyList<StringToken>? typeParameters = null;
@@ -1198,7 +1195,7 @@ public sealed class Parser : IDisposable
             if (!_hasNext)
             {
                 _errors.Add(ParserError.ExpectedToken(null, TokenType.LeftBrace));
-                return new ProgramUnion(accessModifier, name, typeParameters, [], [], boxingModifier);
+                return new ProgramUnion(accessModifier, name, typeParameters, [], [], boxingModifier, attributes);
             }
         }
 
@@ -1206,7 +1203,7 @@ public sealed class Parser : IDisposable
         {
             _errors.Add(ParserError.ExpectedToken(Current, typeParameters is not null ? [TokenType.LeftBrace] : [TokenType.LeftBrace, TokenType.LeftAngleBracket]));
             MoveNext();
-            return new ProgramUnion(accessModifier, name, typeParameters ?? [], [], [], boxingModifier);
+            return new ProgramUnion(accessModifier, name, typeParameters ?? [], [], [], boxingModifier, attributes);
         }
 
         typeParameters ??= [];
@@ -1219,10 +1216,11 @@ public sealed class Parser : IDisposable
             typeParameters,
             scope.Functions,
             scope.Variants,
-            boxingModifier);
+            boxingModifier,
+            attributes);
     }
 
-    private ProgramClass? GetClassDefinition(AccessModifier? accessModifier, BoxingModifier? boxingModifier)
+    private ProgramClass? GetClassDefinition(AccessModifier? accessModifier, BoxingModifier? boxingModifier, IReadOnlyList<LangAttribute> attributes)
     {
         if (!ExpectNextIdentifier(out var name))
         {
@@ -1233,7 +1231,7 @@ public sealed class Parser : IDisposable
         if (!MoveNext())
         {
             _errors.Add(ParserError.ExpectedToken(null, TokenType.LeftBrace, TokenType.LeftAngleBracket));
-            return new ProgramClass(accessModifier, name, [], [], [], boxingModifier);
+            return new ProgramClass(accessModifier, name, [], [], [], boxingModifier, attributes);
         }
 
         IReadOnlyList<StringToken>? typeParameters = null;
@@ -1245,7 +1243,7 @@ public sealed class Parser : IDisposable
             if (!_hasNext)
             {
                 _errors.Add(ParserError.ExpectedToken(null, TokenType.LeftBrace));
-                return new ProgramClass(accessModifier, name, typeParameters, [], [], boxingModifier);
+                return new ProgramClass(accessModifier, name, typeParameters, [], [], boxingModifier, attributes);
             }
         }
 
@@ -1253,14 +1251,14 @@ public sealed class Parser : IDisposable
         {
             _errors.Add(ParserError.ExpectedToken(Current, typeParameters is null ? [TokenType.LeftBrace, TokenType.LeftAngleBracket] : [TokenType.LeftBrace]));
             MoveNext();
-            return new ProgramClass(accessModifier, name, typeParameters ?? [], [], [], boxingModifier);
+            return new ProgramClass(accessModifier, name, typeParameters ?? [], [], [], boxingModifier, attributes);
         }
 
         typeParameters ??= [];
 
         var scope = GetMemberList([MemberType.Function, MemberType.Field]);
 
-        return new ProgramClass(accessModifier, name, typeParameters, scope.Functions, scope.Fields, boxingModifier);
+        return new ProgramClass(accessModifier, name, typeParameters, scope.Functions, scope.Fields, boxingModifier, attributes);
     }
 
     private IConstraint? GetConstraint()

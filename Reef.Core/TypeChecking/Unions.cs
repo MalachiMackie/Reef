@@ -1,6 +1,6 @@
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
+using Reef.Core.Expressions;
 
 namespace Reef.Core.TypeChecking;
 
@@ -25,6 +25,7 @@ public partial class TypeChecker
         public required bool IsPublic { get; init; }
 
         public required string Name { get; init; }
+        public required IReadOnlyList<AttributeReference> Attributes { get; init; }
 
         public bool Initialized { get; set; }
     }
@@ -55,13 +56,14 @@ public partial class TypeChecker
     }
 
     private bool TryInstantiateUnionFunction(
-        InstantiatedUnion union,
+        ITypeReference ownerType,
+        UnionSignature unionSignature,
         string functionName,
         IReadOnlyList<(ITypeReference, SourceRange)> typeArguments,
         SourceRange typeArgumentsSourceRange,
         [NotNullWhen(true)] out InstantiatedFunction? function)
     {
-        var signature = union.Signature.Functions.FirstOrDefault(x => x.Name == functionName);
+        var signature = unionSignature.Functions.FirstOrDefault(x => x.Name == functionName);
 
         if (signature is null)
         {
@@ -69,7 +71,7 @@ public partial class TypeChecker
             return false;
         }
 
-        function = InstantiateFunction(signature, union, typeArguments, typeArgumentsSourceRange, inScopeTypeParameters: []);
+        function = InstantiateFunction(signature, ownerType, typeArguments, typeArgumentsSourceRange, inScopeTypeParameters: []);
         return true;
     }
 
@@ -86,7 +88,7 @@ public partial class TypeChecker
                 { Type: TokenType.Boxed } => true,
                 { Type: TokenType.Unboxed } => false,
                 _ => signature.Boxed
-            });
+            }, UInt64());
         }
 
         if (typeArguments.Count != signature.TypeParameters.Count)
@@ -99,7 +101,7 @@ public partial class TypeChecker
             { Type: TokenType.Boxed } => true,
             { Type: TokenType.Unboxed } => false,
             _ => signature.Boxed
-        });
+        }, UInt64());
 
         for (var i = 0; i < Math.Min(instantiatedUnion.TypeArguments.Count, typeArguments.Count); i++)
         {
@@ -116,7 +118,7 @@ public partial class TypeChecker
         return _moduleSignatures[id.ModuleId].Unions.First(x => x.Id == id);
     }
 
-    private static IUnionVariant? GetUnionVariant(InstantiatedUnion union, string name)
+    private static IUnionVariant? GetUnionVariant(InstantiatedUnion union, string name, ITypeReference u64Type)
     {
         var variant = union.Signature.Variants.FirstOrDefault(x => x.Name == name);
         if (variant is null)
@@ -124,8 +126,8 @@ public partial class TypeChecker
             return null;
         }
 
-        var boxedInstantiatedUnion = new InstantiatedUnion(union.Signature, union.TypeArguments, boxed: true);
-        var unboxedInstantiatedUnion = new InstantiatedUnion(union.Signature, union.TypeArguments, boxed: false);
+        var boxedInstantiatedUnion = new InstantiatedUnion(union.Signature, union.TypeArguments, boxed: true, u64Type);
+        var unboxedInstantiatedUnion = new InstantiatedUnion(union.Signature, union.TypeArguments, boxed: false, u64Type);
 
         switch (variant)
         {
@@ -137,14 +139,14 @@ public partial class TypeChecker
                     {
                         createFunctionParameters[parameter.Key] = parameter.Value with
                         {
-                            Type = InstantiateTypeReference(parameter.Value.Type, union.TypeArguments, [])
+                            Type = InstantiateTypeReference(parameter.Value.Type, union.TypeArguments, [], u64Type, union)
                         };
                     }
                     foreach (var parameter in tuple.UnboxedCreateFunction.Parameters)
                     {
                         unboxedCreateFunctionParameters[parameter.Key] = parameter.Value with
                         {
-                            Type = InstantiateTypeReference(parameter.Value.Type, union.TypeArguments, [])
+                            Type = InstantiateTypeReference(parameter.Value.Type, union.TypeArguments, [], u64Type, union)
                         };
                     }
 
@@ -153,7 +155,7 @@ public partial class TypeChecker
                         Name = tuple.Name,
                         TupleMembers =
                         [
-                            ..tuple.TupleMembers.Select(x => InstantiateTypeReference(x, union.TypeArguments, []))
+                            ..tuple.TupleMembers.Select(x => InstantiateTypeReference(x, union.TypeArguments, [], u64Type, union))
                         ],
                         BoxedCreateFunction = tuple.BoxedCreateFunction with
                         {
@@ -173,7 +175,7 @@ public partial class TypeChecker
                     Name = classVariant.Name,
                     Fields =
                     [
-                        ..classVariant.Fields.Select(y => y with { Type = InstantiateTypeReference(y.Type, union.TypeArguments, []) })
+                        ..classVariant.Fields.Select(y => y with { Type = InstantiateTypeReference(y.Type, union.TypeArguments, [], u64Type, union) })
                     ]
                 };
             default:
@@ -183,13 +185,40 @@ public partial class TypeChecker
 
     public class InstantiatedUnion : ITypeReference, IInstantiatedGeneric
     {
+
+
+        public InstantiatedUnion(
+            UnionSignature signature,
+            IReadOnlyList<GenericTypeReference> typeArguments,
+            bool boxed,
+            ITypeReference u64Type)
+        {
+            Signature = signature;
+            TypeArguments = typeArguments;
+            Boxed = boxed;
+            _u64Type = u64Type;
+        }
+
+        public static InstantiatedUnion Create(UnionSignature signature, IReadOnlyList<ITypeReference> typeArguments, bool boxed, ITypeReference u64Type)
+        {
+            var typeArgumentReferences = new List<GenericTypeReference>();
+
+            var instantiatedUnion = new InstantiatedUnion(signature, typeArgumentReferences, boxed, u64Type);
+
+            typeArgumentReferences.AddRange(signature.TypeParameters.Select((x, i) =>
+                x.Instantiate(instantiatedUnion, typeArguments.ElementAtOrDefault(i))));
+
+            return instantiatedUnion;
+        }
+
         public InstantiatedUnion CloneWithTypeFilter(Func<ITypeReference, ITypeReference> typeFilter)
         {
             var instantiatedTypeArguments = new List<GenericTypeReference>(Signature.TypeParameters.Count);
             var instantiatedUnion = new InstantiatedUnion(
                 Signature,
                 instantiatedTypeArguments,
-                Boxed);
+                Boxed,
+                _u64Type);
 
             instantiatedTypeArguments.AddRange(Signature.TypeParameters.Zip(TypeArguments)
                 .Select(x =>
@@ -198,28 +227,6 @@ public partial class TypeChecker
                         instantiatedUnion,
                         typeFilter(x.Second));
                 }));
-
-            return instantiatedUnion;
-        }
-
-        public InstantiatedUnion(
-            UnionSignature signature,
-            IReadOnlyList<GenericTypeReference> typeArguments,
-            bool boxed)
-        {
-            Signature = signature;
-            TypeArguments = typeArguments;
-            Boxed = boxed;
-        }
-
-        public static InstantiatedUnion Create(UnionSignature signature, IReadOnlyList<ITypeReference> typeArguments, bool boxed)
-        {
-            var typeArgumentReferences = new List<GenericTypeReference>();
-
-            var instantiatedUnion = new InstantiatedUnion(signature, typeArgumentReferences, boxed);
-
-            typeArgumentReferences.AddRange(signature.TypeParameters.Select((x, i) =>
-                x.Instantiate(instantiatedUnion, typeArguments.ElementAtOrDefault(i))));
 
             return instantiatedUnion;
         }
@@ -237,6 +244,8 @@ public partial class TypeChecker
             return Signature == other.Signature;
         }
 
+        private readonly ITypeReference _u64Type;
+
         private IReadOnlyList<IUnionVariant>? _unionVariants;
         public IReadOnlyList<IUnionVariant> GetVariants()
         {
@@ -244,8 +253,8 @@ public partial class TypeChecker
             {
                 return _unionVariants;
             }
-            var boxedInstantiatedUnion = new InstantiatedUnion(Signature, TypeArguments, boxed: true);
-            var unboxedInstantiatedUnion = new InstantiatedUnion(Signature, TypeArguments, boxed: false);
+            var boxedInstantiatedUnion = new InstantiatedUnion(Signature, TypeArguments, boxed: true, _u64Type);
+            var unboxedInstantiatedUnion = new InstantiatedUnion(Signature, TypeArguments, boxed: false, _u64Type);
 
             _unionVariants = [..Signature.Variants.Select(variant =>
                 {
@@ -259,14 +268,14 @@ public partial class TypeChecker
                                 {
                                     createFunctionParameters[parameter.Key] = parameter.Value with
                                     {
-                                        Type = InstantiateTypeReference(parameter.Value.Type, TypeArguments, [])
+                                        Type = InstantiateTypeReference(parameter.Value.Type, TypeArguments, [], _u64Type, this)
                                     };
                                 }
                                 foreach (var parameter in tuple.UnboxedCreateFunction.Parameters)
                                 {
                                     unboxedCreateFunctionParameters[parameter.Key] = parameter.Value with
                                     {
-                                        Type = InstantiateTypeReference(parameter.Value.Type, TypeArguments, [])
+                                        Type = InstantiateTypeReference(parameter.Value.Type, TypeArguments, [], _u64Type, this)
                                     };
                                 }
 
@@ -275,7 +284,7 @@ public partial class TypeChecker
                                     Name = tuple.Name,
                                     TupleMembers =
                                     [
-                                        ..tuple.TupleMembers.Select(x => InstantiateTypeReference(x, TypeArguments, []))
+                                        ..tuple.TupleMembers.Select(x => InstantiateTypeReference(x, TypeArguments, [], _u64Type, this))
                                     ],
                                     BoxedCreateFunction = tuple.BoxedCreateFunction with
                                     {
@@ -295,7 +304,7 @@ public partial class TypeChecker
                                 Name = classVariant.Name,
                                 Fields =
                                 [
-                                    ..classVariant.Fields.Select(y => y with { Type = InstantiateTypeReference(y.Type, TypeArguments, []) })
+                                    ..classVariant.Fields.Select(y => y with { Type = InstantiateTypeReference(y.Type, TypeArguments, [], _u64Type, this) })
                                 ]
                             };
                         default:

@@ -664,7 +664,7 @@ public static class ParseErrorTestCases
                     new ProgramClass(null, Identifier("MyClass"), [], [], [
                         ClassField("MyField", StringType()),
                         ClassField("OtherField", StringType())
-                    ], null)
+                    ], null, [])
                 ], []),
                 [
                     ParserError.ExpectedToken(Token.Field(SourceSpan.Default), TokenType.Comma, TokenType.RightBrace)
@@ -676,7 +676,7 @@ public static class ParseErrorTestCases
                     new ProgramClass(null, Identifier("MyClass"), [], [], [
                         ClassField("MyField", StringType()),
                         ClassField("OtherField", StringType())
-                    ], null)
+                    ], null, [])
                 ], []),
                 [
                     ParserError.ExpectedToken(null, TokenType.RightBrace, TokenType.Comma, TokenType.Pub, TokenType.Static, TokenType.Mut, TokenType.Field, TokenType.Fn),

@@ -38,14 +38,13 @@ public interface IConstructor
                 return [];
             case VariantConstructor variantConstructor:
                 {
-                    var union = typeReference.ConcreteType() switch
-                    {
-                        TypeChecker.InstantiatedUnion x => x,
-                        TypeChecker.VariantOfType(var x) => x,
-                        _ => throw new InvalidOperationException($"Expected union, found {typeReference.GetType()}")
-                    };
-
-                    var variant = union.GetVariants()[(int)variantConstructor.VariantIndex];
+                    var variant = typeReference.ConcreteType() switch
+                        {
+                            TypeChecker.InstantiatedUnion x => x.GetVariants()[(int)variantConstructor.VariantIndex],
+                            TypeChecker.VariantOfType(var x) => x.GetVariants()[(int)variantConstructor.VariantIndex],
+                            TypeChecker.SelfTypeReference{Signature: TypeChecker.UnionSignature signature} => signature.Variants[(int)variantConstructor.VariantIndex],
+                            _ => throw new InvalidOperationException("Expected union type"),
+                        };
 
                     var subTypes = variant switch
                     {
@@ -81,50 +80,41 @@ public interface IConstructor
             type = generic.ResolvedType.NotNull();
         }
 
-        if (type is TypeChecker.InstantiatedUnion union)
-        {
-            if (union.Signature.Variants.Count == 0)
-            {
-                return new NoConstructorsConstructorSet();
-            }
-
-            var variants = new VariantVisibility[union.Signature.Variants.Count];
-            Array.Fill(variants, VariantVisibility.Visible);
-
-            return new VariantsConstructorSet(variants, NonExhaustive: false);
-        }
-
-        if (type is TypeChecker.VariantOfType(var variantOfUnion))
-        {
-            if (variantOfUnion.Signature.Variants.Count == 0)
-            {
-                return new NoConstructorsConstructorSet();
-            }
-
-            var variants = new VariantVisibility[variantOfUnion.Signature.Variants.Count];
-            Array.Fill(variants, VariantVisibility.Visible);
-
-            return new VariantsConstructorSet(variants, NonExhaustive: false);
-        }
-
         if (type is TypeChecker.GenericPlaceholder)
         {
             return new NoConstructorsConstructorSet();
         }
 
-        var klass = type switch
+        var (unionSignature, classSignature) = type switch
         {
-            TypeChecker.InstantiatedClass x => x,
-            TypeChecker.UnspecifiedSizedIntType x => x.ResolvedIntType.NotNull(),
-            _ => throw new InvalidOperationException($"Unexpected type: {type.GetType()}")
+            TypeChecker.InstantiatedUnion { Signature: var sig } => (sig, (TypeChecker.ClassSignature?)null),
+            TypeChecker.VariantOfType({ Signature: var sig }) => (sig, null),
+            TypeChecker.InstantiatedClass { Signature: var sig } => (null, sig),
+            TypeChecker.UnspecifiedSizedIntType {ResolvedIntType: TypeChecker.InstantiatedClass{ Signature: var sig } } => (null, sig),
+            TypeChecker.SelfTypeReference { Signature: TypeChecker.UnionSignature sig } => (sig, null),
+            TypeChecker.SelfTypeReference { Signature: TypeChecker.ClassSignature sig } => (null, sig),
+            _ => (null, null)
         };
 
-        if (klass.Signature.Id == DefId.Boolean)
+        if (unionSignature is not null)
+        {
+            if (unionSignature.Variants.Count == 0)
+            {
+                return new NoConstructorsConstructorSet();
+            }
+
+            var variants = new VariantVisibility[unionSignature.Variants.Count];
+            Array.Fill(variants, VariantVisibility.Visible);
+
+            return new VariantsConstructorSet(variants, NonExhaustive: false);
+        }
+
+        if (classSignature?.Id == DefId.Boolean)
         {
             return new BooleanConstructorSet();
         }
 
-        if (klass.Signature.Id == DefId.Never)
+        if (classSignature?.Id == DefId.Never)
         {
             return new NoConstructorsConstructorSet();
         }

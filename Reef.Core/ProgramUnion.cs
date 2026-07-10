@@ -8,7 +8,8 @@ public record ProgramUnion(
     IReadOnlyList<StringToken> TypeParameters,
     IReadOnlyList<LangFunction> Functions,
     IReadOnlyList<IProgramUnionVariant> Variants,
-    BoxingModifier? BoxingModifier)
+    BoxingModifier? BoxingModifier,
+    IReadOnlyList<LangAttribute> Attributes)
 {
     public TypeChecker.UnionSignature? Signature { get; set; }
 }
