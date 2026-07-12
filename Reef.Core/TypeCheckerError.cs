@@ -589,6 +589,29 @@ public record TypeCheckerError
             "Self constraint is not valid on a non instance function");
     }
 
+    public static TypeCheckerError UnboxedCircularDependency(SourceRange sourceRange)
+    {
+        return new(
+            TypeCheckerErrorType.UnboxedCircularDependency,
+            sourceRange,
+            $"Type contains an unboxed circular dependency");
+    }
+
+    public static TypeCheckerError SelfInStaticContext(SourceRange sourceRange)
+    {
+        return new(
+            TypeCheckerErrorType.SelfInStaticContext,
+            sourceRange,
+            "Self cannot be used in a static context");
+    }
+
+    public static TypeCheckerError SelfFieldInNonBoxedOnlyType(SourceRange sourceRange)
+    {
+        return new(
+            TypeCheckerErrorType.SelfFieldInNonBoxedOnlyType,
+            sourceRange,
+            "Self field can only be used in a #[boxed_only] type");
+    }
 }
 
 public enum TypeCheckerErrorType
@@ -669,5 +692,9 @@ public enum TypeCheckerErrorType
     InstanceMemberInClosureInNonBoxedConstrainedMethod,
     MethodConstrainedToUnboxedInstances,
     InvalidSelfTypeConstraint,
-    SelfConstraintOnNonInstanceFunction
+    SelfConstraintOnNonInstanceFunction,
+    UnboxedCircularDependency,
+    SelfInStaticContext,
+    SelfFieldInNonBoxedOnlyType
+
 }

@@ -671,15 +671,15 @@ pub unboxed union option<TValue> {
     None,
     Some(TValue),
 
-    pub static fn unwrap(val: Self): TValue {
-        return match(val) {
+    pub fn unwrap(): TValue {
+        return match(this) {
             Self::None => panic(),
             Self::Some(var value) => value,
         };
     }
 
-    pub static fn ok_or<TError>(val: Self, err: TError): result::<TValue, TError> {
-        return match (val)
+    pub fn ok_or<TError>(err: TError): result::<TValue, TError> {
+        return match (this)
         {
             Self::Some(var value) => ok(value),
             Self::None => error(err),
@@ -691,8 +691,8 @@ pub unboxed union result<TValue, TError> {
     Ok(TValue),
     Error(TError),
 
-    pub static fn unwrap(res: Self): TValue {
-        return match (res) {
+    pub fn unwrap(): TValue {
+        return match (this) {
             Self::Ok(var value) => value,
             Self::Error => {
                 print_string("unwrap");

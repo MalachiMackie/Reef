@@ -128,7 +128,8 @@ public partial class TypeChecker
         IReadOnlyList<FunctionSignature>? functionSignatures = null,
         IReadOnlyList<ModuleImport>? moduleImports = null,
         Block? block = null,
-        IExpression? loopExpression = null)
+        IExpression? loopExpression = null,
+        bool inStaticFieldInitializer = false)
     {
         var currentScope = _typeCheckingScopes.Peek();
 
@@ -145,7 +146,8 @@ public partial class TypeChecker
             block,
             loopExpression ?? currentScope.LoopExpression,
             InLocalFunction: currentScope.InLocalFunction
-                || currentScope.CurrentFunctionSignature is not null && currentFunctionSignature is not null));
+                || currentScope.CurrentFunctionSignature is not null && currentFunctionSignature is not null,
+            InStaticFieldInitializer: currentScope.InStaticFieldInitializer || inStaticFieldInitializer));
 
         return new ScopeDisposable(PopScope);
     }
@@ -164,7 +166,8 @@ public partial class TypeChecker
         IReadOnlyList<ModuleImport> ModuleImports,
         Block? Block,
         IExpression? LoopExpression,
-        bool InLocalFunction)
+        bool InLocalFunction,
+        bool InStaticFieldInitializer)
     {
         private Dictionary<string, IVariable> CurrentScopeVariables { get; } = [];
         public GrabExpression? GrabExpression { get; set; }

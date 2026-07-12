@@ -303,6 +303,11 @@ public partial class TypeChecker
                             var type = GetTypeReference(member);
                             tupleMemberTypes.Add(type);
 
+                            if (type is SelfTypeReference && !unionSignature.Attributes.Any(x => x.AttributeId == DefId.BoxedOnly))
+                            {
+                                AddError(TypeCheckerError.SelfFieldInNonBoxedOnlyType(member.SourceRange));
+                            }
+
                             var parameterName = $"Item{i}";
                             createFunctionParameters.Add(
                                 parameterName,
@@ -355,6 +360,11 @@ public partial class TypeChecker
                             }
 
                             var type = field.Type is null ? UnknownType.Instance : GetTypeReference(field.Type);
+
+                            if (type is SelfTypeReference && !unionSignature.Attributes.Any(x => x.AttributeId == DefId.BoxedOnly))
+                            {
+                                AddError(TypeCheckerError.SelfFieldInNonBoxedOnlyType(field.Type.NotNull().SourceRange));
+                            }
 
                             field.ResolvedType = type;
 
@@ -432,6 +442,11 @@ public partial class TypeChecker
                         throw new InvalidOperationException($"Field with name {field.Name} already defined");
                     }
 
+                    if (!typeField.IsStatic && type is SelfTypeReference && !classSignature.Attributes.Any(x => x.AttributeId == DefId.BoxedOnly))
+                    {
+                        AddError(TypeCheckerError.SelfFieldInNonBoxedOnlyType(field.Type.NotNull().SourceRange));
+                    }
+
                     fields.Add(typeField);
                 }
                 classSignature.Initialized = true;
@@ -454,6 +469,16 @@ public partial class TypeChecker
                 }
             }
 
+        }
+        foreach (var (moduleId, classes, unions, attributes) in moduleInfos)
+        {
+            using var _ = PushScope(moduleId: moduleId);
+
+            foreach (var (signature, sourceRange) in classes.Select(x => ((ITypeSignature)x.Signature, x.ProgramClass.Name.SourceSpan.ToRange()))
+                    .Concat(unions.Select(x => ((ITypeSignature)x.Signature, x.ProgramUnion.Name.SourceSpan.ToRange()))))
+            {
+                CheckForUnboxedCircularDependencies(sourceRange, signature);
+            }
         }
 
         foreach (var (moduleId, module) in _modules)
@@ -480,6 +505,83 @@ public partial class TypeChecker
             {
                 AddError(TypeCheckerError.TypeParameterConflictsWithType(typeParameter));
             }
+        }
+    }
+
+    private bool CheckForUnboxedCircularDependencies(SourceRange sourceRange, ITypeSignature signature, DefId? lookingForId = null, HashSet<DefId>? seenUnboxedFields = null)
+    {
+        seenUnboxedFields ??= [];
+        seenUnboxedFields.Add(signature.Id);
+
+        if (lookingForId is null)
+        {
+            lookingForId = signature.Id;
+        }
+        else if (signature.Id == lookingForId)
+        {
+            AddError(TypeCheckerError.UnboxedCircularDependency(sourceRange));
+            return false;
+        }
+
+        if (signature is UnionSignature union)
+        {
+            foreach (var variant in union.Variants)
+            {
+                switch (variant)
+                {
+                    case ClassUnionVariant { Fields: var fields }:
+                        {
+                            foreach (var field in fields)
+                            {
+                                if (!CheckType(field.Type))
+                                {
+                                    return false;
+                                }
+                            }
+                            break;
+                        }
+                    case TupleUnionVariant tupleVariant:
+                        {
+                            foreach (var member in tupleVariant.TupleMembers)
+                            {
+                                if (!CheckType(member))
+                                {
+                                    return false;
+                                }
+                            }
+                            break;
+                        }
+                }
+            }
+        }
+        else if (signature is ClassSignature klass)
+        {
+            foreach (var field in klass.Fields.Where(x => !x.IsStatic))
+            {
+                if (!CheckType(field.Type))
+                {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+
+        bool CheckType(ITypeReference type)
+        {
+            switch (type)
+            {
+                case InstantiatedClass { Signature: var classSig, Boxed: false }:
+                    {
+                        return CheckForUnboxedCircularDependencies(sourceRange, classSig, lookingForId, seenUnboxedFields);
+                    }
+                case InstantiatedUnion { Signature: var unionSig, Boxed: false }:
+                    {
+                        return CheckForUnboxedCircularDependencies(sourceRange, unionSig, lookingForId, seenUnboxedFields);
+                    }
+            }
+
+            return true;
         }
     }
 }

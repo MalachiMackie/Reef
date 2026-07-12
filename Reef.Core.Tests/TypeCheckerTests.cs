@@ -128,6 +128,82 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     "main.rf",
                     """
+                    class OtherClass {
+                        pub field X: boxed MyClass
+                    }
+                    class MyClass
+                    {
+                        pub field X: unboxed OtherClass
+                    }
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    union MyUnion{
+                        A(boxed MyUnion)
+                    }
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    union OtherUnion{
+                        A(boxed MyUnion)
+                    }
+                    union MyUnion{
+                        A(unboxed OtherUnion)
+                    }
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    #[boxed_only]
+                    union MyUnion {
+                        A(Self)
+                    }
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    #[boxed_only]
+                    union MyUnion {
+                        A { field X: Self }
+                    }
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    #[boxed_only]
+                    class MyClass {
+                        pub field X: Self
+                    }
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
                     class MyClass<TValue>{
                         pub field val: option::<TValue>
                     }
@@ -680,7 +756,7 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                     """
                     union MyUnion {
                         A,
-                        pub static fn something() {
+                        pub fn something() {
                             var x: Self = Self::A;
                         }
                     }
@@ -4196,6 +4272,176 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
     {
         return new TheoryData<string, Dictionary<string, (string contents, IReadOnlyList<TypeCheckerError> expectedErrors)>>
         {
+            {
+                "Self field in non boxed_only class",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            class MyClass {
+                                pub field X: Self
+                            }
+                            """,
+                            [TypeCheckerError.SelfFieldInNonBoxedOnlyType(SourceRange.Default)]
+                        )
+                    }
+                }
+            },
+            {
+                "Self member in non boxed_only union tuple variant",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            union MyUnion {
+                                A(Self)
+                            }
+                            """,
+                            [TypeCheckerError.SelfFieldInNonBoxedOnlyType(SourceRange.Default)]
+                        )
+                    }
+                }
+            },
+            {
+                "Self member in non boxed_only union class variant",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            union MyUnion {
+                                A { field X: Self }
+                            }
+                            """,
+                            [TypeCheckerError.SelfFieldInNonBoxedOnlyType(SourceRange.Default)]
+                        )
+                    }
+                }
+            },
+            {
+                "Direct unboxed circular dependency",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            class MyClass{
+                                pub field X: unboxed MyClass
+                            }
+                            """,
+                            [TypeCheckerError.UnboxedCircularDependency(SourceRange.Default)]
+                        )
+                    }
+                }
+            },
+            {
+                "Indirect unboxed circular dependency",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            class OtherClass{
+                                pub field X: unboxed MyClass
+                            }
+                            class MyClass{
+                                pub field X: unboxed OtherClass
+                            }
+                            """,
+                            [
+                                TypeCheckerError.UnboxedCircularDependency(SourceRange.Default),
+                                TypeCheckerError.UnboxedCircularDependency(SourceRange.Default),
+                            ]
+                        )
+                    }
+                }
+            },
+            {
+                "Indirect union unboxed circular dependency",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            union OtherUnion{
+                                A(unboxed MyUnion)
+                            }
+                            union MyUnion{
+                                A(unboxed OtherUnion)
+                            }
+                            """,
+                            [
+                                TypeCheckerError.UnboxedCircularDependency(SourceRange.Default),
+                                TypeCheckerError.UnboxedCircularDependency(SourceRange.Default),
+                            ]
+                        )
+                    }
+                }
+            },
+            {
+                "Direct union unboxed circular dependency",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            union MyUnion{
+                                A(unboxed MyUnion)
+                            }
+                            """,
+                            [TypeCheckerError.UnboxedCircularDependency(SourceRange.Default)]
+                        )
+                    }
+                }
+            },
+            {
+                "Self in static field",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            class MyClass {
+                                pub static field x: u32 = { Self::Thing(); grab 3; },
+
+                                pub static fn Thing() {}
+                            }
+                            """,
+                            [TypeCheckerError.SelfInStaticContext(SourceRange.Default)]
+                        )
+                    }
+                }
+            },
+            {
+                "Self in static function",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            class MyClass
+                            {
+                                pub static fn some_fn(): Self {
+                                    return todo!;
+                                }
+                            }
+                            """,
+                            [TypeCheckerError.SelfInStaticContext(SourceRange.Default)]
+                        )
+                    }
+                }
+            },
             {
                 "mismatched boxing on boxed Self return",
                 new()

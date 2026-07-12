@@ -185,6 +185,7 @@ public partial class TypeChecker
     private HashSet<GenericPlaceholder> GenericPlaceholders => _typeCheckingScopes.Peek().GenericPlaceholders;
     private ITypeSignature? CurrentTypeSignature => _typeCheckingScopes.Peek().CurrentTypeSignature;
     private FunctionSignature? CurrentFunctionSignature => _typeCheckingScopes.Peek().CurrentFunctionSignature;
+    private bool InStaticFieldInitializer => _typeCheckingScopes.Peek().InStaticFieldInitializer;
     private FunctionSignature? TopFunctionSignature => _typeCheckingScopes
         .Reverse()
         .Where(x => x.CurrentFunctionSignature is not null)
@@ -348,6 +349,7 @@ public partial class TypeChecker
             ],
             null,
             null,
+            false,
             false));
 
         SetupSignatures();
@@ -390,52 +392,60 @@ public partial class TypeChecker
 
                 var @class = _modules.First(x => x.Value.ModuleId == moduleId).Value.Classes.First(x => x.Name.StringValue == classSignature.Name);
 
-                foreach (var (fieldIndex, field) in @class.Fields.Index())
+                using (PushScope(currentTypeSignature: classSignature, defId: classSignature.Id))
                 {
-                    var isStatic = field.StaticModifier is not null;
-
-                    var fieldTypeReference = field.Type is null ? UnknownType.Instance : GetTypeReference(field.Type);
-
-                    if (isStatic)
+                    foreach (var (fieldIndex, field) in @class.Fields.Index())
                     {
-                        // todo: static constructor?
-                        if (field.InitializerValue is null)
+                        var isStatic = field.StaticModifier is not null;
+
+                        var fieldTypeReference = field.Type is null ? UnknownType.Instance : GetTypeReference(field.Type);
+
+                        if (isStatic)
                         {
-                            throw new InvalidOperationException("Expected field initializer for static field");
+                            // todo: static constructor?
+                            if (field.InitializerValue is null)
+                            {
+                                throw new InvalidOperationException("Expected field initializer for static field");
+                            }
+
+                            field.InitializerValue.ValueUseful = true;
+                            {
+                                using var ___ = PushScope(inStaticFieldInitializer: true);
+
+                                var valueType = TypeCheckExpression(field.InitializerValue);
+
+                                ExpectType(valueType, fieldTypeReference, field.InitializerValue.SourceRange);
+                            }
+
+                            staticFieldVariables.Add(new FieldVariable(
+                                classSignature,
+                                field.Name,
+                                fieldTypeReference,
+                                field.MutabilityModifier is not null,
+                                IsStaticField: true,
+                                (uint)fieldIndex));
                         }
-
-                        field.InitializerValue.ValueUseful = true;
-                        var valueType = TypeCheckExpression(field.InitializerValue);
-
-                        ExpectType(valueType, fieldTypeReference, field.InitializerValue.SourceRange);
-
-                        staticFieldVariables.Add(new FieldVariable(
-                            classSignature,
-                            field.Name,
-                            fieldTypeReference,
-                            field.MutabilityModifier is not null,
-                            IsStaticField: true,
-                            (uint)fieldIndex));
-                    }
-                    else
-                    {
-                        if (field.InitializerValue is not null)
+                        else
                         {
-                            throw new InvalidOperationException("Instance fields cannot have initializers");
-                        }
+                            if (field.InitializerValue is not null)
+                            {
+                                throw new InvalidOperationException("Instance fields cannot have initializers");
+                            }
 
-                        instanceFieldVariables.Add(new FieldVariable(
-                            classSignature,
-                            field.Name,
-                            fieldTypeReference,
-                            field.MutabilityModifier is not null,
-                            IsStaticField: false,
-                            (uint)fieldIndex));
+
+                            instanceFieldVariables.Add(new FieldVariable(
+                                classSignature,
+                                field.Name,
+                                fieldTypeReference,
+                                field.MutabilityModifier is not null,
+                                IsStaticField: false,
+                                (uint)fieldIndex));
+                        }
                     }
                 }
 
                 // static functions
-                using (PushScope(classSignature))
+                using (PushScope(classSignature, defId: CurrentDefId))
                 {
                     // static functions only have access to static fields
                     foreach (var variable in staticFieldVariables)
@@ -450,7 +460,7 @@ public partial class TypeChecker
                 }
 
                 // instance functions
-                using (PushScope(classSignature))
+                using (PushScope(classSignature, defId: CurrentDefId))
                 {
                     // instance functions have access to both instance and static fields
                     foreach (var variable in instanceFieldVariables.Concat(staticFieldVariables))
@@ -824,6 +834,11 @@ public partial class TypeChecker
             {
                 AddError(TypeCheckerError.SymbolNotFound(typeIdentifier.Identifier));
                 return UnknownType.Instance;
+            }
+
+            if (CurrentFunctionSignature is { IsStatic: true } || InStaticFieldInitializer)
+            {
+                AddError(TypeCheckerError.SelfInStaticContext(typeIdentifier.SourceRange));
             }
 
             return new SelfTypeReference(CurrentTypeSignature);
