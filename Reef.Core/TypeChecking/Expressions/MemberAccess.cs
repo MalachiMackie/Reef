@@ -141,6 +141,11 @@ public partial class TypeChecker
 
         var ownerIsBoxed = IsTypeReferenceBoxed(ownerExpression.ResolvedType.NotNull());
 
+        if (!ownerIsBoxed && ParentExpression is not MethodCallExpression)
+        {
+            AddError(TypeCheckerError.InstanceFunctionAccessedAsClosureOnUnboxedInstance(memberAccessExpression.SourceRange));
+        }
+
         foreach (var constraint in function.Signature.SelfConstraints)
         {
             switch (constraint)
@@ -218,6 +223,13 @@ public partial class TypeChecker
         if (function.IsMutable)
         {
             ExpectMutableExpression(ownerExpression);
+        }
+
+        var ownerIsBoxed = IsTypeReferenceBoxed(ownerExpression.ResolvedType.NotNull());
+
+        if (!ownerIsBoxed && ParentExpression is not MethodCallExpression)
+        {
+            AddError(TypeCheckerError.InstanceFunctionAccessedAsClosureOnUnboxedInstance(memberAccessExpression.SourceRange));
         }
 
         foreach (var constraint in function.Signature.SelfConstraints)

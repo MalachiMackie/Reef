@@ -22,16 +22,20 @@ public partial class TypeChecker
             return false;
         }
 
-        if (CurrentFunctionSignature is not null
-            && (
-                (variable is FunctionSignatureParameter { ContainingFunction: var parameterOwner }
-                && parameterOwner != CurrentFunctionSignature)
-            || (variable is FieldVariable { IsStaticField: false }
-                && InLocalFunction)
-            || (variable is LocalVariable { ContainingFunction: var localOwner }
-                && localOwner != CurrentFunctionSignature)
-            || (variable is ThisVariable && InLocalFunction))
-            && !CurrentFunctionSignature.AccessedOuterVariables.Contains(variable))
+        if (CurrentFunctionSignature is null || CurrentFunctionSignature.AccessedOuterVariables.Contains(variable))
+        {
+            return true;
+        }
+
+        var captureVariableInClosure = variable switch
+        {
+            FunctionSignatureParameter { ContainingFunction: var parameterOwner } when parameterOwner?.Id != CurrentFunctionSignature.Id => true,
+            ThisVariable or FieldVariable { IsStaticField: false } => InLocalFunction,
+            LocalVariable { ContainingFunction: var localOwner } when localOwner?.Id != CurrentFunctionSignature.Id => true,
+            _ => false,
+        };
+
+        if (captureVariableInClosure)
         {
             if (CurrentFunctionSignature.IsStatic)
             {

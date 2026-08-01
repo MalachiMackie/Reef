@@ -102,7 +102,10 @@ public partial class TypeChecker
         {
             var instantiatedFunction = InstantiateFunction(
                 function,
-                null,
+                function.OwnerType switch {
+                    null => null,
+                    _ => new SelfTypeReference(function.OwnerType)
+                },
                 typeArguments,
                 expression.SourceRange,
                 GenericPlaceholders);
@@ -140,13 +143,25 @@ public partial class TypeChecker
                     AddError(TypeCheckerError.InstanceMemberInClosureInNonBoxedConstrainedMethod(expression.SourceRange));
                 }
 
+                var selfConstraints = CurrentFunctionSignature?.SelfConstraints ?? [];
+
+                var isBoxedOnly = union.Attributes.Any(x => x.AttributeId == DefId.BoxedOnly)
+                    || selfConstraints.OfType<BoxedTypeConstraint>().Any();
+
+                var isUnboxedOnly = selfConstraints.OfType<BoxedTypeConstraint>().Any();
+
+                if (ParentExpression is not MethodCallExpression && (!isBoxedOnly || isUnboxedOnly))
+                {
+                    AddError(TypeCheckerError.InstanceMemberInClosureInNonBoxedConstrainedMethod(expression.SourceRange));
+                }
+
                 foreach (var constraint in instantiatedFunction.Signature.SelfConstraints)
                 {
                     switch (constraint)
                     {
                         case BoxedTypeConstraint:
                             {
-                                if (!(CurrentFunctionSignature is { } currentSig) || !currentSig.SelfConstraints.OfType<BoxedTypeConstraint>().Any())
+                                if (!isBoxedOnly)
                                 {
                                     AddError(TypeCheckerError.MethodConstrainedToBoxedInstances(variableName));
                                 }
@@ -154,7 +169,7 @@ public partial class TypeChecker
                             }
                         case UnboxedTypeConstraint:
                             {
-                                if (!(CurrentFunctionSignature is { } currentSig) || !currentSig.SelfConstraints.OfType<UnboxedTypeConstraint>().Any())
+                                if (!isUnboxedOnly)
                                 {
                                     AddError(TypeCheckerError.MethodConstrainedToUnboxedInstances(variableName));
                                 }
@@ -198,13 +213,25 @@ public partial class TypeChecker
                     AddError(TypeCheckerError.InstanceMemberInClosureInNonBoxedConstrainedMethod(expression.SourceRange));
                 }
 
+                var selfConstraints = CurrentFunctionSignature?.SelfConstraints ?? [];
+
+                var isBoxedOnly = @class.Attributes.Any(x => x.AttributeId == DefId.BoxedOnly)
+                    || selfConstraints.OfType<BoxedTypeConstraint>().Any();
+
+                var isUnboxedOnly = selfConstraints.OfType<BoxedTypeConstraint>().Any();
+
+                if (ParentExpression is not MethodCallExpression && (!isBoxedOnly || isUnboxedOnly))
+                {
+                    AddError(TypeCheckerError.InstanceMemberInClosureInNonBoxedConstrainedMethod(expression.SourceRange));
+                }
+
                 foreach (var constraint in instantiatedFunction.Signature.SelfConstraints)
                 {
                     switch (constraint)
                     {
                         case BoxedTypeConstraint:
                             {
-                                if (!(CurrentFunctionSignature is { } currentSig) || !currentSig.SelfConstraints.OfType<BoxedTypeConstraint>().Any())
+                                if (!isBoxedOnly)
                                 {
                                     AddError(TypeCheckerError.MethodConstrainedToBoxedInstances(variableName));
                                 }
@@ -212,7 +239,7 @@ public partial class TypeChecker
                             }
                         case UnboxedTypeConstraint:
                             {
-                                if (!(CurrentFunctionSignature is { } currentSig) || !currentSig.SelfConstraints.OfType<UnboxedTypeConstraint>().Any())
+                                if (!isUnboxedOnly)
                                 {
                                     AddError(TypeCheckerError.MethodConstrainedToUnboxedInstances(variableName));
                                 }

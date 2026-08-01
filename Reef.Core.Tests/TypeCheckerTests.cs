@@ -4273,6 +4273,45 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
         return new TheoryData<string, Dictionary<string, (string contents, IReadOnlyList<TypeCheckerError> expectedErrors)>>
         {
             {
+                "Use assign instance method to variable in non boxed_only type",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            class MyClass {
+                                pub fn OtherFn(){}
+                                pub fn MyFn() {
+                                    var a = OtherFn;
+                                }
+                            }
+                            """,
+                            [TypeCheckerError.InstanceMemberInClosureInNonBoxedConstrainedMethod(SourceRange.Default)]
+                        )
+                    }
+                }
+            },
+            {
+                "Use assign instance method to variable in unboxed instance",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            class MyClass {
+                                pub fn SomeFn(){}
+                            }
+                            var value = new unboxed MyClass{};
+                            var fn_value = value.SomeFn;
+                            """,
+                            [TypeCheckerError.InstanceFunctionAccessedAsClosureOnUnboxedInstance(SourceRange.Default)]
+                        )
+                    }
+                }
+            },
+            {
                 "Self field in non boxed_only class",
                 new()
                 {

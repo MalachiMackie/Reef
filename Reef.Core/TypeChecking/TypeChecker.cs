@@ -182,6 +182,9 @@ public partial class TypeChecker
         _errors = modules.ToDictionary(x => x.Key, _ => new List<TypeCheckerError>());
     }
 
+    private IExpression? ParentExpression => _expressionStack.Count > 1 ? _expressionStack[^2] : null;
+    private readonly List<IExpression> _expressionStack = [];
+
     private HashSet<GenericPlaceholder> GenericPlaceholders => _typeCheckingScopes.Peek().GenericPlaceholders;
     private ITypeSignature? CurrentTypeSignature => _typeCheckingScopes.Peek().CurrentTypeSignature;
     private FunctionSignature? CurrentFunctionSignature => _typeCheckingScopes.Peek().CurrentFunctionSignature;
@@ -557,7 +560,7 @@ public partial class TypeChecker
 
         foreach (var fn in block.Functions)
         {
-            var signature = fn.Signature ?? TypeCheckFunctionSignature(new DefId(currentDefId.ModuleId, currentDefId.FullName + $"__{fn.Name}"), fn, ownerType: null);
+            var signature = fn.Signature ?? TypeCheckFunctionSignature(new DefId(currentDefId.ModuleId, currentDefId.FullName + $"__{fn.Name}"), fn, ownerType: CurrentTypeSignature);
 
             var localFunctions = CurrentFunctionSignature?.LocalFunctions
                 ?? _modules[CurrentModuleId].TopLevelLocalFunctions;
@@ -1155,23 +1158,23 @@ public partial class TypeChecker
 
         bool SelfCase(ITypeSignature signature)
         {
-            if (signature.Id == CurrentTypeSignature?.Id)
+            if (signature.Id != CurrentTypeSignature?.Id)
             {
-                if (CurrentTypeSignature.Attributes.Any(x => x.AttributeId == DefId.BoxedOnly))
-                {
-                    return true;
-                }
-
-                if (CurrentFunctionSignature is not null
-                    && CurrentFunctionSignature.SelfConstraints.OfType<BoxedTypeConstraint>().Any())
-                {
-                    return true;
-                }
-
-                return false;
+                throw new NotImplementedException();
             }
 
-            throw new NotImplementedException();
+            if (CurrentTypeSignature.Attributes.Any(x => x.AttributeId == DefId.BoxedOnly))
+            {
+                return true;
+            }
+
+            if (CurrentFunctionSignature is not null
+                && CurrentFunctionSignature.SelfConstraints.OfType<BoxedTypeConstraint>().Any())
+            {
+                return true;
+            }
+
+            return false;
         }
     }
 

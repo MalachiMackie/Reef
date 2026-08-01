@@ -10,6 +10,7 @@ public partial class TypeChecker
         IExpression expression,
         bool allowUninstantiatedVariable = false)
     {
+        _expressionStack.Add(expression);
         var expressionType = expression switch
         {
             VariableDeclarationExpression variableDeclarationExpression => TypeCheckVariableDeclaration(
@@ -47,6 +48,8 @@ public partial class TypeChecker
             ForExpression forExpression => TypeCheckForExpression(forExpression),
             _ => throw new UnreachableException($"{expression.ExpressionType}")
         };
+
+        _expressionStack.RemoveAt(_expressionStack.Count - 1);
 
         expression.ResolvedType = expressionType;
 

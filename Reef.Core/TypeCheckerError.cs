@@ -572,6 +572,14 @@ public record TypeCheckerError
             "Accessing instance members within a closure is only allowed when the method constrains Self to being boxed: `where Self: boxed`");
     }
 
+    public static TypeCheckerError InstanceFunctionAccessedAsClosureOnUnboxedInstance(SourceRange sourceRange)
+    {
+        return new(
+            TypeCheckerErrorType.InstanceFunctionAccessedAsClosureOnUnboxedInstance,
+            sourceRange,
+            "Cannot create closure from instance function on an unboxed instance");
+    }
+
     public static TypeCheckerError InvalidSelfTypeConstraint(SourceRange sourceRange)
     {
         return new(
@@ -695,6 +703,6 @@ public enum TypeCheckerErrorType
     SelfConstraintOnNonInstanceFunction,
     UnboxedCircularDependency,
     SelfInStaticContext,
-    SelfFieldInNonBoxedOnlyType
-
+    SelfFieldInNonBoxedOnlyType,
+    InstanceFunctionAccessedAsClosureOnUnboxedInstance
 }
