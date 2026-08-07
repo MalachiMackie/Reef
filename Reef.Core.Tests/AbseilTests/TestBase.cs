@@ -1,5 +1,7 @@
 using System.IO.Abstractions.TestingHelpers;
 using System.Text;
+using DiffPlex.DiffBuilder;
+using DiffPlex.DiffBuilder.Model;
 using Reef.Core.Abseil;
 using Reef.Core.Common;
 using Reef.Core.LoweredExpressions;
@@ -47,10 +49,26 @@ public class TestBase
 
     protected void PrintPrograms(LoweredProgram expected, LoweredProgram actual)
     {
-        TestOutput.WriteLine("Expected Program:");
-        TestOutput.WriteLine(PrettyPrinter.PrettyPrintLoweredProgram(expected));
-        TestOutput.WriteLine("----------------------------------------");
-        TestOutput.WriteLine("Actual Program:");
-        TestOutput.WriteLine(PrettyPrinter.PrettyPrintLoweredProgram(actual));
+        var diff = InlineDiffBuilder.Diff(
+            PrettyPrinter.PrettyPrintLoweredProgram(actual),
+            PrettyPrinter.PrettyPrintLoweredProgram(expected), ignoreWhiteSpace: true);
+
+        foreach (var line in diff.Lines)
+        {
+            switch (line.Type)
+            {
+                case ChangeType.Inserted:
+                    TestOutput.Write("+ ");
+                    break;
+                case ChangeType.Deleted:
+                    TestOutput.Write("- ");
+                    break;
+                default:
+                    TestOutput.Write("  ");
+                    break;
+            }
+
+            TestOutput.WriteLine(line.Text);
+        }
     }
 }

@@ -128,6 +128,20 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                 {
                     "main.rf",
                     """
+                    class MyClass {
+                        static fn OtherFn(){}
+                        static fn MyFn() {
+                            var a = OtherFn;
+                        }
+                    }
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
                     class OtherClass {
                         pub field X: boxed MyClass
                     }

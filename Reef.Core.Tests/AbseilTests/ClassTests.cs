@@ -110,7 +110,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
             },
             {
                 "generic class with instance function",
-                "class MyClass<T>{pub fn SomeFn(){}}",
+                "#[boxed_only]class MyClass<T>{pub fn SomeFn(){}}",
                 LoweredProgram(ModuleId,
                     types:
                     [
@@ -408,6 +408,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
             {
                 "assign instance method to function variable from within type but different method",
                 """
+                #[boxed_only]
                 class MyClass {
                     pub fn OtherFn(){}
                     pub fn MyFn() {
@@ -486,6 +487,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
             {
                 "assign instance method to function variable from within type",
                 """
+                #[boxed_only]
                 class MyClass {
                     pub fn MyFn() {
                         var a = MyFn;
@@ -553,6 +555,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
             {
                 "call instance method",
                 """
+                #[boxed_only]
                 class MyClass
                 {
                     pub fn MyFn(){}
@@ -651,6 +654,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
             {
                 "access instance field inside function",
                 """
+                #[boxed_only]
                 class MyClass
                 {
                     field MyField: string,
@@ -697,6 +701,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
             {
                 "access static field inside function",
                 """
+                #[boxed_only]
                 class MyClass
                 {
                     static field MyField: string = "",
@@ -753,6 +758,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
             {
                 "call instance function inside instance function",
                 """
+                #[boxed_only]
                 class MyClass
                 {
                     fn MyFn()
@@ -860,6 +866,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
              {
                  "assign to field in current type",
                  """
+                 #[boxed_only]
                  class MyClass
                  {
                      pub mut field MyField: string,
@@ -986,6 +993,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
              {
                  "argument access in instance function",
                  """
+                 #[boxed_only]
                  class MyClass
                  {
                      fn SomeFn(a: string): string { return a; }
@@ -1048,6 +1056,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
              {
                  "this reference",
                  """
+                 #[boxed_only]
                  class MyClass
                  {
                      fn SomeFn()
@@ -1161,6 +1170,7 @@ public class ClassTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
              {
                  "reference generic method on instance of generic type",
                  """
+                 #[boxed_only]
                  class MyClass<T>
                  {
                      pub fn SomeFn<T2>(){}

@@ -1,4 +1,3 @@
-using Reef.Core.Abseil;
 using Reef.Core.LoweredExpressions;
 using static Reef.Core.Tests.LoweredProgramHelpers;
 
@@ -79,7 +78,7 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                     DataType(ModuleId, "MyUnion", ["T"]),
                     DataType(ModuleId, "MyUnion__VariantOf"),
                 ], methods: [
-                    Method(new DefId(ModuleId, $"{ModuleId}:::MyUnion__SomeFn"), "MyUnion__SomeFn",
+                    Method(new DefId(ModuleId, $"{ModuleId}:::MyUnion__SomeFn__boxed"), "MyUnion__SomeFn__boxed",
                         [
                             new BasicBlock(BB0, [])
                             {
@@ -93,6 +92,22 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                                 new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference(
                                     new DefId(ModuleId, $"{ModuleId}:::MyUnion"),
                                     [new LoweredGenericPlaceholder(new DefId(ModuleId, $"{ModuleId}:::MyUnion"), "T")])))
+                            )],
+                        typeParameters: [(new DefId(ModuleId, $"{ModuleId}:::MyUnion"), "T")]),
+                    Method(new DefId(ModuleId, $"{ModuleId}:::MyUnion__SomeFn__unboxed"), "MyUnion__SomeFn__unboxed",
+                        [
+                            new BasicBlock(BB0, [])
+                            {
+                                Terminator = new Return()
+                            }
+                        ],
+                        Unit,
+                        parameters: [
+                            (
+                                "this",
+                                new LoweredEphemeralPointer(new LoweredConcreteTypeReference(
+                                    new DefId(ModuleId, $"{ModuleId}:::MyUnion"),
+                                    [new LoweredGenericPlaceholder(new DefId(ModuleId, $"{ModuleId}:::MyUnion"), "T")]))
                             )],
                         typeParameters: [(new DefId(ModuleId, $"{ModuleId}:::MyUnion"), "T")])
                 ])
@@ -269,10 +284,14 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                 "union MyUnion { pub fn MyFn(){} }",
                 LoweredProgram(ModuleId,
                     methods: [
-                        Method(new DefId(ModuleId, $"{ModuleId}:::MyUnion__MyFn"), "MyUnion__MyFn",
+                        Method(new DefId(ModuleId, $"{ModuleId}:::MyUnion__MyFn__boxed"), "MyUnion__MyFn__boxed",
                             [new BasicBlock(BB0, []) {Terminator = new Return()}],
                             Unit,
-                            parameters: [("this", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference( new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))))])
+                            parameters: [("this", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference( new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))))]),
+                        Method(new DefId(ModuleId, $"{ModuleId}:::MyUnion__MyFn__unboxed"), "MyUnion__MyFn__unboxed",
+                            [new BasicBlock(BB0, []) {Terminator = new Return()}],
+                            Unit,
+                            parameters: [("this", new LoweredEphemeralPointer(new LoweredConcreteTypeReference( new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))])
                     ],
                     types: [
                         DataType(ModuleId, "MyUnion"),
@@ -280,7 +299,7 @@ public class UnionTests(ITestOutputHelper testOutputHelper) : TestBase(testOutpu
                     ])
             },
             {
-                "union with method and tuple variants",
+                "union with static method and tuple variants",
                 "union MyUnion { A(string), pub static fn MyFn() {}, B(string) }",
                 LoweredProgram(ModuleId,
                     methods: [

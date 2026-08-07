@@ -21,12 +21,12 @@ public class PrettyPrinter(LoweredProgram module)
 
     private void PrettyPrintLoweredProgramInner()
     {
-        foreach (var dataType in module.DataTypes)
+        foreach (var dataType in module.DataTypes.OrderBy(x => x.Id.FullName))
         {
             PrettyPrintDataType(dataType);
         }
 
-        foreach (var method in module.Methods.OfType<LoweredMethod>())
+        foreach (var method in module.Methods.OfType<LoweredMethod>().OrderBy(x => x.Id.FullName))
         {
             PrettyPrintMethod(method);
         }
@@ -50,7 +50,7 @@ public class PrettyPrinter(LoweredProgram module)
             PrettyPrintVariant(variant);
         }
 
-        foreach (var staticField in dataType.StaticFields)
+        foreach (var staticField in dataType.StaticFields.OrderBy(x => x.Name))
         {
             PrettyPrintStaticField(staticField);
         }
@@ -91,7 +91,15 @@ public class PrettyPrinter(LoweredProgram module)
                 }
             case LoweredConcreteTypeReference concrete:
                 {
-                    _stringBuilder.Append(concrete.FullyQualifiedName);
+                    if (concrete.DefinitionId.ModuleId == DefId.CoreLibModuleId)
+                    {
+                        var prefixToTrim = DefId.CoreLibModuleId.Value.Length + ":::".Length;
+                        _stringBuilder.Append(concrete.DefinitionId.FullName[prefixToTrim..]);
+                    }
+                    else
+                    {
+                        _stringBuilder.Append(concrete.DefinitionId.FullName);
+                    }
                     if (concrete.TypeArguments.Count > 0)
                     {
                         _stringBuilder.Append("::<");
@@ -137,9 +145,15 @@ public class PrettyPrinter(LoweredProgram module)
                 }
             case LoweredArray loweredArray:
                 {
-                    _stringBuilder.Append("[");
+                    _stringBuilder.Append('[');
                     PrettyPrintTypeReference(loweredArray.ElementType);
                     _stringBuilder.Append($"; {loweredArray.Length}]");
+                    break;
+                }
+            case LoweredEphemeralPointer(var pointerTo):
+                {
+                    _stringBuilder.Append('^');
+                    PrettyPrintTypeReference(pointerTo);
                     break;
                 }
             default:
@@ -152,7 +166,7 @@ public class PrettyPrinter(LoweredProgram module)
         Indent();
         _stringBuilder.AppendLine($"{variant.Name} {{");
         _indentationLevel++;
-        foreach (var field in variant.Fields)
+        foreach (var field in variant.Fields.OrderBy(x => x.Name))
         {
             PrettyPrintField(field);
         }
@@ -501,6 +515,12 @@ public class PrettyPrinter(LoweredProgram module)
                         _ => charValue.ToString()
                     });
                     _stringBuilder.Append('\'');
+                    break;
+                }
+            case AddressOf(var place):
+                {
+                    _stringBuilder.Append('&');
+                    PrettyPrintPlace(place);
                     break;
                 }
             default:

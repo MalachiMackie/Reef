@@ -27,23 +27,41 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                                     variants: [Variant("_classVariant")])],
             methods: [
                 Method(
-                                    new DefId(ModuleId, $"{ModuleId}:::MyClass__to_string"),
-                                    "MyClass__to_string",
-                                    [
-                                        new BasicBlock(
-                                            BB0,
-                                            [new Assign(new Local("_returnValue"), new Use(new StringConstant("MyClass")))],
-                                            new GoTo(BB1)
-                                        ),
-                                        new BasicBlock(BB1, [], new Return())
-                                    ],
-                                    returnType: StringT,
-                                    parameters: [
-                                        (
-                                            "this",
-                                            new LoweredPointer(BoxedValue(ConcreteTypeReference("MyClass", ModuleId)))
-                                        )
-                                    ]),
+                    new DefId(ModuleId, $"{ModuleId}:::MyClass__to_string__unboxed"),
+                    "MyClass__to_string__unboxed",
+                    [
+                        new BasicBlock(
+                            BB0,
+                            [new Assign(new Local("_returnValue"), new Use(new StringConstant("MyClass")))],
+                            new GoTo(BB1)
+                        ),
+                        new BasicBlock(BB1, [], new Return())
+                    ],
+                    returnType: StringT,
+                    parameters: [
+                        (
+                            "this",
+                            new LoweredEphemeralPointer(ConcreteTypeReference("MyClass", ModuleId))
+                        )
+                    ]),
+                Method(
+                    new DefId(ModuleId, $"{ModuleId}:::MyClass__to_string__boxed"),
+                    "MyClass__to_string__boxed",
+                    [
+                        new BasicBlock(
+                            BB0,
+                            [new Assign(new Local("_returnValue"), new Use(new StringConstant("MyClass")))],
+                            new GoTo(BB1)
+                        ),
+                        new BasicBlock(BB1, [], new Return())
+                    ],
+                    returnType: StringT,
+                    parameters: [
+                        (
+                            "this",
+                            new LoweredPointer(BoxedValue(ConcreteTypeReference("MyClass", ModuleId)))
+                        )
+                    ]),
                                 Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                                     [
                                         new BasicBlock(
@@ -80,7 +98,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                                                     ConcreteTypeReference("MyClass", ModuleId))
                                             ],
                                             new MethodCall(
-                                                new LoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}:::MyClass__to_string"), []),
+                                                new LoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}:::MyClass__to_string__boxed"), []),
                                                 [new Copy(new Field(Local0, "Item0", "_classVariant"))],
                                                 Local1,
                                                 BB3)),
@@ -88,7 +106,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                                             BB3,
                                             [],
                                             new MethodCall(
-                                                new LoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}:::MyClass__to_string"), []),
+                                                new LoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}:::MyClass__to_string__boxed"), []),
                                                 [new Copy(new Field(Local0, "Item1", "_classVariant"))],
                                                 Local2,
                                                 BB4)),
@@ -1109,8 +1127,26 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                             variants: [Variant("_classVariant")])],
                     methods: [
                         Method(
-                            new DefId(ModuleId, $"{ModuleId}:::MyClass__to_string"),
-                            "MyClass__to_string",
+                            new DefId(ModuleId, $"{ModuleId}:::MyClass__to_string__unboxed"),
+                            "MyClass__to_string__unboxed",
+                            [
+                                new BasicBlock(
+                                    BB0,
+                                    [new Assign(new Local("_returnValue"), new Use(new StringConstant("MyClass")))],
+                                    new GoTo(BB1)
+                                ),
+                                new BasicBlock(BB1, [], new Return())
+                            ],
+                            returnType: StringT,
+                            parameters: [
+                                (
+                                    "this",
+                                    new LoweredEphemeralPointer(ConcreteTypeReference("MyClass", ModuleId))
+                                )
+                            ]),
+                        Method(
+                            new DefId(ModuleId, $"{ModuleId}:::MyClass__to_string__boxed"),
+                            "MyClass__to_string__boxed",
                             [
                                 new BasicBlock(
                                     BB0,
@@ -1162,7 +1198,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                                             ConcreteTypeReference("MyClass", ModuleId))
                                     ],
                                     new MethodCall(
-                                        new LoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}:::MyClass__to_string"), []),
+                                        new LoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}:::MyClass__to_string__boxed"), []),
                                         [new Copy(new Field(Local0, "Item0", "_classVariant"))],
                                         Local1,
                                         BB3)),
@@ -1170,7 +1206,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                                     BB3,
                                     [],
                                     new MethodCall(
-                                        new LoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}:::MyClass__to_string"), []),
+                                        new LoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}:::MyClass__to_string__boxed"), []),
                                         [new Copy(new Field(Local0, "Item1", "_classVariant"))],
                                         Local2,
                                         BB4)),
@@ -1187,7 +1223,7 @@ public class SimpleExpressionTests(ITestOutputHelper testOutputHelper) : TestBas
                                 new MethodLocal("_local1", "b", StringT),
                                 new MethodLocal("_local2", "c", StringT),
                             ])
-                    ])
+                        ])
             },
             {
                 "local function in block",

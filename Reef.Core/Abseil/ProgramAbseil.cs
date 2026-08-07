@@ -26,13 +26,34 @@ public partial class ProgramAbseil
             List<MethodLocal> locals,
             IReadOnlyList<Expressions.IExpression> highLevelExpressions,
             LoweredConcreteTypeReference? ownerType,
+            ILoweredTypeReference? thisTypeReference,
+            ILoweredTypeReference? selfTypeReference,
             bool needsLowering
         )> _methods = [];
+
+    private class InstanceMethodMapping
+    {
+        public InstanceMethodMapping(){ }
+
+        public InstanceMethodMapping(DefId unboxed, DefId boxed)
+        {
+            UnboxedInstanceMethod = unboxed;
+            BoxedInstanceMethod = boxed;
+        }
+
+        public DefId? UnboxedInstanceMethod { get; set; }
+        public DefId? BoxedInstanceMethod { get; set; }
+    }
+
+    private readonly Dictionary<DefId, InstanceMethodMapping> _instanceMethodMappings = [];
+
     private readonly List<LoweredExternMethod> _externMethods = [];
     private readonly Dictionary<DefId, DataType> _types = [];
     private readonly Dictionary<ModuleId, LangModule> _modules;
     private readonly LangModule _mainModule;
-    private LoweredConcreteTypeReference? _currentType;
+    private ILoweredTypeReference? _thisTypeReference;
+    private ILoweredTypeReference? _selfTypeReference;
+    private LoweredConcreteTypeReference? _currentTypeReference__;
     private (LoweredMethod LoweredMethod, TypeChecker.FunctionSignature FunctionSignature)? _currentFunction;
 
     private List<BasicBlock> _basicBlocks = [];
@@ -49,7 +70,7 @@ public partial class ProgramAbseil
         return abseil.LowerInner(generateTestMain);
     }
 
-    private static LoweredExternMethod ExternMethodFromSignature(TypeChecker.FunctionSignature signature)
+    private LoweredExternMethod ExternMethodFromSignature(TypeChecker.FunctionSignature signature)
     {
         Debug.Assert(signature.ExternName is not null);
 
@@ -62,7 +83,7 @@ public partial class ProgramAbseil
                 ParameterLocalName((uint)i), x.Key, GetTypeReference(x.Value.Type)))]);
     }
 
-    private static LoweredMethod CreateFromBytesMethod(TypeChecker.FunctionSignature signature)
+    private LoweredMethod CreateFromBytesMethod(TypeChecker.FunctionSignature signature)
     {
         var basicBlocks = new List<BasicBlock>();
 
@@ -74,7 +95,8 @@ public partial class ProgramAbseil
             new MethodLocal(ReturnValueLocalName, null, GetTypeReference(signature.ReturnType)),
             [..signature.Parameters.Select((x, i) => new MethodLocal(
                 ParameterLocalName((uint)i), x.Key, GetTypeReference(x.Value.Type)))],
-            []
+            [],
+            InstanceBoxed.NotInstance
         );
 
         /*
@@ -100,7 +122,7 @@ public partial class ProgramAbseil
         return loweredMethod;
     }
 
-    private static LoweredMethod CreateAsBytesMethod(TypeChecker.FunctionSignature signature)
+    private LoweredMethod CreateAsBytesMethod(TypeChecker.FunctionSignature signature)
     {
         var basicBlocks = new List<BasicBlock>();
 
@@ -112,7 +134,8 @@ public partial class ProgramAbseil
             new MethodLocal(ReturnValueLocalName, null, GetTypeReference(signature.ReturnType)),
             [..signature.Parameters.Select((x, i) => new MethodLocal(
                 ParameterLocalName((uint)i), x.Key, GetTypeReference(x.Value.Type)))],
-            []
+            [],
+            InstanceBoxed.NotInstance
         );
 
         /*
@@ -138,7 +161,7 @@ public partial class ProgramAbseil
         return loweredMethod;
     }
 
-    private static LoweredMethod CreateCatchUnwindIntrinsicMethod(TypeChecker.FunctionSignature signature)
+    private LoweredMethod CreateCatchUnwindIntrinsicMethod(TypeChecker.FunctionSignature signature)
     {
         var basicBlocks = new List<BasicBlock>();
 
@@ -151,6 +174,7 @@ public partial class ProgramAbseil
             [..signature.Parameters.Select((x, i) => new MethodLocal(
                 ParameterLocalName((uint)i), x.Key, GetTypeReference(x.Value.Type)))],
             [new MethodLocal(LocalName(0), null, new LoweredConcreteTypeReference(DefId.Unit, []))],
+            InstanceBoxed.NotInstance,
             new BasicBlockId("bb2")
         );
 
@@ -209,7 +233,7 @@ public partial class ProgramAbseil
         return loweredMethod;
     }
 
-    private static LoweredMethod CreateBoxMethod(TypeChecker.FunctionSignature signature)
+    private LoweredMethod CreateBoxMethod(TypeChecker.FunctionSignature signature)
     {
         var basicBlocks = new List<BasicBlock>();
 
@@ -221,7 +245,8 @@ public partial class ProgramAbseil
             new MethodLocal(ReturnValueLocalName, null, GetTypeReference(signature.ReturnType)),
             [..signature.Parameters.Select((x, i) => new MethodLocal(
                 ParameterLocalName((uint)i), x.Key, GetTypeReference(x.Value.Type)))],
-            []);
+            [],
+            InstanceBoxed.NotInstance);
 
         /*
          *
@@ -270,7 +295,7 @@ public partial class ProgramAbseil
         return loweredMethod;
     }
 
-    private static LoweredMethod CreateUnboxMethod(TypeChecker.FunctionSignature signature)
+    private LoweredMethod CreateUnboxMethod(TypeChecker.FunctionSignature signature)
     {
         var basicBlocks = new List<BasicBlock>();
 
@@ -282,7 +307,8 @@ public partial class ProgramAbseil
             new MethodLocal(ReturnValueLocalName, null, GetTypeReference(signature.ReturnType)),
             [..signature.Parameters.Select((x, i) => new MethodLocal(
                 LocalName((uint)i), x.Key, GetTypeReference(x.Value.Type)))],
-            []);
+            [],
+            InstanceBoxed.NotInstance);
 
         /*
          *
@@ -334,7 +360,7 @@ public partial class ProgramAbseil
                 foreach (var (signature, method) in signatures)
                 {
                     intrinsicFunctionIds.Add(signature.Id);
-                    _methods.Add(method, (signature, [], [], [], null, false));
+                    _methods.Add(method, (signature, [], [], [], null, null, null, false));
                 }
             }
 
@@ -533,19 +559,19 @@ public partial class ProgramAbseil
                 FunctionInstantiation = catch_unwind_instantiated_function
             };
 
-            var testMethods = _modules.Values.SelectMany(x =>
+            var testFunctions = _modules.Values.SelectMany(x =>
                 x.Functions.Select(y => y.Signature.NotNull())
                     .Concat(x.Classes.SelectMany(y => y.Functions).Select(y => y.Signature.NotNull()))
                     .Concat(x.Unions.SelectMany(y => y.Functions).Select(y => y.Signature.NotNull())))
                 .Where(x => x.Attributes.Any(y => y.AttributeId == DefId.Test))
                 .ToArray();
 
-            var invalidTestMethods = testMethods.Where(x => x.OwnerType is not null && !x.IsStatic).ToArray();
+            var invalidTestFunctions = testFunctions.Where(x => x.OwnerType is not null && !x.IsStatic).ToArray();
 
-            if (invalidTestMethods.Length > 0)
+            if (invalidTestFunctions.Length > 0)
             {
                 throw new InvalidOperationException(
-                    $"Test methods cannot be instance functions, only top level or static functions can be test methods: [{string.Join(", ", invalidTestMethods.Select(x => x.Id.FullName))}]");
+                    $"Test methods cannot be instance functions, only top level or static functions can be test methods: [{string.Join(", ", invalidTestFunctions.Select(x => x.Id.FullName))}]");
             }
 
             mainExpressions.AddRange([
@@ -571,12 +597,12 @@ public partial class ProgramAbseil
                 ) {
                     ResolvedType = unitType,
                 },
-                ..testMethods.SelectMany(testMethod => new Expressions.IExpression[]
+                ..testFunctions.SelectMany(testFunction => new Expressions.IExpression[]
                     {
                         new Expressions.MethodCallExpression(
                             new Expressions.MethodCall(
                                 printStringMethodExpression,
-                                [StringLiteralExpression($"{testMethod.Id.FullName} - ")]
+                                [StringLiteralExpression($"{testFunction.Id.FullName} - ")]
                             ),
                             SourceRange.Default
                         )
@@ -593,9 +619,9 @@ public partial class ProgramAbseil
                                             [
                                                 new Expressions.ValueAccessorExpression(new Expressions.ValueAccessor(
                                                     Expressions.ValueAccessType.Variable,
-                                                    testMethod.NameToken,
+                                                    testFunction.NameToken,
                                                     [],
-                                                    [.. testMethod.Id.FullName.Split(":::", StringSplitOptions.RemoveEmptyEntries)
+                                                    [.. testFunction.Id.FullName.Split(":::", StringSplitOptions.RemoveEmptyEntries)
                                                         .Select(x => Token.Identifier(x, SourceSpan.Default))
                                                         // skip method name segment
                                                         .SkipLast(1)
@@ -603,7 +629,7 @@ public partial class ProgramAbseil
                                                     true
                                                 )) {
                                                     FunctionInstantiation =
-                                                        new TypeChecker.InstantiatedFunction(null, testMethod, [], u64Type),
+                                                        new TypeChecker.InstantiatedFunction(null, testFunction, [], u64Type),
                                                     ResolvedType = new TypeChecker.FunctionObject([], unitType, false, true)
                                                 }
                                             ]
@@ -812,8 +838,7 @@ public partial class ProgramAbseil
         {
             if (fnSignature.ExternName is null)
             {
-                var (method, basicBlocks, locals, expressions) = GenerateLoweredMethod(null, fnSignature, null, null);
-                _methods.Add(method, (fnSignature, basicBlocks, locals, expressions, null, true));
+                GenerateLoweredMethod(null, suffix: null, fnSignature, null, null, null, null, InstanceBoxed.NotInstance);
             }
             else
             {
@@ -821,9 +846,9 @@ public partial class ProgramAbseil
             }
         }
 
-        foreach (var (method, (fnSignature, basicBlocks, locals, expressions, ownerTypeReference, _)) in _methods.Where(x => x.Value.needsLowering))
+        foreach (var (method, (fnSignature, basicBlocks, locals, expressions, ownerTypeReference, thisTypeReference, selfTypeReference, _)) in _methods.Where(x => x.Value.needsLowering))
         {
-            LowerMethod(method, fnSignature, basicBlocks, locals, expressions, ownerTypeReference);
+            LowerMethod(method, fnSignature, basicBlocks, locals, expressions, ownerTypeReference, thisTypeReference, selfTypeReference);
         }
 
         return new LoweredProgram
@@ -839,9 +864,13 @@ public partial class ProgramAbseil
         List<BasicBlock> basicBlocks,
         List<MethodLocal> locals,
         IReadOnlyList<Expressions.IExpression> expressions,
-        LoweredConcreteTypeReference? ownerTypeReference)
+        LoweredConcreteTypeReference? ownerTypeReference,
+        ILoweredTypeReference? thisTypeReference,
+        ILoweredTypeReference? selfTypeReference)
     {
-        _currentType = ownerTypeReference;
+        _currentTypeReference__ = ownerTypeReference;
+        _thisTypeReference = thisTypeReference;
+        _selfTypeReference = selfTypeReference;
         _currentFunction = (method, fnSignature);
         _basicBlocks = basicBlocks;
         _locals = locals;
@@ -948,7 +977,9 @@ public partial class ProgramAbseil
             .Select(x =>
             {
                 _currentFunction = null;
-                _currentType = classTypeReference;
+                _currentTypeReference__ = classTypeReference;
+                _thisTypeReference = null;
+                _selfTypeReference = null;
                 _basicBlockStatements = [];
                 _basicBlocks = [new BasicBlock(new BasicBlockId("bb0"), _basicBlockStatements)];
                 _locals = [];
@@ -959,6 +990,7 @@ public partial class ProgramAbseil
 
                 var type = GetTypeReference(x.Type);
 
+                _currentTypeReference__ = null;
 
                 return new StaticDataTypeField(
                     x.Name,
@@ -973,8 +1005,48 @@ public partial class ProgramAbseil
 
         foreach (var method in klass.Functions)
         {
-            var (loweredMethod, basicBlocks, locals, expressions) = GenerateLoweredMethod(klass.Name, method, classTypeReference, classTypeReference);
-            _methods.Add(loweredMethod, (method, basicBlocks, locals, expressions, classTypeReference, true));
+            if (method.IsStatic)
+            {
+                GenerateLoweredMethod(klass.Name, suffix: null, method, classTypeReference, classTypeReference, classTypeReference, classTypeReference, InstanceBoxed.NotInstance);
+            }
+            else if (klass.Attributes.Any(x => x.AttributeId == DefId.BoxedOnly) || method.SelfConstraints.OfType<TypeChecker.BoxedTypeConstraint>().Any())
+            {
+                var loweredMethod = GenerateLoweredMethod(
+                    klass.Name,
+                    suffix: null,
+                    method,
+                    classTypeReference,
+                    thisTypeReference: new LoweredPointer(BoxedValueType(classTypeReference)),
+                    selfTypeReference: new LoweredPointer(BoxedValueType(classTypeReference)),
+                    classTypeReference,
+                    InstanceBoxed.Boxed);
+            }
+            else
+            {
+                var loweredMethod = GenerateLoweredMethod(
+                    klass.Name,
+                    suffix: "__boxed",
+                    method,
+                    classTypeReference,
+                    thisTypeReference: new LoweredPointer(BoxedValueType(classTypeReference)),
+                    selfTypeReference: new LoweredPointer(BoxedValueType(classTypeReference)),
+                    classTypeReference,
+                    InstanceBoxed.Boxed);
+                var boxedDefId = loweredMethod.Id;
+
+                loweredMethod = GenerateLoweredMethod(
+                    klass.Name,
+                    suffix: "__unboxed",
+                    method,
+                    classTypeReference,
+                    thisTypeReference: new LoweredEphemeralPointer(classTypeReference),
+                    selfTypeReference: classTypeReference,
+                    classTypeReference,
+                    InstanceBoxed.Unboxed);
+                var unboxedDefId = loweredMethod.Id;
+
+                _instanceMethodMappings[method.Id] = new (unboxedDefId, boxedDefId);
+            }
         }
 
         return new DataType(
@@ -995,9 +1067,44 @@ public partial class ProgramAbseil
 
         foreach (var function in union.Functions)
         {
-            var (loweredMethod, basicBlocks, locals, expressions) = GenerateLoweredMethod(union.Name, function, unionTypeReference, unionTypeReference);
+            if (function.IsStatic || union.Attributes.Any(x => x.AttributeId == DefId.BoxedOnly))
+            {
+                GenerateLoweredMethod(union.Name, suffix: null, function, unionTypeReference, unionTypeReference, unionTypeReference, unionTypeReference, InstanceBoxed.NotInstance);
+            }
+            else if (union.Attributes.Any(x => x.AttributeId == DefId.BoxedOnly) || function.SelfConstraints.OfType<TypeChecker.BoxedTypeConstraint>().Any())
+            {
+                GenerateLoweredMethod(
+                    union.Name,
+                    suffix: null,
+                    function,
+                    unionTypeReference,
+                    thisTypeReference: new LoweredPointer(BoxedValueType(unionTypeReference)),
+                    selfTypeReference: new LoweredPointer(BoxedValueType(unionTypeReference)),
+                    unionTypeReference,
+                    InstanceBoxed.Boxed);
+            }
+            else
+            {
+                GenerateLoweredMethod(
+                    union.Name,
+                    suffix: "__boxed",
+                    function,
+                    unionTypeReference,
+                    thisTypeReference: new LoweredPointer(BoxedValueType(unionTypeReference)),
+                    selfTypeReference: new LoweredPointer(BoxedValueType(unionTypeReference)),
+                    unionTypeReference,
+                    InstanceBoxed.Boxed);
 
-            _methods.Add(loweredMethod, (function, basicBlocks, locals, expressions, unionTypeReference, true));
+                GenerateLoweredMethod(
+                    union.Name,
+                    suffix: "__unboxed",
+                    function,
+                    unionTypeReference,
+                    thisTypeReference: new LoweredEphemeralPointer(unionTypeReference),
+                    selfTypeReference: unionTypeReference,
+                    unionTypeReference,
+                    InstanceBoxed.Unboxed);
+            }
         }
 
         foreach (var (index, variant) in union.Variants.Index())
@@ -1017,7 +1124,7 @@ public partial class ProgramAbseil
                     .Select((IOperand operand, string fieldName) (_, i) => (new Copy(new Local($"_param{i}")), TupleElementName((uint)i)))
             ];
 
-            var boxedMethod = new LoweredMethod(
+            var boxedCreateMethod = new LoweredMethod(
                 u.BoxedCreateFunction.Id,
                 u.BoxedCreateFunction.Name,
                 typeParameters,
@@ -1059,9 +1166,10 @@ public partial class ProgramAbseil
                     ..memberTypes.Select((x, i) =>
                             new MethodLocal(ParameterLocalName((uint)i), TupleElementName((uint)i), x))
                 ],
-                []);
+                [],
+                InstanceBoxed.NotInstance);
 
-            var unboxedMethod = new LoweredMethod(
+            var unboxedCreateMethod = new LoweredMethod(
                 u.UnboxedCreateFunction.Id,
                 u.UnboxedCreateFunction.Name,
                 typeParameters,
@@ -1082,21 +1190,22 @@ public partial class ProgramAbseil
                     ..memberTypes.Select((x, i) =>
                             new MethodLocal(ParameterLocalName((uint)i), TupleElementName((uint)i), x))
                 ],
-                []);
+                [],
+                InstanceBoxed.NotInstance);
 
             // add the tuple variant as a method
             _methods.Add(
-                    boxedMethod,
+                    boxedCreateMethod,
                     // pass null as the signature because it's never used as the current function
-                    (null!, [], [], [], unionTypeReference, false));
+                    (null!, [], [], [], unionTypeReference, null, null, false));
             _methods.Add(
-                    unboxedMethod,
+                    unboxedCreateMethod,
                     // pass null as the signature because it's never used as the current function
-                    (null!, [], [], [], unionTypeReference, false));
+                    (null!, [], [], [], unionTypeReference, null, null, false));
         }
     }
 
-    private static (DataType unionDataType, DataType variantOfDataType) LowerUnion(TypeChecker.UnionSignature union)
+    private (DataType unionDataType, DataType variantOfDataType) LowerUnion(TypeChecker.UnionSignature union)
     {
         var typeParameters = union.TypeParameters.Select(GetGenericPlaceholder).ToArray();
         var unionTypeReference = new LoweredConcreteTypeReference(
@@ -1156,17 +1265,30 @@ public partial class ProgramAbseil
         return (dataType, variantOfDataType);
     }
 
-    // instead of lowering the methods expressions right here, we return the list of expressions
+    // instead of lowering the methods expressions right here, we return add the list of expressions to _methods
     // to add to later so that all the type and function references are available to be used
-    private (LoweredMethod, List<BasicBlock>, List<MethodLocal>, IReadOnlyList<Expressions.IExpression>) GenerateLoweredMethod(
+    private LoweredMethod GenerateLoweredMethod(
             string? ownerName,
+            string? suffix,
             TypeChecker.FunctionSignature fnSignature,
             LoweredConcreteTypeReference? ownerTypeReference,
-            LoweredConcreteTypeReference? parentTypeReference)
+            ILoweredTypeReference? thisTypeReference,
+            ILoweredTypeReference? selfTypeReference,
+            LoweredConcreteTypeReference? parentTypeReference,
+            InstanceBoxed instanceBoxed)
     {
+        var previousCurrentTypeReference = _currentTypeReference__;
+        var previousThisTypeReference = _thisTypeReference;
+        var previousSelfTypeReference = _selfTypeReference;
+
+        _currentTypeReference__ = ownerTypeReference;
+        _thisTypeReference = thisTypeReference;
+        _selfTypeReference = selfTypeReference;
+        var id = fnSignature.Id with { FullName = fnSignature.Id.FullName + suffix ?? "" };
+
         var name = ownerName is null
-            ? fnSignature.Name
-            : $"{ownerName}__{fnSignature.Name}";
+            ? $"{fnSignature.Name}{suffix ?? ""}"
+            : $"{ownerName}__{fnSignature.Name}{suffix ?? ""}";
 
         var localsAccessedInClosure = fnSignature.LocalVariables.Where(x => x.ReferencedInClosure).ToArray();
         var parametersAccessedInClosure = fnSignature.Parameters.Values.Where(x => x.ReferencedInClosure).ToArray();
@@ -1174,7 +1296,7 @@ public partial class ProgramAbseil
         if (localsAccessedInClosure.Length > 0 || parametersAccessedInClosure.Length > 0)
         {
             localsType = new DataType(
-                fnSignature.Id with { FullName = fnSignature.Id.FullName + "__Locals" },
+                id with { FullName = id.FullName + "__Locals" },
                 $"{name}__Locals",
                 [],
                 [
@@ -1191,8 +1313,6 @@ public partial class ProgramAbseil
                 ],
                 []);
             _types.Add(localsType.Id, localsType);
-
-            fnSignature.LocalsTypeId = localsType.Id;
         }
 
         DataType? closureType = null;
@@ -1207,8 +1327,14 @@ public partial class ProgramAbseil
                     case TypeChecker.LocalVariable localVariable:
                         {
                             var containingFunction = localVariable.ContainingFunction.NotNull();
-                            var localTypeId = containingFunction
-                                .LocalsTypeId.NotNull(expectedReason: "the containing function containing the referenced local should have already been lowered");
+
+                            var containingLoweredMethod = fnSignature.IsStatic switch
+                            {
+                                true => _methods.Keys.First(x => x.Id == containingFunction.Id),
+                                false => _methods.Keys.First(x => x.Id == containingFunction.Id with {FullName = containingFunction.Id.FullName + suffix})
+                            };
+
+                            var localTypeId = containingLoweredMethod.LocalsTypeId.NotNull("the containing function containing the referenced local should have already been lowered");
                             var localType = _types[localTypeId];
                             var localTypeReference = new LoweredConcreteTypeReference(
                                 localTypeId,
@@ -1225,8 +1351,14 @@ public partial class ProgramAbseil
                     case TypeChecker.FunctionSignatureParameter parameterVariable:
                         {
                             var containingFunction = parameterVariable.ContainingFunction.NotNull();
-                            var localTypeId = containingFunction
-                                .LocalsTypeId.NotNull();
+
+                            var containingLoweredMethod = fnSignature.IsStatic switch
+                            {
+                                true => _methods.Keys.First(x => x.Id == containingFunction.Id),
+                                false => _methods.Keys.First(x => x.Id == containingFunction.Id with {FullName = containingFunction.Id.FullName + suffix})
+                            };
+
+                            var localTypeId = containingLoweredMethod.LocalsTypeId.NotNull();
                             var localType = _types[localTypeId];
                             var localTypeReference = new LoweredConcreteTypeReference(
                                 localTypeId,
@@ -1266,7 +1398,7 @@ public partial class ProgramAbseil
             }
 
             closureType = new DataType(
-                new DefId(fnSignature.Id.ModuleId, fnSignature.Id.FullName + "__Closure"),
+                id with { FullName = id.FullName + "__Closure" },
                 $"{name}__Closure",
                 [],
                 [
@@ -1276,17 +1408,7 @@ public partial class ProgramAbseil
                 ],
                 []);
 
-            fnSignature.ClosureTypeId = closureType.Id;
-
             _types.Add(closureType.Id, closureType);
-        }
-
-        foreach (var localSignature in fnSignature.LocalFunctions)
-        {
-            var (localMethod, localFnBasicBlocks, localFnLocals, localExpressions) =
-                GenerateLoweredMethod(ownerName: name, localSignature, null, parentTypeReference);
-
-            _methods.Add(localMethod, (localSignature, localFnBasicBlocks, localFnLocals, localExpressions, parentTypeReference, true));
         }
 
         var locals = new List<MethodLocal>(
@@ -1306,7 +1428,7 @@ public partial class ProgramAbseil
                         null,
                         new LoweredPointer(BoxedValueType(localsTypeReference))));
             var hasCompilerInsertedFirstParameter =
-                (!fnSignature.IsStatic && ownerTypeReference is not null)
+                (!fnSignature.IsStatic && thisTypeReference is not null)
                 || closureType is not null;
 
             basicBlocks.Add(new BasicBlock(
@@ -1358,32 +1480,70 @@ public partial class ProgramAbseil
         var parameters = fnSignature.Parameters.Select(y =>
             (userGivenName: (string?)y.Key, paramType: GetTypeReference(y.Value.Type)));
 
-        if (!fnSignature.IsStatic && ownerTypeReference is not null)
-        {
-            parameters = parameters.Prepend((ThisParameterName, new LoweredPointer(BoxedValueType(ownerTypeReference))));
-        }
-        else if (closureType is not null)
+        if (closureType is not null)
         {
             parameters = parameters.Prepend((ClosureParameterName, new LoweredPointer(BoxedValueType(new LoweredConcreteTypeReference(
                 closureType.Id,
                 [])))));
         }
+        else if (!fnSignature.IsStatic && thisTypeReference is not null)
+        {
+            parameters = parameters.Prepend((ThisParameterName, thisTypeReference));
+        }
 
-        return (
-            new LoweredMethod(
-                fnSignature.Id,
-                name,
-                [
-                    .. fnSignature.TypeParameters.Select(GetGenericPlaceholder),
-                    .. ownerTypeReference?.TypeArguments.Select(x => (x as LoweredGenericPlaceholder).NotNull()) ?? []
-                ],
-                basicBlocks,
-                new MethodLocal(ReturnValueLocalName, null, GetTypeReference(fnSignature.ReturnType)),
-                [.. parameters.Select((x, i) => new MethodLocal(ParameterLocalName((uint)i), x.userGivenName, x.paramType))],
-                locals),
+        var loweredMethod = new LoweredMethod(
+            id,
+            name,
+            [
+                .. fnSignature.TypeParameters.Select(GetGenericPlaceholder),
+                .. ownerTypeReference?.TypeArguments.Select(x => (x as LoweredGenericPlaceholder).NotNull()) ?? []
+            ],
             basicBlocks,
+            new MethodLocal(ReturnValueLocalName, null, GetTypeReference(fnSignature.ReturnType)),
+            [.. parameters.Select((x, i) => new MethodLocal(ParameterLocalName((uint)i), x.userGivenName, x.paramType))],
             locals,
-            fnSignature.Expressions);
+            InstanceBoxed: instanceBoxed,
+            LocalsTypeId: localsType?.Id,
+            ClosureTypeId: closureType?.Id);
+
+        _currentTypeReference__ = null;
+        _thisTypeReference = null;
+        _selfTypeReference = null;
+
+        _methods.Add(loweredMethod, (fnSignature, basicBlocks, locals, fnSignature.Expressions, ownerTypeReference, thisTypeReference, selfTypeReference, needsLowering: true));
+
+        foreach (var localSignature in fnSignature.LocalFunctions)
+        {
+            var innerMethod = GenerateLoweredMethod(ownerName: name, suffix, localSignature, ownerTypeReference, thisTypeReference, selfTypeReference, parentTypeReference, instanceBoxed);
+
+            if (instanceBoxed == InstanceBoxed.NotInstance)
+            {
+                continue;
+            }
+
+            if (!_instanceMethodMappings.TryGetValue(localSignature.Id, out var mapping))
+            {
+                mapping = new InstanceMethodMapping();
+                _instanceMethodMappings[localSignature.Id] = mapping;
+            }
+
+            if (instanceBoxed == InstanceBoxed.Boxed)
+            {
+                Debug.Assert(mapping.BoxedInstanceMethod is null);
+                mapping.BoxedInstanceMethod = innerMethod.Id;
+            }
+            else if (instanceBoxed == InstanceBoxed.Unboxed)
+            {
+                Debug.Assert(mapping.UnboxedInstanceMethod is null);
+                mapping.UnboxedInstanceMethod = innerMethod.Id;
+            }
+        }
+
+        _currentTypeReference__ = previousCurrentTypeReference;
+        _thisTypeReference = previousThisTypeReference;
+        _selfTypeReference = previousSelfTypeReference;
+
+        return loweredMethod;
     }
 
     private static LoweredGenericPlaceholder GetGenericPlaceholder(TypeChecker.GenericPlaceholder placeholder)
@@ -1407,20 +1567,81 @@ public partial class ProgramAbseil
             _ => []
         };
 
-        return GetFunctionReference(
+        if (fn.OwnerType is null || fn.IsStatic || fn.OwnerSignature.NotNull().Attributes.Any(x => x.AttributeId == DefId.BoxedOnly))
+        {
+            return GetStaticFunctionReference(
+                fn.FunctionId,
+                [.. fn.TypeArguments.Select(GetTypeReference)],
+                [.. functionOwnerTypeArguments.Select(GetTypeReference)]);
+        }
+
+        var isBoxed = GetTypeReferenceBoxedType(fn.OwnerType) == BoxType.ManagedBox;
+
+        return GetInstanceFunctionReference(
             fn.FunctionId,
+            isBoxed,
             [.. fn.TypeArguments.Select(GetTypeReference)],
             [.. functionOwnerTypeArguments.Select(GetTypeReference)]);
     }
 
-    private LoweredFunctionReference GetFunctionReference(
+    private LoweredFunctionReference GetInstanceFunctionReference(
+        TypeChecker.InstantiatedFunction fn,
+        bool instanceIsBoxed)
+    {
+        var functionOwnerTypeArguments = fn.OwnerType switch
+        {
+            TypeChecker.InstantiatedClass classOwner => classOwner.TypeArguments,
+            TypeChecker.InstantiatedUnion unionOwner => unionOwner.TypeArguments,
+            _ => []
+        };
+
+        Debug.Assert(fn.OwnerType is not null && !fn.IsStatic);
+
+        if (fn.OwnerSignature.NotNull().Attributes.Any(x => x.AttributeId == DefId.BoxedOnly))
+        {
+            return GetStaticFunctionReference(
+                fn.FunctionId,
+                [.. fn.TypeArguments.Select(GetTypeReference)],
+                [.. functionOwnerTypeArguments.Select(GetTypeReference)]);
+        }
+
+        return GetInstanceFunctionReference(
+            fn.FunctionId,
+            instanceIsBoxed,
+            [.. fn.TypeArguments.Select(GetTypeReference)],
+            [.. functionOwnerTypeArguments.Select(GetTypeReference)]
+        );
+    }
+
+    private LoweredFunctionReference GetInstanceFunctionReference(
+        DefId functionId,
+        bool instanceIsBoxed,
+        IReadOnlyList<ILoweredTypeReference> typeArguments,
+        IReadOnlyList<ILoweredTypeReference> ownerTypeArguments)
+    {
+        var mapping = _instanceMethodMappings[functionId];
+        var boxedId = mapping.BoxedInstanceMethod;
+        var unboxedId = mapping.UnboxedInstanceMethod;
+        var loweredMethod = _methods.Keys.FirstOrDefault<IMethod>(x => x.Id == (instanceIsBoxed ? boxedId : unboxedId))
+            ?? throw new InvalidOperationException($"No function with id {functionId.FullName}");
+
+        IReadOnlyList<ILoweredTypeReference> resultingTypeArguments = [.. ownerTypeArguments, .. typeArguments];
+
+        Debug.Assert(resultingTypeArguments.Count == loweredMethod.TypeParameters.Count);
+
+        return new LoweredFunctionReference(
+                loweredMethod.Id,
+                resultingTypeArguments);
+    }
+
+    private LoweredFunctionReference GetStaticFunctionReference(
             DefId functionId,
             IReadOnlyList<ILoweredTypeReference> typeArguments,
             IReadOnlyList<ILoweredTypeReference> ownerTypeArguments)
     {
         var loweredMethod = _methods.Keys.FirstOrDefault<IMethod>(x => x.Id == functionId)
             ?? _externMethods.FirstOrDefault<IMethod>(x => x.Id == functionId)
-            ?? throw new InvalidOperationException($"No function found with id {functionId}");
+            ?? throw new InvalidOperationException($"No function with id {functionId.FullName}");
 
         IReadOnlyList<ILoweredTypeReference> resultingTypeArguments = [.. ownerTypeArguments, .. typeArguments];
 
@@ -1440,6 +1661,8 @@ public partial class ProgramAbseil
             case LoweredPointer(LoweredConcreteTypeReference pointerTo):
                 Debug.Assert(pointerTo.DefinitionId == DefId.BoxedValue);
                 return GetConcreteTypeReference(pointerTo.TypeArguments[0]);
+            case LoweredEphemeralPointer(LoweredConcreteTypeReference pointerTo):
+                return pointerTo;
             default:
                 throw new InvalidOperationException($"{typeReference.GetType()}");
         }
@@ -1456,7 +1679,7 @@ public partial class ProgramAbseil
         return new LoweredConcreteTypeReference(id, []);
     }
 
-    private static ILoweredTypeReference GetTypeReference(TypeChecker.ITypeReference typeReference)
+    private ILoweredTypeReference GetTypeReference(TypeChecker.ITypeReference typeReference)
     {
         var loweredTypeReference = typeReference switch
         {
@@ -1479,15 +1702,26 @@ public partial class ProgramAbseil
             TypeChecker.VariantOfType v => VariantOfTypeCase(v),
             TypeChecker.ArrayType a => new LoweredArray(
                 GetTypeReference(a.ElementType), a.Length),
+            TypeChecker.SelfTypeReference {Signature: var selfSignature} => SelfCase(selfSignature),
             _ => throw new InvalidOperationException($"Type reference {typeReference.GetType()} is not supported")
         };
 
-        if (IsTypeReferenceBoxed(typeReference) && loweredTypeReference is not LoweredPointer)
+        if (GetTypeReferenceBoxedType(typeReference) == BoxType.ManagedBox && loweredTypeReference is not LoweredPointer)
         {
             loweredTypeReference = new LoweredPointer(BoxedValueType(loweredTypeReference));
         }
 
         return loweredTypeReference;
+
+        ILoweredTypeReference SelfCase(TypeChecker.ITypeSignature signature)
+        {
+            Debug.Assert(signature.Id == _currentTypeReference__.NotNull().DefinitionId);
+            if (_selfTypeReference is null)
+            {
+                Debug.Fail(_currentFunction.NotNull().FunctionSignature.Id.FullName);
+            }
+            return _selfTypeReference.NotNull();
+        }
 
         static LoweredConcreteTypeReference VariantOfTypeCase(TypeChecker.VariantOfType v)
         {
@@ -1498,7 +1732,7 @@ public partial class ProgramAbseil
                 []);
         }
 
-        static LoweredConcreteTypeReference FunctionObjectCase(TypeChecker.FunctionObject f)
+        LoweredConcreteTypeReference FunctionObjectCase(TypeChecker.FunctionObject f)
         {
             return new LoweredConcreteTypeReference(
                 DefId.FunctionObject(f.Parameters.Count),
@@ -1520,5 +1754,29 @@ public partial class ProgramAbseil
             (LoweredPointer pointerA, LoweredPointer pointerB) => EqualTypeReferences(pointerA.PointerTo, pointerB.PointerTo),
             _ => false
         };
+    }
+
+    private LoweredMethod GetLoweredMethodBySignature(TypeChecker.FunctionSignature signature, InstanceBoxed boxed)
+    {
+        if (signature.IsStatic || signature.OwnerType is null)
+        {
+            Debug.Assert(boxed == InstanceBoxed.NotInstance, $"Expected Static function, found {boxed.ToString()}, {signature.Id}, {_currentFunction.NotNull().LoweredMethod.Id}");
+            return _methods.Keys.First(x => x.Id == signature.Id);
+        }
+
+        Debug.Assert(boxed != InstanceBoxed.NotInstance);
+
+        if (signature.OwnerType is {Attributes: var attributes} && attributes.Any(x => x.AttributeId == DefId.BoxedOnly))
+        {
+            return _methods.Keys.First(x => x.Id == signature.Id);
+        }
+
+        var mapping = _instanceMethodMappings[signature.Id];
+        var boxedId = mapping.BoxedInstanceMethod;
+        var unboxedId = mapping.UnboxedInstanceMethod;
+
+        return boxed == InstanceBoxed.Boxed
+            ? _methods.Keys.First(x => x.Id == boxedId)
+            : _methods.Keys.First(x => x.Id == unboxedId);
     }
 }

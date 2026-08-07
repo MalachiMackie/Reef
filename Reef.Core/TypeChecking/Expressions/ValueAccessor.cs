@@ -150,7 +150,7 @@ public partial class TypeChecker
 
                 var isUnboxedOnly = selfConstraints.OfType<BoxedTypeConstraint>().Any();
 
-                if (ParentExpression is not MethodCallExpression && (!isBoxedOnly || isUnboxedOnly))
+                if (ParentExpression is not MethodCallExpression && (!isBoxedOnly || isUnboxedOnly) && !unionFunction.IsStatic)
                 {
                     AddError(TypeCheckerError.InstanceMemberInClosureInNonBoxedConstrainedMethod(expression.SourceRange));
                 }
@@ -220,7 +220,7 @@ public partial class TypeChecker
 
                 var isUnboxedOnly = selfConstraints.OfType<BoxedTypeConstraint>().Any();
 
-                if (ParentExpression is not MethodCallExpression && (!isBoxedOnly || isUnboxedOnly))
+                if (ParentExpression is not MethodCallExpression && (!isBoxedOnly || isUnboxedOnly) && !classFunction.IsStatic)
                 {
                     AddError(TypeCheckerError.InstanceMemberInClosureInNonBoxedConstrainedMethod(expression.SourceRange));
                 }

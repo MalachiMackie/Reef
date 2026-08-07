@@ -113,6 +113,13 @@ public interface IMethod
     List<MethodLocal> ParameterLocals { get; }
 }
 
+public enum InstanceBoxed
+{
+    NotInstance,
+    Boxed,
+    Unboxed
+}
+
 public record LoweredMethod(
     DefId Id,
     string Name,
@@ -121,7 +128,10 @@ public record LoweredMethod(
     MethodLocal ReturnValue,
     List<MethodLocal> ParameterLocals,
     List<MethodLocal> Locals,
-    BasicBlockId? UnwindContinueToBlock = null) : IMethod;
+    InstanceBoxed InstanceBoxed,
+    BasicBlockId? UnwindContinueToBlock = null,
+    DefId? LocalsTypeId = null,
+    DefId? ClosureTypeId = null) : IMethod;
 
 public record LoweredExternMethod(
     DefId Id,
@@ -172,6 +182,17 @@ public record LoweredArray(ILoweredTypeReference ElementType, ulong? Length) : I
     }
 
     public string FullyQualifiedName => $"[{ElementType.FullyQualifiedName}; {Length?.ToString() ?? "dynamic"}]";
+}
+
+// A pointer type that can only be stored on the stack
+public record LoweredEphemeralPointer(LoweredConcreteTypeReference PointerTo) : ILoweredTypeReference
+{
+    public override string? ToString()
+    {
+        return FullyQualifiedName;
+    }
+
+    public string FullyQualifiedName => $"^{PointerTo.FullyQualifiedName}";
 }
 
 public record LoweredPointer(ILoweredTypeReference PointerTo) : ILoweredTypeReference

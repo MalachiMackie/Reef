@@ -213,7 +213,7 @@ public partial class TypeChecker
             fnSignature.LocalFunctions.AddRange(fn.Block.Functions.Select(x => TypeCheckFunctionSignature(
                 new DefId(defId.ModuleId, defId.FullName + $"__{x.Name}"),
                 x,
-                ownerType: null)));
+                ownerType)));
         }
 
         // todo: function overloading
@@ -284,7 +284,7 @@ public partial class TypeChecker
                     && accessedOuterVariable switch
                     {
                         // need to add the field and this as a captured variable if we're not the top level function in the type
-                        FieldVariable or ThisVariable => fnSignature.OwnerType is null,
+                        FieldVariable or ThisVariable => InLocalFunction,
                         FunctionSignatureParameter functionParameterVariable => functionParameterVariable.ContainingFunction !=
                                                                        fnSignature,
                         LocalVariable localVariable => localVariable.ContainingFunction != fnSignature,
@@ -378,7 +378,6 @@ public partial class TypeChecker
         public DefId FunctionId => Signature.Id;
         public bool MutableReturn => Signature.IsMutableReturn;
         public string Name => Signature.Name;
-        public DefId? ClosureTypeId => Signature.ClosureTypeId;
         public List<(DefId fieldTypeId, List<(IVariable fieldVariable, uint fieldIndex)> referencedVariables)> ClosureTypeFields =>
             Signature.ClosureTypeFields;
         private ITypeReference _u64Type;
@@ -459,8 +458,6 @@ public partial class TypeChecker
         IReadOnlyList<AttributeReference> Attributes,
         IReadOnlyList<ITypeConstraint> SelfConstraints) : ITypeSignature
     {
-        public DefId? LocalsTypeId { get; set; }
-        public DefId? ClosureTypeId { get; set; }
         public List<(DefId fieldTypeId, List<(IVariable fieldVariable, uint fieldIndex)> referencedVariables)> ClosureTypeFields { get; } = [];
 
         // mutable due to setting up signatures and generic stuff

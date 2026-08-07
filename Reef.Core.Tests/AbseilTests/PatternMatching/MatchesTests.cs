@@ -1,4 +1,3 @@
-using Reef.Core.Abseil;
 using Reef.Core.LoweredExpressions;
 using static Reef.Core.Tests.LoweredProgramHelpers;
 
@@ -136,6 +135,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                             locals: [
                                 new MethodLocal("_local0", "c", Int32T)
                             ],
+                            closureTypeId: new DefId(ModuleId, $"{ModuleId}:::SomeFn__Closure"),
                             parameters: [
                                 (
                                     "closure",
@@ -176,6 +176,7 @@ public class MatchesTests(ITestOutputHelper testOutputHelper) : TestBase(testOut
                                 new BasicBlock(BB2, [], new Return())
                             ],
                             Unit,
+                            localsTypeId: new DefId(ModuleId, $"{ModuleId}:::_Main__Locals"),
                             locals: [
                                 new MethodLocal(
                                     "_localsObject",

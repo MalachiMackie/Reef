@@ -166,18 +166,29 @@ public static class LoweredProgramHelpers
         string name,
         IReadOnlyList<BasicBlock> basicBlocks,
         ILoweredTypeReference returnType,
-        IReadOnlyList<(DefId, string)>? typeParameters = null,
+        IReadOnlyList<(DefId OwnerId, string Name)>? typeParameters = null,
         IReadOnlyList<(string, ILoweredTypeReference)>? parameters = null,
-        List<MethodLocal>? locals = null)
+        List<MethodLocal>? locals = null,
+        DefId? localsTypeId = null,
+        DefId? closureTypeId = null,
+        InstanceBoxed? instanceBoxed = null)
     {
         return new LoweredMethod(
             id,
             name,
-            [.. (typeParameters ?? []).Select(x => new LoweredGenericPlaceholder(x.Item1, x.Item2))],
+            [.. (typeParameters ?? []).Select(x => new LoweredGenericPlaceholder(x.OwnerId, x.Name))],
             basicBlocks,
             new MethodLocal("_returnValue", null, returnType),
             [.. (parameters ?? []).Select((x, i) => new MethodLocal($"_param{i}", x.Item1, x.Item2))],
-            locals ?? []);
+            locals ?? [],
+            InstanceBoxed: instanceBoxed ?? parameters switch {
+                [("this", LoweredEphemeralPointer), ..] => InstanceBoxed.Unboxed,
+                [("this", LoweredPointer), ..] => InstanceBoxed.Boxed,
+                _ => InstanceBoxed.NotInstance
+            }) {
+            LocalsTypeId = localsTypeId,
+            ClosureTypeId = closureTypeId
+        };
     }
 
     public static LoweredConcreteTypeReference BooleanT { get; }
@@ -243,10 +254,12 @@ public static class LoweredProgramHelpers
 
     public static LoweredFunctionReference FunctionObjectCall(
         IReadOnlyList<ILoweredTypeReference> parameterTypes,
-        ILoweredTypeReference returnType)
+        ILoweredTypeReference returnType,
+        bool boxed)
     {
+        var id = DefId.FunctionObject_Call(parameterTypes.Count);
         return new LoweredFunctionReference(
-            DefId.FunctionObject_Call(parameterTypes.Count),
+            id with { FullName = id.FullName + (boxed ? "__boxed" : "__unboxed") },
             [.. parameterTypes, returnType]);
     }
 }

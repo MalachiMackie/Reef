@@ -142,7 +142,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                          )
                                      ],
                                      new MethodCall(
-                                         FunctionObjectCall([StringT], new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference( new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))),
+                                         FunctionObjectCall([StringT], new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference( new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))), boxed: true),
                                          [new Copy(Local0), new StringConstant("")],
                                          Local1,
                                          BB2)),
@@ -299,7 +299,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                                           )
                                                       ],
                                                       new MethodCall(
-                                                          FunctionObjectCall([StringT], new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference( new DefId(ModuleId, $"{ModuleId}:::MyUnion"), [])))),
+                                                          FunctionObjectCall([StringT], new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference( new DefId(ModuleId, $"{ModuleId}:::MyUnion"), []))), boxed: true),
                                                           [new Copy(Local0), new StringConstant("")],
                                                           Local1,
                                                           BB2)),
@@ -503,10 +503,14 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                          DataType(ModuleId, "MyClass", variants: [Variant("_classVariant")])
                      ],
                      methods: [
-                         Method(new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn"), "MyClass__MyFn",
+                         Method(new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__boxed"), "MyClass__MyFn__boxed",
                              [new BasicBlock(BB0, [], new Return())],
                              Unit,
-                             parameters: [("this", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference( new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))))]),
+                             parameters: [("this", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference(new DefId(ModuleId, $"{ModuleId}:::MyClass"), []))))]),
+                         Method(new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__unboxed"), "MyClass__MyFn__unboxed",
+                             [new BasicBlock(BB0, [], new Return())],
+                             Unit,
+                             parameters: [("this", new LoweredEphemeralPointer(new LoweredConcreteTypeReference(new DefId(ModuleId, $"{ModuleId}:::MyClass"), [])))]),
                          Method(new DefId(ModuleId, $"{ModuleId}:::_Main"), "_Main",
                              [
                                  new BasicBlock(
@@ -537,7 +541,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                          new Assign(
                                              new Field(new Field(new Deref(Local1), "Value", "_classVariant"), "FunctionReference", "_classVariant"),
                                              new Use(new FunctionPointerConstant(new LoweredFunctionReference(
-                                                 new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn"), [])))),
+                                                 new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__boxed"), [])))),
                                          new Assign(
                                              new Field(new Field(new Deref(Local1), "Value", "_classVariant"), "FunctionParameter", "_classVariant"),
                                              new CreateObject(Option(LoweredProgramHelpers.RawPointer))
@@ -566,6 +570,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
              {
                  "assigning closure to function object",
                  """
+                 #[boxed_only]
                  class MyClass
                  {
                      mut field MyField: string,
@@ -585,10 +590,6 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                  """,
                  LoweredProgram(ModuleId,
                      types: [
-                         DataType(ModuleId, "MyClass",
-                             variants: [
-                                 Variant("_classVariant", [Field("MyField", StringT)])
-                             ]),
                          DataType(ModuleId, "MyClass__MyFn__Locals",
                              variants: [
                                  Variant(
@@ -608,59 +609,13 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                              "MyClass__MyFn__Locals",
                                              new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference( new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__Locals"), []))))
                                      ])
-                             ])
+                             ]),
+                         DataType(ModuleId, "MyClass",
+                             variants: [
+                                 Variant("_classVariant", [Field("MyField", StringT)])
+                             ]),
                      ],
                      methods: [
-                         Method(new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__InnerFn"), "MyClass__MyFn__InnerFn",
-                             [
-                                 new BasicBlock(
-                                     BB0,
-                                     [
-                                         new Assign(
-                                             Local0,
-                                             new Use(new Copy(
-                                                 new Field(
-                                                     new Field(new Deref(new Field(
-                                                         new Field(new Deref(Param0), "Value", "_classVariant"),
-                                                         "MyClass__MyFn__Locals",
-                                                         "_classVariant")), "Value", "_classVariant"),
-                                                     "a",
-                                                     "_classVariant")))),
-                                         new Assign(
-                                             Local1,
-                                             new Use(new Copy(
-                                                 new Field(
-                                                     new Field(new Deref(new Field(
-                                                         new Field(new Deref(Param0), "Value", "_classVariant"),
-                                                         "MyClass__MyFn__Locals",
-                                                         "_classVariant")), "Value", "_classVariant"),
-                                                     "param",
-                                                     "_classVariant")))),
-                                         new Assign(
-                                             Local2,
-                                             new Use(new Copy(
-                                                 new Field(
-                                                     new Field(new Deref(new Field(
-                                                         new Field(new Deref(Param0), "Value", "_classVariant"),
-                                                         "this",
-                                                         "_classVariant")), "Value", "_classVariant"),
-                                                     "MyField",
-                                                     "_classVariant"))))
-                                     ],
-                                     new GoTo(BB1)),
-                                 new BasicBlock(BB1, [], new Return())
-                             ],
-                             Unit,
-                             locals: [
-                                 new MethodLocal("_local0", "_a", StringT),
-                                 new MethodLocal("_local1", "_param", StringT),
-                                 new MethodLocal("_local2", "_myField", StringT)
-                             ],
-                             parameters: [
-                                 ("closure", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference(
-                                     new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__InnerFn__Closure"),
-                                     []))))
-                             ]),
                          Method(new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn"), "MyClass__MyFn",
                              [
                                  new BasicBlock(
@@ -759,7 +714,60 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                      new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference(
                                          new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__InnerFn__Closure"),
                                          []))))
-                             ])
+                             ],
+                             localsTypeId: new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__Locals")),
+                         Method(new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__InnerFn"), "MyClass__MyFn__InnerFn",
+                            [
+                                new BasicBlock(
+                                    BB0,
+                                    [
+                                        new Assign(
+                                            Local0,
+                                            new Use(new Copy(
+                                                new Field(
+                                                    new Field(new Deref(new Field(
+                                                        new Field(new Deref(Param0), "Value", "_classVariant"),
+                                                        "MyClass__MyFn__Locals",
+                                                        "_classVariant")), "Value", "_classVariant"),
+                                                    "a",
+                                                    "_classVariant")))),
+                                        new Assign(
+                                            Local1,
+                                            new Use(new Copy(
+                                                new Field(
+                                                    new Field(new Deref(new Field(
+                                                        new Field(new Deref(Param0), "Value", "_classVariant"),
+                                                        "MyClass__MyFn__Locals",
+                                                        "_classVariant")), "Value", "_classVariant"),
+                                                    "param",
+                                                    "_classVariant")))),
+                                        new Assign(
+                                            Local2,
+                                            new Use(new Copy(
+                                                new Field(
+                                                    new Field(new Deref(new Field(
+                                                        new Field(new Deref(Param0), "Value", "_classVariant"),
+                                                        "this",
+                                                        "_classVariant")), "Value", "_classVariant"),
+                                                    "MyField",
+                                                    "_classVariant"))))
+                                    ],
+                                    new GoTo(BB1)),
+                                new BasicBlock(BB1, [], new Return())
+                            ],
+                            Unit,
+                            locals: [
+                                new MethodLocal("_local0", "_a", StringT),
+                                new MethodLocal("_local1", "_param", StringT),
+                                new MethodLocal("_local2", "_myField", StringT)
+                            ],
+                            parameters: [
+                                ("closure", new LoweredPointer(BoxedValue(new LoweredConcreteTypeReference(
+                                    new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__InnerFn__Closure"),
+                                    []))))
+                            ],
+                            closureTypeId: new DefId(ModuleId, $"{ModuleId}:::MyClass__MyFn__InnerFn__Closure"),
+                            instanceBoxed: InstanceBoxed.Boxed),
                      ])
              },
              {
@@ -805,7 +813,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                          )
                                      ],
                                      new MethodCall(
-                                         FunctionObjectCall([], Unit),
+                                         FunctionObjectCall([], Unit, boxed: true),
                                          [new Copy(Local0)],
                                          Local1,
                                          BB2)),
@@ -872,7 +880,7 @@ public class FunctionObjectTests(ITestOutputHelper testOutputHelper) : TestBase(
                                          )
                                      ],
                                      new MethodCall(
-                                         FunctionObjectCall([StringT], Int64T),
+                                         FunctionObjectCall([StringT], Int64T, boxed: true),
                                          [new Copy(Local0), new StringConstant("")],
                                          Local1,
                                          BB2)),

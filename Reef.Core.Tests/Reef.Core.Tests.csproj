@@ -15,6 +15,7 @@
 
     <ItemGroup>
         <PackageReference Include="coverlet.collector" Version="6.0.0" />
+        <PackageReference Include="DiffPlex" Version="1.9.0" />
         <PackageReference Include="FluentAssertions" Version="8.5.0" />
         <PackageReference Include="System.IO.Abstractions" Version="22.1.0" />
         <PackageReference Include="System.IO.Abstractions.TestingHelpers" Version="22.1.0" />

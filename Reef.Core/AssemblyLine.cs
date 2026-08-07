@@ -1207,7 +1207,10 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                     )
                 )
             ],
-            Locals: []), [], new Dictionary<LoweredGenericPlaceholder, ILoweredTypeReference>());
+            Locals: [],
+            InstanceBoxed: InstanceBoxed.NotInstance),
+        [],
+        new Dictionary<LoweredGenericPlaceholder, ILoweredTypeReference>());
 
         _codeSegment.AppendLine(
             """
