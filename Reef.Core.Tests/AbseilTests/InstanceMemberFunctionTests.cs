@@ -22,68 +22,96 @@ public class InstanceMemberFunctionTests(ITestOutputHelper testOutputHelper) : T
     public async Task SingleTest()
     {
         var source = """
-                        class MyClass {
-                            pub fn first_fn() {}
-                            pub fn second_fn() {
-                                first_fn();
-                            }
+                        union MyUnion {
+                            A,
+                            pub fn first_fn(){}
                         }
+                        var a = boxed MyUnion::A;
+                        var b = unboxed MyUnion::A;
+
+                        a.first_fn();
+                        b.first_fn();
                         """;
                         var expectedProgram = LoweredProgram(ModuleId,
                             types: [
                                 DataType(
                                     ModuleId,
-                                    "MyClass",
-                                    variants: [Variant("_classVariant")])
+                                    "MyUnion",
+                                    variants: [Variant("A", fields: [Field("_variantIdentifier", UInt16T)])]
+                                ),
+                                DataType(
+                                    ModuleId,
+                                    "MyUnion__VariantOf",
+                                    variants: [Variant("A", fields: [Field("_variantIdentifier", UInt16T)])]
+                                ),
                             ],
                             methods: [
                                 Method(
-                                    new DefId(ModuleId, $"{ModuleId}:::MyClass__first_fn__unboxed"),
-                                    "MyClass__first_fn__unboxed",
+                                    new DefId(ModuleId, $"{ModuleId}:::MyUnion__first_fn__unboxed"),
+                                    "MyUnion__first_fn__unboxed",
                                     [new BasicBlock(BB0, [], new Return())],
                                     Unit,
-                                    parameters: [("this", new LoweredEphemeralPointer(ConcreteTypeReference("MyClass", ModuleId)))]),
+                                    parameters: [("this", new LoweredEphemeralPointer(ConcreteTypeReference("MyUnion", ModuleId)))]),
                                 Method(
-                                    new DefId(ModuleId, $"{ModuleId}:::MyClass__first_fn__boxed"),
-                                    "MyClass__first_fn__boxed",
+                                    new DefId(ModuleId, $"{ModuleId}:::MyUnion__first_fn__boxed"),
+                                    "MyUnion__first_fn__boxed",
                                     [new BasicBlock(BB0, [], new Return())],
                                     Unit,
-                                    parameters: [("this", new LoweredPointer(BoxedValue(ConcreteTypeReference("MyClass", ModuleId))))]),
+                                    parameters: [("this", new LoweredPointer(BoxedValue(ConcreteTypeReference("MyUnion", ModuleId))))]),
                                 Method(
-                                    new DefId(ModuleId, $"{ModuleId}:::MyClass__second_fn__unboxed"),
-                                    "MyClass__second_fn__unboxed",
+                                    new DefId(ModuleId, $"{ModuleId}:::_Main"),
+                                    "_Main",
                                     [
                                         new BasicBlock(
                                             BB0,
                                             [],
-                                            new MethodCall(
-                                                new LoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}:::MyClass__first_fn__unboxed"), []),
-                                                [new Copy(Param0)],
+                                            AllocateMethodCall(
+                                                BoxedValue(ConcreteTypeReference("MyUnion", ModuleId)),
                                                 Local0,
                                                 BB1)),
-                                        new BasicBlock(BB1, [], new Return())
-                                    ],
-                                    Unit,
-                                    locals: [new MethodLocal("_local0", null, Unit)],
-                                    parameters: [("this", new LoweredEphemeralPointer(ConcreteTypeReference("MyClass", ModuleId)))]),
-                                Method(
-                                    new DefId(ModuleId, $"{ModuleId}:::MyClass__second_fn__boxed"),
-                                    "MyClass__second_fn__boxed",
-                                    [
                                         new BasicBlock(
-                                            BB0,
+                                            BB1,
+                                            [
+                                                ..CreateBoxedObject(new Deref(Local0), ConcreteTypeReference("MyUnion", ModuleId)),
+                                                new Assign(
+                                                    new Field(new Field(new Deref(Local0), "Value", "_classVariant"), "_variantIdentifier", "A"),
+                                                    new Use(new UIntConstant(0, 2))
+                                                ),
+                                                new Assign(
+                                                    Local1,
+                                                    new CreateObject(ConcreteTypeReference("MyUnion", ModuleId))
+                                                ),
+                                                new Assign(
+                                                    new Field(Local1, "_variantIdentifier", "A"),
+                                                    new Use(new UIntConstant(0, 2))
+                                                )
+                                            ],
+                                            new MethodCall(
+                                                new LoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}:::MyUnion__first_fn__boxed"), []),
+                                                [new Copy(Local0)],
+                                                Local2,
+                                                BB2)
+                                        ),
+                                        new BasicBlock(
+                                            BB2,
                                             [],
                                             new MethodCall(
-                                                new LoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}:::MyClass__first_fn__boxed"), []),
-                                                [new Copy(Param0)],
-                                                Local0,
-                                                BB1)),
-                                        new BasicBlock(BB1, [], new Return())
+                                                new LoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}:::MyUnion__first_fn__unboxed"), []),
+                                                [new AddressOf(Local1)],
+                                                Local3,
+                                                BB3)
+                                        ),
+                                        new BasicBlock(BB3, [], new Return())
                                     ],
                                     Unit,
-                                    locals: [new MethodLocal("_local0", null, Unit)],
-                                    parameters: [("this", new LoweredPointer(BoxedValue(ConcreteTypeReference("MyClass", ModuleId))))]),
-                            ]);
+                                    locals: [
+                                        new MethodLocal("_local0", "a", new LoweredPointer(BoxedValue(ConcreteTypeReference("MyUnion", ModuleId)))),
+                                        new MethodLocal("_local1", "b", ConcreteTypeReference("MyUnion", ModuleId)),
+                                        new MethodLocal("_local2", null, Unit),
+                                        new MethodLocal("_local3", null, Unit),
+                                    ]),
+                            ]
+                        );
 
         var program = await CreateProgram(ModuleId, source);
         var loweredProgram = Lower(program, ModuleId);
@@ -100,7 +128,7 @@ public class InstanceMemberFunctionTests(ITestOutputHelper testOutputHelper) : T
         return new()
         {
             {
-                "instance function",
+                "instance class function",
                 """
                 class MyClass{
                     pub fn some_fn(){}
@@ -126,6 +154,37 @@ public class InstanceMemberFunctionTests(ITestOutputHelper testOutputHelper) : T
                             Unit,
                             parameters: [
                                 ("this", new LoweredEphemeralPointer(ConcreteTypeReference("MyClass", ModuleId)))
+                            ]),
+                    ])
+            },
+            {
+                "instance union function",
+                """
+                union MyUnion{
+                    pub fn some_fn(){}
+                }
+                """,
+                LoweredProgram(ModuleId,
+                    types:
+                    [
+                        DataType(ModuleId, "MyUnion",
+                            variants: []),
+                        DataType(ModuleId, "MyUnion__VariantOf")
+                    ],
+                    methods: [
+                        Method(new DefId(ModuleId, $"{ModuleId}:::MyUnion__some_fn__boxed"),
+                            "MyUnion__some_fn__boxed",
+                            [new BasicBlock(BB0, [], new Return())],
+                            Unit,
+                            parameters: [
+                                ("this", new LoweredPointer(BoxedValue(ConcreteTypeReference("MyUnion", ModuleId))))
+                            ]),
+                        Method(new DefId(ModuleId, $"{ModuleId}:::MyUnion__some_fn__unboxed"),
+                            "MyUnion__some_fn__unboxed",
+                            [new BasicBlock(BB0, [], new Return())],
+                            Unit,
+                            parameters: [
+                                ("this", new LoweredEphemeralPointer(ConcreteTypeReference("MyUnion", ModuleId)))
                             ]),
                     ])
             },
@@ -437,7 +496,7 @@ public class InstanceMemberFunctionTests(ITestOutputHelper testOutputHelper) : T
                     ])
             },
             {
-                "Call other instance function",
+                "Call class instance function",
                 """
                 class MyClass {
                     pub fn first_fn(){}
@@ -513,6 +572,100 @@ public class InstanceMemberFunctionTests(ITestOutputHelper testOutputHelper) : T
                                 new MethodLocal("_local3", null, Unit),
                             ]),
                     ])
+            },
+            {
+                "Call union instance function",
+                """
+                union MyUnion {
+                    A,
+                    pub fn first_fn(){}
+                }
+                var a = boxed MyUnion::A;
+                var b = unboxed MyUnion::A;
+
+                a.first_fn();
+                b.first_fn();
+                """,
+                LoweredProgram(ModuleId,
+                    types: [
+                        DataType(
+                            ModuleId,
+                            "MyUnion",
+                            variants: [Variant("A", fields: [Field("_variantIdentifier", UInt16T)])]
+                        ),
+                        DataType(
+                            ModuleId,
+                            "MyUnion__VariantOf",
+                            variants: [Variant("A", fields: [Field("_variantIdentifier", UInt16T)])]
+                        )
+                    ],
+                    methods: [
+                        Method(
+                            new DefId(ModuleId, $"{ModuleId}:::MyUnion__first_fn__unboxed"),
+                            "MyUnion__first_fn__unboxed",
+                            [new BasicBlock(BB0, [], new Return())],
+                            Unit,
+                            parameters: [("this", new LoweredEphemeralPointer(ConcreteTypeReference("MyUnion", ModuleId)))]),
+                        Method(
+                            new DefId(ModuleId, $"{ModuleId}:::MyUnion__first_fn__boxed"),
+                            "MyUnion__first_fn__boxed",
+                            [new BasicBlock(BB0, [], new Return())],
+                            Unit,
+                            parameters: [("this", new LoweredPointer(BoxedValue(ConcreteTypeReference("MyUnion", ModuleId))))]),
+                        Method(
+                            new DefId(ModuleId, $"{ModuleId}:::_Main"),
+                            "_Main",
+                            [
+                                new BasicBlock(
+                                    BB0,
+                                    [],
+                                    AllocateMethodCall(
+                                        BoxedValue(ConcreteTypeReference("MyUnion", ModuleId)),
+                                        Local0,
+                                        BB1)),
+                                new BasicBlock(
+                                    BB1,
+                                    [
+                                        ..CreateBoxedObject(new Deref(Local0), ConcreteTypeReference("MyUnion", ModuleId)),
+                                        new Assign(
+                                            new Field(new Field(new Deref(Local0), "Value", "_classVariant"), "_variantIdentifier", "A"),
+                                            new Use(new UIntConstant(0, 2))
+                                        ),
+                                        new Assign(
+                                            Local1,
+                                            new CreateObject(ConcreteTypeReference("MyUnion", ModuleId))
+                                        ),
+                                        new Assign(
+                                            new Field(Local1, "_variantIdentifier", "A"),
+                                            new Use(new UIntConstant(0, 2))
+                                        )
+                                    ],
+                                    new MethodCall(
+                                        new LoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}:::MyUnion__first_fn__boxed"), []),
+                                        [new Copy(Local0)],
+                                        Local2,
+                                        BB2)
+                                ),
+                                new BasicBlock(
+                                    BB2,
+                                    [],
+                                    new MethodCall(
+                                        new LoweredFunctionReference(new DefId(ModuleId, $"{ModuleId}:::MyUnion__first_fn__unboxed"), []),
+                                        [new AddressOf(Local1)],
+                                        Local3,
+                                        BB3)
+                                ),
+                                new BasicBlock(BB3, [], new Return())
+                            ],
+                            Unit,
+                            locals: [
+                                new MethodLocal("_local0", "a", new LoweredPointer(BoxedValue(ConcreteTypeReference("MyUnion", ModuleId)))),
+                                new MethodLocal("_local1", "b", ConcreteTypeReference("MyUnion", ModuleId)),
+                                new MethodLocal("_local2", null, Unit),
+                                new MethodLocal("_local3", null, Unit),
+                            ]),
+                    ]
+                )
             }
         };
     }

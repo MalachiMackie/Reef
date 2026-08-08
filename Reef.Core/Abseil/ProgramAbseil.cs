@@ -1085,7 +1085,7 @@ public partial class ProgramAbseil
             }
             else
             {
-                GenerateLoweredMethod(
+                var boxedDefId = GenerateLoweredMethod(
                     union.Name,
                     suffix: "__boxed",
                     function,
@@ -1093,9 +1093,9 @@ public partial class ProgramAbseil
                     thisTypeReference: new LoweredPointer(BoxedValueType(unionTypeReference)),
                     selfTypeReference: new LoweredPointer(BoxedValueType(unionTypeReference)),
                     unionTypeReference,
-                    InstanceBoxed.Boxed);
+                    InstanceBoxed.Boxed).Id;
 
-                GenerateLoweredMethod(
+                var unboxedDefId = GenerateLoweredMethod(
                     union.Name,
                     suffix: "__unboxed",
                     function,
@@ -1103,7 +1103,9 @@ public partial class ProgramAbseil
                     thisTypeReference: new LoweredEphemeralPointer(unionTypeReference),
                     selfTypeReference: unionTypeReference,
                     unionTypeReference,
-                    InstanceBoxed.Unboxed);
+                    InstanceBoxed.Unboxed).Id;
+
+                _instanceMethodMappings[function.Id] = new (unboxedDefId, boxedDefId);
             }
         }
 

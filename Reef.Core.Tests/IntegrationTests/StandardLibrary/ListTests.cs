@@ -123,7 +123,7 @@ public class ListTests : IntegrationTestBase
             print_string(". ");
             for (var i = 0; i < a.length(); i++)
             {
-                print_u64(option::unwrap(a.get(i)));
+                print_u64(a.get(i).unwrap());
                 print_string(", ");
             }
             """
@@ -153,7 +153,7 @@ public class ListTests : IntegrationTestBase
             print_string(". ");
             for (var i = 0; i < a.length(); i++)
             {
-                print_u64(option::unwrap(a.get(i)));
+                print_u64(a.get(i).unwrap());
                 print_string(", ");
             }
             """
