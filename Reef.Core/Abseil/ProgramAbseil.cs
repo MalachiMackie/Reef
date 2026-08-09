@@ -192,8 +192,10 @@ public partial class ProgramAbseil
 
         var dataBytesTypeReference = loweredMethod.ParameterLocals[1].Type;
 
+        var callDefId = DefId.FunctionObject_Call(parameterCount: 1);
+
         var functionObjectCallMethod = new LoweredFunctionReference(
-            DefId.FunctionObject_Call(parameterCount: 1),
+            callDefId with { FullName = callDefId.FullName + "__boxed"},
             [dataBytesTypeReference, new LoweredConcreteTypeReference(DefId.Unit, [])]);
 
         basicBlocks.Add(new BasicBlock(
