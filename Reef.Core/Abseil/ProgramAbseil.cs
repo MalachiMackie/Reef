@@ -1710,7 +1710,8 @@ public partial class ProgramAbseil
             _ => throw new InvalidOperationException($"Type reference {typeReference.GetType()} is not supported")
         };
 
-        if (GetTypeReferenceBoxedType(typeReference) == BoxType.ManagedBox && loweredTypeReference is not LoweredPointer)
+        if (GetTypeReferenceBoxedType(typeReference) == BoxType.ManagedBox
+            && loweredTypeReference is not (LoweredPointer or LoweredGenericPlaceholder))
         {
             loweredTypeReference = new LoweredPointer(BoxedValueType(loweredTypeReference));
         }
