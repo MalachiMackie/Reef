@@ -1186,8 +1186,8 @@ void traverse_stack(traverse_stack_fn fn, uint64_t rbp, uint64_t firstReturnAddr
     while (reefMethod != NULL)
     {
         fn(depth, (uint64_t)nextRbp, returnAddress, reefMethod, data);
-        nextRbp = (uint64_t*)*nextRbp;
         returnAddress = *(nextRbp + 1);
+        nextRbp = (uint64_t*)*nextRbp;
         reefMethod = try_get_reef_method_by_instruction_address(returnAddress);
         depth++;
     }
@@ -1343,6 +1343,35 @@ void check_method_references(
         MethodLocal *local = &method->locals->locals.locals[i];
         void* localAddress = (((char*)stackBaseAddress) + local->stackOffset);
         TypeInfo* type = &typeInfoArray[local->typeId];
+
+        check_type_references(type, (uint64_t)localAddress, data);
+    }
+    for (uint64_t i = 0; i < method->parameters->items.length; i++)
+    {
+        MethodParameter *parameter = &method->parameters->items.items[i];
+        TypeInfo* type = &typeInfoArray[parameter->typeId];
+        void* localAddress = 0;
+        switch (parameter->place.variantIdentifier)
+        {
+            case 0:
+            {
+                // addr = rbp + offset
+                uint16_t offset = parameter->place.offsetInfo.offset;
+                localAddress = ((char*)stackBaseAddress + offset);
+                break;
+            }
+            case 1:
+            {
+                // addr = *(rbp + offset)
+                uint16_t offset = parameter->place.pointerInfo.offset;
+                uint64_t *addr_addr = (uint64_t*)((char*)stackBaseAddress + offset);
+                localAddress = (void*)*addr_addr;
+            }
+            default:
+            {
+                assert("fail");
+            }
+        }
 
         check_type_references(type, (uint64_t)localAddress, data);
     }

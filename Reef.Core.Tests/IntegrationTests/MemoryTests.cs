@@ -93,6 +93,9 @@ public class MemoryTests : IntegrationTestBase
 
             fn RecursiveFn(level: u8)
             {
+                print_string("level: ");
+                print_u8(level);
+                print_string("\n");
                 if (level == 0)
                 {
                     print_stack_trace();
@@ -104,10 +107,16 @@ public class MemoryTests : IntegrationTestBase
             SomeFn();
             """);
 
+
         var result = await Run();
         result.ExitCode.Should().Be(0);
         result.StandardOutput.Should().Be(
             """
+            level: 3
+            level: 2
+            level: 1
+            level: 0
+            main:::RecursiveFn
             main:::RecursiveFn
             main:::RecursiveFn
             main:::RecursiveFn
@@ -183,6 +192,92 @@ public class MemoryTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task TriggerGCInMethodWithoutParameters()
+    {
+        await SetupTest(
+            """
+            use :::Reef:::Core:::Diagnostics:::*;
+
+            fn some_fn() {
+                trigger_gc();
+                print_string("New Memory Used: ");
+                print_u64(get_memory_usage_bytes());
+            }
+
+            class Class1 {
+                pub field value: u32
+            }
+
+            var x = new Class1{value = 2};
+
+            trigger_gc();
+
+            print_string("Initial Memory Used: ");
+            print_u64(get_memory_usage_bytes());
+            print_string("\n");
+
+            some_fn();
+            """
+        );
+
+        var result = await Run();
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal(
+            $"""
+            Initial Memory Used: 8{Environment.NewLine}New Memory Used: 8
+            """,
+            result.StandardOutput);
+    }
+
+    [Fact]
+    public async Task EphemeralPointer()
+    {
+        await SetupTest(
+            """
+            use :::Reef:::Core:::Diagnostics:::*;
+
+            class Class1 {
+                pub field value: u32
+            }
+
+            class Class2 {
+                pub field value: Class1,
+
+                pub fn some_fn() {
+                    trigger_gc();
+
+                    print_string("New Memory Used: ");
+                    print_u64(get_memory_usage_bytes());
+                }
+            }
+
+            var x = new unboxed Class2{
+                value = new Class1{value = 2},
+            };
+
+            trigger_gc();
+
+            var memoryUsed = get_memory_usage_bytes();
+            print_string("Initial Memory Used: ");
+            print_u64(memoryUsed);
+            print_string("\n");
+
+            x.some_fn();
+            """
+        );
+
+        var result = await Run();
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal(
+            $"""
+            Initial Memory Used: 8{Environment.NewLine}New Memory Used: 8
+            """,
+            result.StandardOutput);
+    }
+
+    [Fact]
     public async Task BoxedUnion()
     {
         await SetupTest(
@@ -227,26 +322,32 @@ public class MemoryTests : IntegrationTestBase
                 pub mut field value: unboxed option::<MyClass>,
 
                 pub static fn create(): mut MyClass {
-                    var mut a = new MyClass{value = unboxed option::None}; // 24 bytes
-                    var mut b = new MyClass{value = unboxed option::Some(a)}; // 24 bytes
+                    var mut a = new MyClass{value = unboxed option::None};
+                    var mut b = new MyClass{value = unboxed option::Some(a)};
                     a.value = unboxed option::Some(b);
                     return a;
                 }
             }
 
             var mut value = MyClass::create();
+
+            print_u64(get_memory_usage_bytes());
+            print_string(", ");
+
             value = MyClass::create();
+
+            print_u64(get_memory_usage_bytes());
+            print_string(", ");
 
             trigger_gc();
 
-            var memoryUsed = get_memory_usage_bytes();
-            print_u64(memoryUsed);
+            print_u64(get_memory_usage_bytes());
             """
         );
 
         var result = await Run();
         result.ExitCode.Should().Be(0);
-        result.StandardOutput.Should().Be("48");
+        result.StandardOutput.Should().Be("48, 96, 48");
     }
 
     [Fact]

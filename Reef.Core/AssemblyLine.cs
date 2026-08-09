@@ -108,6 +108,10 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                 {
                     return typeReference;
                 }
+            case LoweredEphemeralPointer(var pointerTo):
+            {
+                return new LoweredEphemeralPointer((Inner(pointerTo) as LoweredConcreteTypeReference).NotNull());
+            }
             default:
                 {
                     throw new InvalidOperationException(typeReference.GetType().ToString());
@@ -604,7 +608,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
     {
         switch (type)
         {
-            case LoweredPointer:
+            case LoweredPointer or LoweredEphemeralPointer:
                 return true;
             case LoweredConcreteTypeReference concrete:
                 {
@@ -837,7 +841,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
 
                             if (!containsPointer)
                             {
-                                containsPointer = fieldType is LoweredPointer
+                                containsPointer = fieldType is LoweredPointer or LoweredEphemeralPointer
                                     || TypeContainsPointer(fieldType, currentTypeArguments);
                             }
 
@@ -1044,7 +1048,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
 
                                 if (!variantContainsPointer)
                                 {
-                                    variantContainsPointer = fieldType is LoweredPointer
+                                    variantContainsPointer = fieldType is LoweredPointer or LoweredEphemeralPointer
                                         || TypeContainsPointer(fieldType, currentTypeArguments);
 
                                     unionContainsPointer |= variantContainsPointer;
@@ -1093,8 +1097,14 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
 
                     break;
                 }
-            case LoweredPointer pointer:
+            case LoweredPointer or LoweredEphemeralPointer:
                 {
+                    var pointerTo = type switch {
+                        LoweredPointer(var x) => x,
+                        LoweredEphemeralPointer(var x) => x,
+                        _ => throw new UnreachableException(),
+                    };
+
                     var variantSizeInfo = typeInfoSize.VariantSizeInfo["Pointer"];
                     var pointerToVariantFieldOffsets = variantSizeInfo.FieldOffsets;
                     var (pointerToVariantIndex, typeInfoVariant) = typeInfoDataType.Variants.Index().First(x => x.Item.Name == "Pointer");
@@ -1113,7 +1123,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                     // pointerTo
                     PadAlignment(ref bytesWritten, _typeInfoDataSubSegment, pointerToVariantFieldOffsets["PointerTo"].Alignment);
                     _typeInfoDataSubSegment.AppendLine("        ; TypeInfo.PointerTo.Value");
-                    _typeInfoDataSubSegment.AppendLine($"        dd 0x{GetTypeId(pointer.PointerTo, currentTypeArguments):X}");
+                    _typeInfoDataSubSegment.AppendLine($"        dd 0x{GetTypeId(pointerTo, currentTypeArguments):X}");
                     bytesWritten += 4;
 
                     Debug.Assert(bytesWritten == variantSizeInfo.Size, $"bytesWritten: {bytesWritten}, variantSize: {variantSizeInfo.Size}");
@@ -1504,6 +1514,10 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                     return AreTypeReferencesEqual(leftArray.ElementType, rightArray.ElementType)
                            && leftArray.Length == rightArray.Length;
                 }
+            case (LoweredEphemeralPointer(var leftPointerTo), LoweredEphemeralPointer(var rightPointerTo)):
+                {
+                    return AreTypeReferencesEqual(leftPointerTo, rightPointerTo);
+                }
         }
 
         if (left.GetType() == right.GetType())
@@ -1636,6 +1650,7 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                 }
             case RawPointer:
             case LoweredPointer:
+            case LoweredEphemeralPointer:
                 {
                     size = PointerSize;
                     alignment = PointerSize;
@@ -2156,8 +2171,11 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                 throw new NotImplementedException();
             case Deref deref:
                 {
-                    var pointerType = (GetPlaceType(deref.PointerPlace, currentTypeArguments) as LoweredPointer).NotNull();
-                    return pointerType.PointerTo;
+                    return GetPlaceType(deref.PointerPlace, currentTypeArguments) switch {
+                        LoweredPointer(var pointerTo) => pointerTo,
+                        LoweredEphemeralPointer(var pointerTo) => pointerTo,
+                        _ => throw new InvalidOperationException(),
+                    };
                 }
             case Index index:
                 {
@@ -2605,6 +2623,8 @@ public partial class AssemblyLine(LoweredProgram program, HashSet<DefId> usefulM
                 }
             case SizeOf:
                 return new LoweredConcreteTypeReference(DefId.UInt64, []);
+            case AddressOf(var x):
+                return new LoweredPointer(GetPlaceType(x, currentTypeArguments));
             case StringConstant:
                 return new LoweredPointer(
                     new LoweredConcreteTypeReference(DefId.String, [
