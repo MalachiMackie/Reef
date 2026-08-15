@@ -129,6 +129,66 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
                     "main.rf",
                     """
                     class MyClass {
+                        pub fn something(): Self {
+                            return this;
+                        }
+                    }
+                    var x = new MyClass{};
+                    var y = x.something();
+
+                    var z: boxed MyClass = y;
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    class MyClass {
+                        pub fn something(): Self {
+                            return this;
+                        }
+                    }
+                    var x = new unboxed MyClass{};
+                    var y = x.something();
+
+                    var z: unboxed MyClass = y;
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    class MyClass {
+                        fn some_fn() where Self: unboxed {
+                            var x: unboxed MyClass = this;
+                        }
+                    }
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    class MyClass {
+                        fn some_fn() where Self: boxed {
+                            var x: boxed MyClass = this;
+                        }
+                    }
+                    """
+                }
+            },
+            new()
+            {
+                {
+                    "main.rf",
+                    """
+                    class MyClass {
                         static fn OtherFn(){}
                         static fn MyFn() {
                             var a = OtherFn;
@@ -4286,6 +4346,108 @@ public class TypeCheckerTests(ITestOutputHelper testOutputHelper)
     {
         return new TheoryData<string, Dictionary<string, (string contents, IReadOnlyList<TypeCheckerError> expectedErrors)>>
         {
+            {
+                "assign this to boxed variable where self is constrained to be unboxed",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            class MyClass {
+                                fn some_fn() where Self: unboxed {
+                                    var x: boxed MyClass = this;
+                                }
+                            }
+                            """,
+                            [TypeCheckerError.MismatchedTypeBoxing(
+                                SourceRange.Default,
+                                expectedType: new TestClassReference(new DefId(ModuleId, $"{ModuleId}:::MyClass"), [], Boxed: true),
+                                expectedBoxed: true,
+                                actualType: new TestClassReference(new DefId(ModuleId, $"{ModuleId}:::MyClass"), [], Boxed: false),
+                                actualBoxed: false)]
+                        )
+                    }
+                }
+            },
+            {
+                "assign this to unboxed variable where self is constrained to be boxed",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            class MyClass {
+                                fn some_fn() where Self: boxed {
+                                    var x: unboxed MyClass = this;
+                                }
+                            }
+                            """,
+                            [TypeCheckerError.MismatchedTypeBoxing(
+                                SourceRange.Default,
+                                expectedType: new TestClassReference(new DefId(ModuleId, $"{ModuleId}:::MyClass"), [], Boxed: false),
+                                expectedBoxed: false,
+                                actualType: new TestClassReference(new DefId(ModuleId, $"{ModuleId}:::MyClass"), [], Boxed: true),
+                                actualBoxed: true)]
+                        )
+                    }
+                }
+            },
+            {
+                "assign variable from self function with incorrect boxing - boxed",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            class MyClass {
+                                fn some_fn(): Self {
+                                    return this;
+                                }
+                            }
+                            var x = new boxed MyClass{};
+                            var y = x.some_fn();
+                            var z: unboxed MyClass = y;
+                            """,
+                            [TypeCheckerError.MismatchedTypeBoxing(
+                                SourceRange.Default,
+                                expectedType: new TestClassReference(new DefId(ModuleId, $"{ModuleId}:::MyClass"), [], Boxed: false),
+                                expectedBoxed: false,
+                                actualType: new TestClassReference(new DefId(ModuleId, $"{ModuleId}:::MyClass"), [], Boxed: true),
+                                actualBoxed: true)]
+                        )
+                    }
+                }
+            },
+            {
+                "assign variable from self function with incorrect boxing - unboxed",
+                new()
+                {
+                    {
+                        "main.rf",
+                        (
+                            """
+                            class MyClass {
+                                fn some_fn(): Self {
+                                    return this;
+                                }
+                            }
+                            var x = new unboxed MyClass{};
+                            var y = x.some_fn();
+                            var z: boxed MyClass = y;
+                            """,
+                            [TypeCheckerError.MismatchedTypeBoxing(
+                                SourceRange.Default,
+                                expectedType: new TestClassReference(new DefId(ModuleId, $"{ModuleId}:::MyClass"), [], Boxed: true),
+                                expectedBoxed: true,
+                                actualType: new TestClassReference(new DefId(ModuleId, $"{ModuleId}:::MyClass"), [], Boxed: false),
+                                actualBoxed: false)]
+                        )
+                    }
+                }
+            },
             {
                 "Use assign instance method to variable in non boxed_only type",
                 new()

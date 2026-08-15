@@ -340,14 +340,252 @@ pub extern unboxed class unit{}
 pub extern unboxed class never{}
 
 pub extern unboxed class bool{}
-pub extern unboxed class u64{}
-pub extern unboxed class u32{}
-pub extern unboxed class u16{}
-pub extern unboxed class u8{}
-pub extern unboxed class i64{}
-pub extern unboxed class i32{}
-pub extern unboxed class i16{}
-pub extern unboxed class i8{}
+
+pub extern unboxed class u64 {
+    pub fn to_string(): string where Self : unboxed {
+        return to_string_inner(this);
+    }
+
+    static fn to_string_inner(val: u64): string {
+        if (val <= 20) {
+            // todo: move these into a static field
+            var common_values = [
+                unboxed;
+                "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
+                "11", "12", "13", "14", "15", "16", "17", "18", "19", "20",
+            ];
+
+            return common_values[val];
+        }
+
+
+        var char_i = 0;
+        // maxValue: 18446744073709551615
+        var mut chars = [option::None; 20];
+
+        for (var magnitude = 10000000000000000000; magnitude >= 10; magnitude = magnitude / 10) {
+            var magnitude_count = 0;
+            while (val >= magnitude)
+            {
+                magnitude_count++;
+                val = val - magnitude;
+            }
+            if (magnitude_count == 0 && char_i == 0)
+            {
+                continue;
+            }
+            var ch = ascii_num_to_char(magnitude_count);
+            chars[char_i++] = option::Some(ch);
+        }
+
+        if (val > 0 || char_i != 0)
+        {
+            var ch = ascii_num_to_char(u64_to_u8(val));
+            chars[char_i++] = option::Some(ch);
+        }
+
+        return char_array_to_string(array_filter_map(chars));
+    }
+}
+
+pub extern unboxed class u32 {
+    pub fn to_string(): string where Self: unboxed {
+        return to_string_inner(this);
+    }
+
+    static fn to_string_inner(val: u32): string {
+        if (val <= 20) {
+            // todo: move these into a static field
+            var common_values = [
+                unboxed;
+                "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
+                "11", "12", "13", "14", "15", "16", "17", "18", "19", "20",
+            ];
+
+            return common_values[u32_to_u64(val)];
+        }
+
+
+        var char_i = 0;
+        // maxValue: 4294967295
+        var mut chars = [option::None; 10];
+
+        for (var magnitude = 1000000000; magnitude >= 10; magnitude = magnitude / 10) {
+            var magnitude_count = 0;
+            while (val >= magnitude)
+            {
+                magnitude_count++;
+                val = val - magnitude;
+            }
+            if (magnitude_count == 0 && char_i == 0)
+            {
+                continue;
+            }
+            var ch = ascii_num_to_char(magnitude_count);
+            chars[char_i++] = option::Some(ch);
+        }
+
+        if (val > 0 || char_i != 0)
+        {
+            var ch = ascii_num_to_char(u32_to_u8(val));
+            chars[char_i++] = option::Some(ch);
+        }
+
+        return char_array_to_string(array_filter_map(chars));
+    }
+}
+pub extern unboxed class u16 {
+    pub fn to_string(): string where Self: unboxed {
+        return to_string_inner(this);
+    }
+
+    static fn to_string_inner(val: u16): string {
+        return u16_to_u32(val).to_string();
+    }
+}
+
+pub extern unboxed class u8 {
+    pub fn to_string(): string where Self: unboxed {
+        return to_string_inner(this);
+    }
+    static fn to_string_inner(val: u8): string {
+        return u8_to_u32(val).to_string();
+    }
+}
+
+pub extern unboxed class i64 {
+    pub fn to_string(): string where Self: unboxed {
+        return to_string_inner(this);
+    }
+    static fn to_string_inner(val: i64): string {
+        if (val >= -10 && val <= 10) {
+            // todo: move these into a static field
+            var common_values = [
+                unboxed;
+                "-10", "-9", "-8", "-7", "-6", "-5", "-4", "-3", "-2", "-1",
+                "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
+            ];
+
+            return common_values[i64_to_u64(val + 10)];
+        }
+
+        if (val == -9223372036854775808) {
+            return "-9223372036854775808";
+        }
+
+        var char_i = 0;
+        var mut chars = [option::None; 20];
+        var isNegative = false;
+
+        if (val < 0)
+        {
+            val = -val;
+            chars[char_i++] = option::Some('-');
+            isNegative = true;
+        }
+
+        var foundFirstNumber = false;
+
+        for (var magnitude = 1000000000000000000; magnitude >= 10; magnitude = magnitude / 10) {
+            var magnitude_count = 0;
+            while (val >= magnitude)
+            {
+                magnitude_count++;
+                val = val - magnitude;
+            }
+            if (magnitude_count == 0 && !foundFirstNumber)
+            {
+                continue;
+            }
+            foundFirstNumber = true;
+            var ch = ascii_num_to_char(magnitude_count);
+            chars[char_i++] = option::Some(ch);
+        }
+
+        if (val > 0 || foundFirstNumber)
+        {
+            var ch = ascii_num_to_char(i64_to_u8(val));
+            chars[char_i++] = option::Some(ch);
+        }
+
+        return char_array_to_string(array_filter_map(chars));
+    }
+}
+
+pub extern unboxed class i32 {
+    pub fn to_string(): string where Self: unboxed {
+        return to_string_inner(this);
+    }
+    static fn to_string_inner(val: i32): string {
+        if (val >= -10 && val <= 10) {
+            // todo: move these into a static field
+            var common_values = [
+                unboxed;
+                "-10", "-9", "-8", "-7", "-6", "-5", "-4", "-3", "-2", "-1",
+                "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
+            ];
+
+            return common_values[i32_to_u64(val + 10)];
+        }
+
+        if (val == -2147483648) {
+            return "-2147483648";
+        }
+
+        var char_i = 0;
+        var mut chars = [option::None; 11];
+        var isNegative = false;
+
+        if (val < 0)
+        {
+            val = -val;
+            chars[char_i++] = option::Some('-');
+            isNegative = true;
+        }
+
+        var foundFirstNumber = false;
+
+        for (var magnitude = 1000000000; magnitude >= 10; magnitude = magnitude / 10) {
+            var magnitude_count = 0;
+            while (val >= magnitude)
+            {
+                magnitude_count++;
+                val = val - magnitude;
+            }
+            if (magnitude_count == 0 && !foundFirstNumber)
+            {
+                continue;
+            }
+            foundFirstNumber = true;
+            var ch = ascii_num_to_char(magnitude_count);
+            chars[char_i++] = option::Some(ch);
+        }
+
+        if (val > 0 || foundFirstNumber)
+        {
+            var ch = ascii_num_to_char(i32_to_u8(val));
+            chars[char_i++] = option::Some(ch);
+        }
+
+        return char_array_to_string(array_filter_map(chars));
+    }
+}
+pub extern unboxed class i16 {
+    pub fn to_string(): string where Self: unboxed {
+        return to_string_inner(this);
+    }
+    static fn to_string_inner(val: i16): string {
+        return i16_to_i32(val).to_string();
+    }
+}
+pub extern unboxed class i8 {
+    pub fn to_string(): string where Self: unboxed {
+        return to_string_inner(this);
+    }
+    static fn to_string_inner(val: i8): string {
+        return i8_to_i32(val).to_string();
+    }
+}
 
 fn array_filter_map<T>(arr: [option::<T>]): [T] {
     var mut items = list::create();
@@ -386,214 +624,6 @@ pub extern fn i64_to_u64(value: i64): u64;
 
 pub extern fn ascii_num_to_char(value: u8): char;
 pub extern fn char_array_to_string(chars: [char]): string;
-
-// todo: figure out a way to do instance functions on unboxed values that doesn't box
-pub fn i8_to_string(val: i8): string {
-    return i32_to_string(i8_to_i32(val));
-}
-
-pub fn i16_to_string(val: i16): string {
-    return i32_to_string(i16_to_i32(val));
-}
-
-pub fn i32_to_string(val: i32): string {
-    if (val >= -10 && val <= 10) {
-        // todo: move these into a static field
-        var common_values = [
-            unboxed;
-            "-10", "-9", "-8", "-7", "-6", "-5", "-4", "-3", "-2", "-1",
-            "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
-        ];
-
-        return common_values[i32_to_u64(val + 10)];
-    }
-
-    if (val == -2147483648) {
-        return "-2147483648";
-    }
-
-    var char_i = 0;
-    var mut chars = [option::None; 11];
-    var isNegative = false;
-
-    if (val < 0)
-    {
-        val = -val;
-        chars[char_i++] = option::Some('-');
-        isNegative = true;
-    }
-
-    var foundFirstNumber = false;
-
-    for (var magnitude = 1000000000; magnitude >= 10; magnitude = magnitude / 10) {
-        var magnitude_count = 0;
-        while (val >= magnitude)
-        {
-            magnitude_count++;
-            val = val - magnitude;
-        }
-        if (magnitude_count == 0 && !foundFirstNumber)
-        {
-            continue;
-        }
-        foundFirstNumber = true;
-        var ch = ascii_num_to_char(magnitude_count);
-        chars[char_i++] = option::Some(ch);
-    }
-
-    if (val > 0 || foundFirstNumber)
-    {
-        var ch = ascii_num_to_char(i32_to_u8(val));
-        chars[char_i++] = option::Some(ch);
-    }
-
-    return char_array_to_string(array_filter_map(chars));
-}
-
-pub fn i64_to_string(val: i64): string {
-    if (val >= -10 && val <= 10) {
-        // todo: move these into a static field
-        var common_values = [
-            unboxed;
-            "-10", "-9", "-8", "-7", "-6", "-5", "-4", "-3", "-2", "-1",
-            "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
-        ];
-
-        return common_values[i64_to_u64(val + 10)];
-    }
-
-    if (val == -9223372036854775808) {
-        return "-9223372036854775808";
-    }
-
-    var char_i = 0;
-    var mut chars = [option::None; 20];
-    var isNegative = false;
-
-    if (val < 0)
-    {
-        val = -val;
-        chars[char_i++] = option::Some('-');
-        isNegative = true;
-    }
-
-    var foundFirstNumber = false;
-
-    for (var magnitude = 1000000000000000000; magnitude >= 10; magnitude = magnitude / 10) {
-        var magnitude_count = 0;
-        while (val >= magnitude)
-        {
-            magnitude_count++;
-            val = val - magnitude;
-        }
-        if (magnitude_count == 0 && !foundFirstNumber)
-        {
-            continue;
-        }
-        foundFirstNumber = true;
-        var ch = ascii_num_to_char(magnitude_count);
-        chars[char_i++] = option::Some(ch);
-    }
-
-    if (val > 0 || foundFirstNumber)
-    {
-        var ch = ascii_num_to_char(i64_to_u8(val));
-        chars[char_i++] = option::Some(ch);
-    }
-
-    return char_array_to_string(array_filter_map(chars));
-}
-
-pub fn u8_to_string(val: u8): string {
-    return u32_to_string(u8_to_u32(val));
-}
-
-pub fn u16_to_string(val: u16): string {
-    return u32_to_string(u16_to_u32(val));
-}
-
-pub fn u32_to_string(val: u32): string {
-    if (val <= 20) {
-        // todo: move these into a static field
-        var common_values = [
-            unboxed;
-            "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
-            "11", "12", "13", "14", "15", "16", "17", "18", "19", "20",
-        ];
-
-        return common_values[u32_to_u64(val)];
-    }
-
-
-    var char_i = 0;
-    // maxValue: 4294967295
-    var mut chars = [option::None; 10];
-
-    for (var magnitude = 1000000000; magnitude >= 10; magnitude = magnitude / 10) {
-        var magnitude_count = 0;
-        while (val >= magnitude)
-        {
-            magnitude_count++;
-            val = val - magnitude;
-        }
-        if (magnitude_count == 0 && char_i == 0)
-        {
-            continue;
-        }
-        var ch = ascii_num_to_char(magnitude_count);
-        chars[char_i++] = option::Some(ch);
-    }
-
-    if (val > 0 || char_i != 0)
-    {
-        var ch = ascii_num_to_char(u32_to_u8(val));
-        chars[char_i++] = option::Some(ch);
-    }
-
-    return char_array_to_string(array_filter_map(chars));
-}
-
-pub fn u64_to_string(val: u64): string {
-    if (val <= 20) {
-        // todo: move these into a static field
-        var common_values = [
-            unboxed;
-            "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
-            "11", "12", "13", "14", "15", "16", "17", "18", "19", "20",
-        ];
-
-        return common_values[val];
-    }
-
-
-    var char_i = 0;
-    // maxValue: 18446744073709551615
-    var mut chars = [option::None; 20];
-
-    for (var magnitude = 10000000000000000000; magnitude >= 10; magnitude = magnitude / 10) {
-        var magnitude_count = 0;
-        while (val >= magnitude)
-        {
-            magnitude_count++;
-            val = val - magnitude;
-        }
-        if (magnitude_count == 0 && char_i == 0)
-        {
-            continue;
-        }
-        var ch = ascii_num_to_char(magnitude_count);
-        chars[char_i++] = option::Some(ch);
-    }
-
-    if (val > 0 || char_i != 0)
-    {
-        var ch = ascii_num_to_char(u64_to_u8(val));
-        chars[char_i++] = option::Some(ch);
-    }
-
-    return char_array_to_string(array_filter_map(chars));
-}
-
 
 pub unboxed class Tuple_1<T0> {
     pub field Item0: T0,

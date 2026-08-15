@@ -634,8 +634,6 @@ public partial class TypeChecker
             VariantOfType x => x,
             UnknownType => typeReference,
             SelfTypeReference => instanceOwnerType.NotNull(),
-            // SelfTypeReference { Signature: var signature } when signature.Id == CurrentTypeSignature?.Id => typeReference,
-            // SelfTypeReference {Signature: var signature } => throw new NotImplementedException(),
             _ => throw new InvalidOperationException(typeReference.GetType().ToString())
         };
     }
@@ -1702,6 +1700,9 @@ public partial class TypeChecker
                 }
             case (SelfTypeReference actualSelf, InstantiatedUnion expectedUnion):
                 {
+                    Debug.Assert(CurrentTypeSignature?.Id == actualSelf.Signature.Id);
+                    Debug.Assert(CurrentFunctionSignature is not null);
+
                     if (actualSelf.Signature.Id != expectedUnion.Signature.Id)
                     {
                         if (reportError)
@@ -1712,13 +1713,13 @@ public partial class TypeChecker
                     }
                     else
                     {
-                        // Self only is satisfied against a known instantiated union if it is expected to be boxed and Self can only be boxed
-                        if (!expectedUnion.Boxed || !expectedUnion.Signature.Attributes.Any(x => x.AttributeId == DefId.BoxedOnly))
+                        var isBoxedOnly = CurrentFunctionSignature.SelfConstraints.OfType<BoxedTypeConstraint>().Any()
+                            || CurrentTypeSignature.Attributes.Any(x => x.AttributeId == DefId.BoxedOnly);
+                        var isUnboxedOnly = CurrentFunctionSignature.SelfConstraints.OfType<UnboxedTypeConstraint>().Any();
+
+                        if (((isBoxedOnly && !expectedUnion.Boxed) || (isUnboxedOnly && expectedUnion.Boxed)) && reportError)
                         {
-                            if (reportError)
-                            {
-                                AddError(TypeCheckerError.MismatchedTypeBoxing(actualSourceRange, expectedUnion, expectedUnion.Boxed, actualSelf, !expectedUnion.Boxed));
-                            }
+                            AddError(TypeCheckerError.MismatchedTypeBoxing(actualSourceRange, expectedUnion, expectedUnion.Boxed, actualSelf, !expectedUnion.Boxed));
                         }
                     }
                     break;
@@ -1735,13 +1736,16 @@ public partial class TypeChecker
                     }
                     else
                     {
-                        // Self only is satisfied against a known instantiated union if it is expected to be boxed and Self can only be boxed
-                        if (!actualUnion.Boxed || !actualUnion.Signature.Attributes.Any(x => x.AttributeId == DefId.BoxedOnly))
+                        Debug.Assert(CurrentTypeSignature?.Id == expectedSelf.Signature.Id);
+                        Debug.Assert(CurrentFunctionSignature is not null);
+
+                        var isBoxedOnly = CurrentFunctionSignature.SelfConstraints.OfType<BoxedTypeConstraint>().Any()
+                            || CurrentTypeSignature.Attributes.Any(x => x.AttributeId == DefId.BoxedOnly);
+                        var isUnboxedOnly = CurrentFunctionSignature.SelfConstraints.OfType<UnboxedTypeConstraint>().Any();
+
+                        if (((isBoxedOnly && !actualUnion.Boxed) || (isUnboxedOnly && actualUnion.Boxed)) && reportError)
                         {
-                            if (reportError)
-                            {
-                                AddError(TypeCheckerError.MismatchedTypeBoxing(actualSourceRange, expectedSelf, !actualUnion.Boxed, actualUnion, actualUnion.Boxed));
-                            }
+                            AddError(TypeCheckerError.MismatchedTypeBoxing(actualSourceRange, expectedSelf, !actualUnion.Boxed, actualUnion, actualUnion.Boxed));
                         }
                     }
                     break;
@@ -1758,13 +1762,16 @@ public partial class TypeChecker
                     }
                     else
                     {
-                        // Self only is satisfied against a known instantiated class if it is expected to be boxed and Self can only be boxed
-                        if (!expectedClass.Boxed || !expectedClass.Signature.Attributes.Any(x => x.AttributeId == DefId.BoxedOnly))
+                        Debug.Assert(CurrentTypeSignature?.Id == actualSelf.Signature.Id);
+                        Debug.Assert(CurrentFunctionSignature is not null);
+
+                        var isBoxedOnly = CurrentFunctionSignature.SelfConstraints.OfType<BoxedTypeConstraint>().Any()
+                            || CurrentTypeSignature.Attributes.Any(x => x.AttributeId == DefId.BoxedOnly);
+                        var isUnboxedOnly = CurrentFunctionSignature.SelfConstraints.OfType<UnboxedTypeConstraint>().Any();
+
+                        if (((isBoxedOnly && !expectedClass.Boxed) || (isUnboxedOnly && expectedClass.Boxed)) && reportError)
                         {
-                            if (reportError)
-                            {
-                                AddError(TypeCheckerError.MismatchedTypeBoxing(actualSourceRange, expectedClass, expectedClass.Boxed, actualSelf, !expectedClass.Boxed));
-                            }
+                            AddError(TypeCheckerError.MismatchedTypeBoxing(actualSourceRange, expectedClass, expectedClass.Boxed, actualSelf, !expectedClass.Boxed));
                         }
                     }
                     break;
@@ -1781,6 +1788,18 @@ public partial class TypeChecker
                     }
                     else
                     {
+                        Debug.Assert(CurrentTypeSignature?.Id == expectedSelf.Signature.Id);
+                        Debug.Assert(CurrentFunctionSignature is not null);
+
+                        var isBoxedOnly = CurrentFunctionSignature.SelfConstraints.OfType<BoxedTypeConstraint>().Any()
+                            || CurrentTypeSignature.Attributes.Any(x => x.AttributeId == DefId.BoxedOnly);
+                        var isUnboxedOnly = CurrentFunctionSignature.SelfConstraints.OfType<UnboxedTypeConstraint>().Any();
+
+                        if (((isBoxedOnly && !actualClass.Boxed) || (isUnboxedOnly && actualClass.Boxed)) && reportError)
+                        {
+                            AddError(TypeCheckerError.MismatchedTypeBoxing(actualSourceRange, expectedSelf, !actualClass.Boxed, actualClass, actualClass.Boxed));
+                        }
+
                         // Self only is satisfied against a known instantiated class if it is expected to be boxed and Self can only be boxed
                         if (!actualClass.Boxed || !actualClass.Signature.Attributes.Any(x => x.AttributeId == DefId.BoxedOnly))
                         {

@@ -16,7 +16,10 @@ public class IntToString : IntegrationTestBase
     [InlineData(byte.MaxValue)]
     public async Task U8ToString(byte value)
     {
-        await SetupTest($"print_string(u8_to_string({value}));", value.ToString());
+        await SetupTest($"""
+            var x: u8 = {value};
+            print_string(x.to_string());
+            """, value.ToString());
 
         var result = await Run(value.ToString());
 
@@ -38,7 +41,10 @@ public class IntToString : IntegrationTestBase
     [InlineData(sbyte.MinValue)]
     public async Task I8ToString(sbyte value)
     {
-        await SetupTest($"print_string(i8_to_string({value}));", value.ToString());
+        await SetupTest($"""
+            var x: i8 = {value};
+            print_string(x.to_string());
+            """, value.ToString());
 
         var result = await Run(value.ToString());
 
@@ -59,7 +65,10 @@ public class IntToString : IntegrationTestBase
     [InlineData(ushort.MaxValue)]
     public async Task U16ToString(ushort value)
     {
-        await SetupTest($"print_string(u16_to_string({value}));", value.ToString());
+        await SetupTest($"""
+        var x: u16 = {value};
+        print_string(x.to_string());
+        """, value.ToString());
 
         var result = await Run(value.ToString());
 
@@ -84,7 +93,10 @@ public class IntToString : IntegrationTestBase
     [InlineData(short.MinValue)]
     public async Task I16ToString(short value)
     {
-        await SetupTest($"print_string(i16_to_string({value}));", value.ToString());
+        await SetupTest($"""
+        var x: i16 = {value};
+        print_string(x.to_string());
+        """, value.ToString());
 
         var result = await Run(value.ToString());
 
@@ -106,7 +118,10 @@ public class IntToString : IntegrationTestBase
     [InlineData(uint.MaxValue)]
     public async Task U32ToString(uint value)
     {
-        await SetupTest($"print_string(u32_to_string({value}));", value.ToString());
+        await SetupTest($"""
+        var x: u32 = {value};
+        print_string(x.to_string());
+        """, value.ToString());
 
         var result = await Run(value.ToString());
 
@@ -132,7 +147,10 @@ public class IntToString : IntegrationTestBase
     [InlineData(int.MinValue)]
     public async Task I32ToString(int value)
     {
-        await SetupTest($"print_string(i32_to_string({value}));", value.ToString());
+        await SetupTest($"""
+        var x: i32 = {value};
+        print_string(x.to_string());
+        """, value.ToString());
 
         var result = await Run(value.ToString());
 
@@ -154,7 +172,10 @@ public class IntToString : IntegrationTestBase
     [InlineData(ulong.MaxValue)]
     public async Task U64ToString(ulong value)
     {
-        await SetupTest($"print_string(u64_to_string({value}));", value.ToString());
+        await SetupTest($"""
+        var x: u64 = {value};
+        print_string(x.to_string());
+        """, value.ToString());
 
         var result = await Run(value.ToString());
 
@@ -182,7 +203,10 @@ public class IntToString : IntegrationTestBase
     [InlineData(long.MinValue)]
     public async Task I64ToString(long value)
     {
-        await SetupTest($"print_string(i64_to_string({value}));", value.ToString());
+        await SetupTest($"""
+            var x: i64 = {value};
+            print_string(x.to_string());
+            """, value.ToString());
 
         var result = await Run(value.ToString());
 
